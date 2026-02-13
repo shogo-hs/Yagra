@@ -37,7 +37,7 @@
 
 - 完了済み: G02-I01, G02-I02, G02-I03
 - 未完了: なし
-- 現在地: Registry 契約と in-memory 実装は完了し、次はユースケースへの接続（M-03）へ進む段階。
+- 現在地: G-02 の項目は完了。Registry 契約と in-memory 実装、未登録時エラーハンドリングまで整備済み。
 
 ### G-03: YAML 差し替えで複数ワークフローを低コストに運用できる
 
@@ -47,11 +47,11 @@
 | --- | --- | --- | --- |
 | G03-I01 | YAML から StateGraph を組み立てるビルダーを実装する | Done | `src/graphyml/application/use_cases/state_graph_builder.py` |
 | G03-I02 | 複数 YAML で同一実装を切り替えるサンプルを用意する | Done | `tests/fixtures/workflows/` |
-| G03-I03 | Zero-Boilerplate の利用例を README に記載する | Planned | `README.md` |
+| G03-I03 | Zero-Boilerplate の利用例を README に記載する | Done | `README.md` |
 
-- 完了済み: G03-I01, G03-I02
-- 未完了: G03-I03
-- 現在地: ビルダーとサンプル実行は完了し、README 利用例の整備が残タスク。
+- 完了済み: G03-I01, G03-I02, G03-I03
+- 未完了: なし
+- 現在地: G-03 の項目は完了。YAML 差し替え実行と README 利用導線まで整備済み。
 
 ### G-04: 開発運用で品質ゲートを常時維持できる
 
@@ -61,8 +61,8 @@
 | --- | --- | --- | --- |
 | G04-I01 | `uv` ベースの品質ゲートを導入する | Done | `pyproject.toml` |
 | G04-I02 | GitHub Actions で lint/type/test を自動実行する | Done | `.github/workflows/ci.yml` |
-| G04-I03 | pre-commit / pre-push をローカルへ導入する | In Progress | `.pre-commit-config.yaml` |
+| G04-I03 | pre-commit / pre-push をローカルへ導入する | Done | `.pre-commit-config.yaml` |
 
-- 完了済み: G04-I01, G04-I02
-- 未完了: G04-I03
-- 現在地: CI は導入済みで、ローカルフック適用を進めている段階。
+- 完了済み: G04-I01, G04-I02, G04-I03
+- 未完了: なし
+- 現在地: G-04 の項目は完了。CI とローカルフックで品質ゲートを継続実行できる状態。

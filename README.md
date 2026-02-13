@@ -85,6 +85,67 @@ python3 scripts/sync_ai_context.py
 python3 scripts/sync_ai_context.py --check
 ```
 
+## Graphyml 利用例（Zero-Boilerplate）
+
+同じ Python コードのまま、`workflow_path` を差し替えるだけで別フローを実行できる。
+
+`workflows/support.yaml`:
+
+```yaml
+version: "1.0"
+start_at: classify
+end_at: [answer]
+nodes:
+  - id: classify
+    handler: classify_intent
+    params:
+      prompt:
+        system: "あなたは問い合わせ分類アシスタントです。"
+        user: "{query}"
+  - id: answer
+    handler: generate_answer
+    params:
+      model:
+        provider: openai
+        name: gpt-4.1-mini
+        temperature: 0.2
+edges:
+  - source: classify
+    target: answer
+```
+
+`run_workflow.py`:
+
+```python
+from graphyml import Graphyml
+from graphyml.adapters.outbound import InMemoryNodeRegistry
+
+
+def classify_intent(state: dict, params: dict) -> dict:
+    query = state.get("query", "")
+    return {"intent": "faq" if "料金" in query else "general"}
+
+
+def generate_answer(state: dict, params: dict) -> dict:
+    intent = state.get("intent", "general")
+    return {"answer": f"intent={intent}"}
+
+
+registry = InMemoryNodeRegistry(
+    {
+        "classify_intent": classify_intent,
+        "generate_answer": generate_answer,
+    }
+)
+
+app = Graphyml.from_workflow("workflows/support.yaml", registry=registry)
+result = app.invoke({"query": "料金を教えてください"})
+print(result["answer"])
+```
+
+別のフローを実行したい場合は `Graphyml.from_workflow("workflows/sales.yaml", ...)` のように
+YAML パスだけを変更すればよい。
+
 ## 役割分担（誰が何をするか）
 
 | 区分 | ユーザー | エージェント |
