@@ -71,3 +71,4 @@
 
 - 配布名・import 名を `yagra` に統一し、公開 API は `Yagra` を主名称とした。
 - 運用方針を「GitHub リポジトリは Private、PyPI 成果物は Public」に統一した。
+- Sphinx + GitHub Pages によるドキュメント公開基盤を導入した（`.github/workflows/docs.yml`）。

@@ -246,6 +246,27 @@ uv run pytest -q
 uv run pre-commit run --all-files
 ```
 
+## ドキュメント（Sphinx）
+
+ローカルで HTML を生成:
+
+```bash
+uv run sphinx-build -b html docs/sphinx/source docs/sphinx/_build/html
+```
+
+生成先:
+
+- `docs/sphinx/_build/html/index.html`
+
+公開先（GitHub Pages）:
+
+- `https://shogo-hs.github.io/Yagra/`
+
+公開の前提:
+
+- GitHub の `Settings > Pages` で Source を `GitHub Actions` に設定する
+- `.github/workflows/docs.yml` が `main` への push または手動実行で成功する
+
 ## PyPI 公開
 
 公開ワークフローは `v*` タグ push をトリガーに実行されます。
