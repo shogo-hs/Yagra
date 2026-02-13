@@ -30,8 +30,8 @@ pip install yagra
 この手順は private リポジトリへのアクセス権があるメンテナー向けです。
 
 ```bash
-git clone https://github.com/shogo-hs/Graphyml.git
-cd Graphyml
+git clone https://github.com/shogo-hs/Yagra.git
+cd Yagra
 uv sync --dev
 ```
 
@@ -257,7 +257,7 @@ uv run pre-commit run --all-files
 
 前提:
 
-- PyPI 側で private repository `shogo-hs/Graphyml` を Trusted Publisher として登録しておく
+- PyPI 側で private repository `shogo-hs/Yagra` を Trusted Publisher として登録しておく
 - GitHub Actions の `pypi` environment が利用可能である
 - Git タグ（`vX.Y.Z`）と `pyproject.toml` の `version` を一致させる
 
