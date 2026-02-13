@@ -8,8 +8,9 @@ from typing import Any
 
 from langgraph.graph.state import CompiledStateGraph
 
+from graphyml.adapters.outbound import InMemoryNodeRegistry
 from graphyml.application.use_cases import build_from_workflow_path
-from graphyml.ports.outbound import NodeRegistryPort
+from graphyml.ports.outbound import NodeHandler, NodeRegistryPort
 
 
 class Graphyml:
@@ -27,23 +28,27 @@ class Graphyml:
     def from_workflow(
         cls,
         workflow_path: str | PathLike[str],
-        registry: NodeRegistryPort,
+        registry: NodeRegistryPort | Mapping[str, NodeHandler],
         bundle_root: str | PathLike[str] | None = None,
+        state_schema: Any = dict,
     ) -> Graphyml:
         """ワークフローファイルから `Graphyml` インスタンスを生成する。
 
         Args:
             workflow_path: 入口となる `workflow.yaml` のパス。
-            registry: handler 名を callable へ解決するレジストリ実装。
+            registry: handler 名を callable へ解決するレジストリ実装、または handler マッピング。
             bundle_root: 分割参照の解決に使う基準ディレクトリ。未指定時は workflow 親ディレクトリ。
+            state_schema: LangGraph の状態スキーマ。既定は `dict`。
 
         Returns:
             コンパイル済みグラフを内包した `Graphyml` インスタンス。
         """
+        normalized_registry = _normalize_registry(registry)
         compiled = build_from_workflow_path(
             workflow_path=workflow_path,
-            registry=registry,
+            registry=normalized_registry,
             bundle_root=bundle_root,
+            state_schema=state_schema,
         )
         return cls(compiled)
 
@@ -73,3 +78,22 @@ class Graphyml:
 def main() -> None:
     """Graphyml の初期化状態を標準出力へ表示する。"""
     print("Graphyml bootstrap is ready.")
+
+
+def _normalize_registry(registry: NodeRegistryPort | Mapping[str, NodeHandler]) -> NodeRegistryPort:
+    """Registry 引数を `NodeRegistryPort` 実装へ正規化する。
+
+    Args:
+        registry: レジストリ実装、または handler のマッピング。
+
+    Returns:
+        `NodeRegistryPort` 実装。
+
+    Raises:
+        TypeError: 受け付けない型が渡された場合。
+    """
+    if isinstance(registry, NodeRegistryPort):
+        return registry
+    if isinstance(registry, Mapping):
+        return InMemoryNodeRegistry(registry)
+    raise TypeError("registry must be NodeRegistryPort or mapping[str, NodeHandler]")

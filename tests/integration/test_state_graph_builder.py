@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, TypedDict
 
 from graphyml import Graphyml
 from graphyml.adapters.outbound import InMemoryNodeRegistry
@@ -68,6 +68,24 @@ def _build_registry() -> InMemoryNodeRegistry:
     )
 
 
+def _build_registry_mapping() -> dict[str, Any]:
+    return {
+        "router_handler": _router_handler,
+        "planner_handler": _planner_handler,
+        "planner_loop_handler": _planner_loop_handler,
+        "evaluator_loop_handler": _evaluator_loop_handler,
+        "finish_handler": _finish_handler,
+    }
+
+
+class BranchState(TypedDict, total=False):
+    needs_plan: bool
+    goal: str
+    planned: bool
+    done: bool
+    planner_model: str
+
+
 def test_graphyml_from_workflow_runs_inline_branch_workflow() -> None:
     engine = Graphyml.from_workflow(
         workflow_path=WORKFLOW_ROOT / "branch-inline.yaml",
@@ -97,3 +115,16 @@ def test_graphyml_from_workflow_runs_split_reference_loop_workflow() -> None:
     assert result["planner_prompt"] == "You are planner."
     assert result["planner_model"] == "gpt-4.1-mini"
     assert result["finish_prompt"] == "You are finisher."
+
+
+def test_graphyml_from_workflow_accepts_registry_mapping_and_state_schema() -> None:
+    engine = Graphyml.from_workflow(
+        workflow_path=WORKFLOW_ROOT / "branch-inline.yaml",
+        registry=_build_registry_mapping(),
+        state_schema=BranchState,
+    )
+
+    result = engine.invoke({"needs_plan": True, "goal": "typed state"})
+    assert result["planned"] is True
+    assert result["done"] is True
+    assert result["planner_model"] == "gpt-4.1-mini"

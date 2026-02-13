@@ -20,12 +20,17 @@ class GraphBuildError(ValueError):
     """StateGraph の構築に失敗した場合の例外。"""
 
 
-def build_state_graph(spec: GraphSpec, registry: NodeRegistryPort) -> CompiledStateGraph:
+def build_state_graph(
+    spec: GraphSpec,
+    registry: NodeRegistryPort,
+    state_schema: Any = dict,
+) -> CompiledStateGraph:
     """`GraphSpec` と Registry からコンパイル済み StateGraph を構築する。
 
     Args:
         spec: 検証済みの workflow 定義。
         registry: handler 名を callable へ解決するレジストリ。
+        state_schema: LangGraph の状態スキーマ。既定は `dict`。
 
     Returns:
         コンパイル済みの `CompiledStateGraph`。
@@ -33,7 +38,7 @@ def build_state_graph(spec: GraphSpec, registry: NodeRegistryPort) -> CompiledSt
     Raises:
         GraphBuildError: エッジ定義不整合や条件分岐解決不正がある場合。
     """
-    state_graph = StateGraph(dict)  # type: ignore[type-var]
+    state_graph = StateGraph(state_schema)
 
     for node in spec.nodes:
         handler = registry.resolve(node.handler)
@@ -66,6 +71,7 @@ def build_from_workflow_path(
     workflow_path: str | PathLike[str],
     registry: NodeRegistryPort,
     bundle_root: str | PathLike[str] | None = None,
+    state_schema: Any = dict,
 ) -> CompiledStateGraph:
     """Workflow パスを入口に `CompiledStateGraph` を構築する。
 
@@ -73,12 +79,13 @@ def build_from_workflow_path(
         workflow_path: 入口 workflow ファイルのパス。
         registry: handler 名を callable へ解決するレジストリ。
         bundle_root: 分割参照時の基準ディレクトリ。未指定時は workflow 親を使う。
+        state_schema: LangGraph の状態スキーマ。既定は `dict`。
 
     Returns:
         コンパイル済みの `CompiledStateGraph`。
     """
     spec = load_graph_spec_from_workflow(workflow_path=workflow_path, bundle_root=bundle_root)
-    return build_state_graph(spec=spec, registry=registry)
+    return build_state_graph(spec=spec, registry=registry, state_schema=state_schema)
 
 
 def _split_edges(spec: GraphSpec) -> tuple[dict[str, dict[str, str]], dict[str, list[str]]]:
