@@ -3,7 +3,7 @@
 ## ディレクトリ構成
 
 ```text
-src/graphyml/
+src/yagra/
   adapters/
     inbound/
     outbound/

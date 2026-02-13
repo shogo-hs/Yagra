@@ -1,6 +1,6 @@
-"""Graphyml ドメインサービスを提供するパッケージ。"""
+"""Yagra ドメインサービスを提供するパッケージ。"""
 
-from graphyml.domain.services.schema_validator import (
+from yagra.domain.services.schema_validator import (
     GraphSchemaValidationError,
     validate_graph_spec,
     validate_graph_structure,

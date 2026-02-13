@@ -1,4 +1,4 @@
-"""Graphyml パッケージの公開 API。"""
+"""Yagra パッケージの公開 API。"""
 
 from __future__ import annotations
 
@@ -8,12 +8,12 @@ from typing import Any
 
 from langgraph.graph.state import CompiledStateGraph
 
-from graphyml.adapters.outbound import InMemoryNodeRegistry
-from graphyml.application.use_cases import build_from_workflow_path
-from graphyml.ports.outbound import NodeHandler, NodeRegistryPort
+from yagra.adapters.outbound import InMemoryNodeRegistry
+from yagra.application.use_cases import build_from_workflow_path
+from yagra.ports.outbound import NodeHandler, NodeRegistryPort
 
 
-class Graphyml:
+class Yagra:
     """ワークフロー YAML から構築した LangGraph を実行するラッパー。"""
 
     def __init__(self, compiled_graph: CompiledStateGraph) -> None:
@@ -31,8 +31,8 @@ class Graphyml:
         registry: NodeRegistryPort | Mapping[str, NodeHandler],
         bundle_root: str | PathLike[str] | None = None,
         state_schema: Any = dict,
-    ) -> Graphyml:
-        """ワークフローファイルから `Graphyml` インスタンスを生成する。
+    ) -> Yagra:
+        """ワークフローファイルから `Yagra` インスタンスを生成する。
 
         Args:
             workflow_path: 入口となる `workflow.yaml` のパス。
@@ -41,7 +41,7 @@ class Graphyml:
             state_schema: LangGraph の状態スキーマ。既定は `dict`。
 
         Returns:
-            コンパイル済みグラフを内包した `Graphyml` インスタンス。
+            コンパイル済みグラフを内包した `Yagra` インスタンス。
         """
         normalized_registry = _normalize_registry(registry)
         compiled = build_from_workflow_path(
@@ -76,8 +76,8 @@ class Graphyml:
 
 
 def main() -> None:
-    """Graphyml の初期化状態を標準出力へ表示する。"""
-    print("Graphyml bootstrap is ready.")
+    """Yagra の初期化状態を標準出力へ表示する。"""
+    print("Yagra bootstrap is ready.")
 
 
 def _normalize_registry(registry: NodeRegistryPort | Mapping[str, NodeHandler]) -> NodeRegistryPort:
@@ -97,3 +97,6 @@ def _normalize_registry(registry: NodeRegistryPort | Mapping[str, NodeHandler]) 
     if isinstance(registry, Mapping):
         return InMemoryNodeRegistry(registry)
     raise TypeError("registry must be NodeRegistryPort or mapping[str, NodeHandler]")
+
+
+__all__ = ["Yagra", "main"]

@@ -4,8 +4,8 @@ from typing import Any
 
 import pytest
 
-from graphyml.adapters.outbound import InMemoryNodeRegistry
-from graphyml.ports.outbound import (
+from yagra.adapters.outbound import InMemoryNodeRegistry
+from yagra.ports.outbound import (
     NodeHandlerAlreadyRegisteredError,
     NodeHandlerNotFoundError,
 )

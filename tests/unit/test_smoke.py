@@ -1,10 +1,10 @@
-"""Graphyml 初期化のスモークテスト。"""
+"""Yagra 初期化のスモークテスト。"""
 
 from __future__ import annotations
 
 import pytest
 
-from graphyml import main
+from yagra import main
 
 
 def test_main_prints_bootstrap_message(capsys: pytest.CaptureFixture[str]) -> None:
@@ -15,4 +15,4 @@ def test_main_prints_bootstrap_message(capsys: pytest.CaptureFixture[str]) -> No
     """
     main()
     captured = capsys.readouterr()
-    assert "Graphyml bootstrap is ready." in captured.out
+    assert "Yagra bootstrap is ready." in captured.out

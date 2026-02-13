@@ -4,7 +4,7 @@
 
 ## 1. Vision Statement
 
-Graphyml は、YAML 定義から LangGraph の StateGraph を動的に構築する
+Yagra は、YAML 定義から LangGraph の StateGraph を動的に構築する
 Declarative LangGraph Builder として、エージェントのロジックと構成を分離する。
 Python 実装の柔軟性を維持したまま、非エンジニアを含むチームで改善サイクルを高速化する。
 

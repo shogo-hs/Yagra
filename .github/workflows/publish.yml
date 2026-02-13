@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/project/graphyml/
+      url: https://pypi.org/project/yagra/
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -29,6 +29,37 @@ jobs:
         uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
+
+      - name: Validate tag and package version
+        run: |
+          if [ "${GITHUB_REF_TYPE}" != "tag" ]; then
+            echo "::error::Publish must run on a tag ref. Current ref: ${GITHUB_REF}"
+            exit 1
+          fi
+
+          if [[ ! "${GITHUB_REF_NAME}" =~ ^v.+$ ]]; then
+            echo "::error::Tag must start with 'v'. Current tag: ${GITHUB_REF_NAME}"
+            exit 1
+          fi
+
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          PACKAGE_VERSION="$(python - <<'PY'
+          from pathlib import Path
+          import tomllib
+
+          pyproject = Path("pyproject.toml")
+          project = tomllib.loads(pyproject.read_text(encoding="utf-8"))
+          print(project["project"]["version"])
+          PY
+          )"
+
+          echo "Tag version: ${TAG_VERSION}"
+          echo "Package version: ${PACKAGE_VERSION}"
+
+          if [ "${TAG_VERSION}" != "${PACKAGE_VERSION}" ]; then
+            echo "::error::Tag (${TAG_VERSION}) and pyproject version (${PACKAGE_VERSION}) do not match."
+            exit 1
+          fi
 
       - name: Build distributions
         run: uv build

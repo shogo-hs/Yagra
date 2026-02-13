@@ -3,8 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from graphyml import Graphyml
-from graphyml.adapters.outbound import InMemoryNodeRegistry
+from yagra import Yagra
+from yagra.adapters.outbound import InMemoryNodeRegistry
 
 EXAMPLES_ROOT = Path(__file__).resolve().parents[2] / "examples"
 WORKFLOW_ROOT = EXAMPLES_ROOT / "workflows"
@@ -71,7 +71,7 @@ def _build_registry() -> InMemoryNodeRegistry:
 
 
 def test_examples_branch_inline_workflow_runs() -> None:
-    engine = Graphyml.from_workflow(
+    engine = Yagra.from_workflow(
         workflow_path=WORKFLOW_ROOT / "branch-inline.yaml",
         registry=_build_registry(),
     )
@@ -87,7 +87,7 @@ def test_examples_branch_inline_workflow_runs() -> None:
 
 
 def test_examples_loop_split_workflow_runs_without_bundle_root_override() -> None:
-    engine = Graphyml.from_workflow(
+    engine = Yagra.from_workflow(
         workflow_path=WORKFLOW_ROOT / "loop-split.yaml",
         registry=_build_registry(),
     )

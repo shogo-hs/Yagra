@@ -10,10 +10,10 @@ from typing import Any, cast
 from langgraph.graph import StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
-from graphyml.application.use_cases.workflow_loader import load_graph_spec_from_workflow
-from graphyml.domain.entities import GraphSpec
-from graphyml.ports.outbound import NodeRegistryPort
-from graphyml.ports.outbound.node_registry import NodeHandler
+from yagra.application.use_cases.workflow_loader import load_graph_spec_from_workflow
+from yagra.domain.entities import GraphSpec
+from yagra.ports.outbound import NodeRegistryPort
+from yagra.ports.outbound.node_registry import NodeHandler
 
 
 class GraphBuildError(ValueError):

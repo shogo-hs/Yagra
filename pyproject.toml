@@ -1,5 +1,5 @@
 [project]
-name = "graphyml"
+name = "yagra"
 version = "0.1.0"
 description = "Declarative LangGraph Builder powered by YAML"
 readme = "README.md"
@@ -22,12 +22,10 @@ dependencies = [
 ]
 
 [project.scripts]
-graphyml = "graphyml:main"
+yagra = "yagra:main"
 
 [project.urls]
-Homepage = "https://github.com/shogo-hs/Graphyml"
-Repository = "https://github.com/shogo-hs/Graphyml"
-Issues = "https://github.com/shogo-hs/Graphyml/issues"
+Homepage = "https://pypi.org/project/yagra/"
 
 [build-system]
 requires = ["hatchling"]

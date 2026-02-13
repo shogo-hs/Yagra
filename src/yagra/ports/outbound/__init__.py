@@ -1,6 +1,6 @@
-"""Graphyml の outbound port 定義を公開する。"""
+"""Yagra の outbound port 定義を公開する。"""
 
-from graphyml.ports.outbound.node_registry import (
+from yagra.ports.outbound.node_registry import (
     NodeHandler,
     NodeHandlerAlreadyRegisteredError,
     NodeHandlerNotFoundError,

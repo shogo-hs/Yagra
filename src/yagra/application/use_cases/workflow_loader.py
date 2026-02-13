@@ -8,9 +8,9 @@ from typing import Any
 
 import yaml
 
-from graphyml.application.services import resolve_workflow_references
-from graphyml.domain.entities import GraphSpec
-from graphyml.domain.services import validate_graph_spec
+from yagra.application.services import resolve_workflow_references
+from yagra.domain.entities import GraphSpec
+from yagra.domain.services import validate_graph_spec
 
 
 def load_graph_spec_from_workflow(

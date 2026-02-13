@@ -1,4 +1,4 @@
-"""Graphyml YAML の基本スキーマを定義する。"""
+"""Yagra YAML の基本スキーマを定義する。"""
 
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ class EdgeSpec(BaseModel):
 
 
 class GraphSpec(BaseModel):
-    """Graphyml 全体の YAML 定義を表すモデル。"""
+    """Yagra 全体の YAML 定義を表すモデル。"""
 
     model_config = ConfigDict(extra="forbid")
 

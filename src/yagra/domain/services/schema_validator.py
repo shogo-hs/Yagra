@@ -1,4 +1,4 @@
-"""Graphyml YAML スキーマの整合性検証を提供する。"""
+"""Yagra YAML スキーマの整合性検証を提供する。"""
 
 from __future__ import annotations
 
@@ -8,11 +8,11 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from graphyml.domain.entities.graph_schema import GraphSpec
+from yagra.domain.entities.graph_schema import GraphSpec
 
 
 class GraphSchemaValidationError(ValueError):
-    """Graphyml の YAML スキーマ検証失敗を表す例外。"""
+    """Yagra の YAML スキーマ検証失敗を表す例外。"""
 
 
 def validate_graph_structure(spec: GraphSpec) -> None:

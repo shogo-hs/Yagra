@@ -1,22 +1,33 @@
-# Graphyml: Declarative LangGraph Builder
+# Yagra: Declarative LangGraph Builder
 
-Graphyml は、YAML 定義から LangGraph の `StateGraph` を構築・実行する Python ライブラリです。
+Yagra は、YAML 定義から LangGraph の `StateGraph` を構築・実行する Python ライブラリです。
 フロー制御（分岐・ループ）とノード設定（prompt/model など）をコードから分離し、
 `workflow.yaml` の差し替えで挙動を切り替えられます。
+
+## 公開運用ポリシー
+
+- パッケージ配布: Public（PyPI）
+- ソースリポジトリ: Private（GitHub）
+- 利用者向け導線は PyPI を正とし、リポジトリ参照は必須としません。
 
 ## 主な特徴
 
 - Schema-Driven: Pydantic で YAML 構造を検証
 - Registry Pattern: `handler` 文字列と Python callable を疎結合に接続
 - Typed State: `state_schema` に TypedDict/Pydantic などの状態スキーマを指定可能
-- Zero-Boilerplate: `Graphyml.from_workflow(...)` で構築コードを最小化
+- Zero-Boilerplate: `Yagra.from_workflow(...)` で構築コードを最小化
 
-## 要件
+## インストール（利用者向け）
 
 - Python 3.12+
-- `uv`
 
-## セットアップ（開発）
+```bash
+pip install yagra
+```
+
+## 開発セットアップ（メンテナー向け）
+
+この手順は private リポジトリへのアクセス権があるメンテナー向けです。
 
 ```bash
 git clone https://github.com/shogo-hs/Graphyml.git
@@ -29,9 +40,9 @@ uv sync --dev
 ### 1. State とノード関数を定義
 
 ```python
-from typing import Literal, TypedDict
+from typing import TypedDict
 
-from graphyml import Graphyml
+from yagra import Yagra
 
 
 class AgentState(TypedDict, total=False):
@@ -114,7 +125,7 @@ registry = {
     "finish": finish,
 }
 
-app = Graphyml.from_workflow(
+app = Yagra.from_workflow(
     workflow_path="workflows/support.yaml",
     registry=registry,
     state_schema=AgentState,
@@ -126,15 +137,15 @@ print(result["answer"])
 
 ## API
 
-### `Graphyml.from_workflow(...)`
+### `Yagra.from_workflow(...)`
 
 ```python
-Graphyml.from_workflow(
+Yagra.from_workflow(
     workflow_path: str | PathLike,
     registry: NodeRegistryPort | Mapping[str, NodeHandler],
     bundle_root: str | PathLike | None = None,
     state_schema: Any = dict,
-) -> Graphyml
+) -> Yagra
 ```
 
 - `workflow_path`: 入口となる workflow YAML
@@ -142,10 +153,10 @@ Graphyml.from_workflow(
 - `bundle_root`: 分割参照解決の基準ディレクトリ（省略時は workflow の親）
 - `state_schema`: LangGraph の状態スキーマ（既定 `dict`）
 
-### `Graphyml.invoke(...)`
+### `Yagra.invoke(...)`
 
 ```python
-Graphyml.invoke(state: Mapping[str, Any]) -> dict[str, Any]
+Yagra.invoke(state: Mapping[str, Any]) -> dict[str, Any]
 ```
 
 ## 仕様上の契約（Implicit Contracts）
@@ -184,12 +195,12 @@ nodes:
 ### 3. `end_at` の挙動
 
 - `end_at` は「終了ノードIDのリスト」です（複数可）。
-- Graphyml は各ノードを LangGraph の finish point として登録します。
+- Yagra は各ノードを LangGraph の finish point として登録します。
 - YAML 上で `END` という特別ノードを直接書く仕様ではありません。
 
 ### 4. ノード関数シグネチャ
 
-Graphyml は次の順で呼び出しを試みます。
+Yagra は次の順で呼び出しを試みます。
 
 1. `handler(state, params)`
 2. `handler(state)`
@@ -246,8 +257,9 @@ uv run pre-commit run --all-files
 
 前提:
 
-- PyPI 側で `shogo-hs/Graphyml` リポジトリを Trusted Publisher として登録しておく
+- PyPI 側で private repository `shogo-hs/Graphyml` を Trusted Publisher として登録しておく
 - GitHub Actions の `pypi` environment が利用可能である
+- Git タグ（`vX.Y.Z`）と `pyproject.toml` の `version` を一致させる
 
 リリース実行例:
 

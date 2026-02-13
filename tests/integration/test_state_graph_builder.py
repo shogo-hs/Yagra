@@ -3,8 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, TypedDict
 
-from graphyml import Graphyml
-from graphyml.adapters.outbound import InMemoryNodeRegistry
+from yagra import Yagra
+from yagra.adapters.outbound import InMemoryNodeRegistry
 
 FIXTURES_ROOT = Path(__file__).resolve().parents[1] / "fixtures"
 WORKFLOW_ROOT = FIXTURES_ROOT / "workflows"
@@ -87,7 +87,7 @@ class BranchState(TypedDict, total=False):
 
 
 def test_graphyml_from_workflow_runs_inline_branch_workflow() -> None:
-    engine = Graphyml.from_workflow(
+    engine = Yagra.from_workflow(
         workflow_path=WORKFLOW_ROOT / "branch-inline.yaml",
         registry=_build_registry(),
     )
@@ -103,7 +103,7 @@ def test_graphyml_from_workflow_runs_inline_branch_workflow() -> None:
 
 
 def test_graphyml_from_workflow_runs_split_reference_loop_workflow() -> None:
-    engine = Graphyml.from_workflow(
+    engine = Yagra.from_workflow(
         workflow_path=WORKFLOW_ROOT / "loop-split.yaml",
         registry=_build_registry(),
         bundle_root=FIXTURES_ROOT,
@@ -118,7 +118,7 @@ def test_graphyml_from_workflow_runs_split_reference_loop_workflow() -> None:
 
 
 def test_graphyml_from_workflow_accepts_registry_mapping_and_state_schema() -> None:
-    engine = Graphyml.from_workflow(
+    engine = Yagra.from_workflow(
         workflow_path=WORKFLOW_ROOT / "branch-inline.yaml",
         registry=_build_registry_mapping(),
         state_schema=BranchState,

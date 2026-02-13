@@ -1,6 +1,6 @@
 # 進捗スコアボード
 
-最終更新: 2026-02-13
+最終更新: 2026-02-14
 
 ## 更新ルール
 
@@ -17,7 +17,7 @@
 
 | Item ID | やるべきこと | 状態 | 根拠 |
 | --- | --- | --- | --- |
-| G01-I01 | Graphyml YAML の Pydantic スキーマを定義する | Done | `src/graphyml/domain/entities/graph_schema.py` |
+| G01-I01 | Yagra YAML の Pydantic スキーマを定義する | Done | `src/yagra/domain/entities/graph_schema.py` |
 | G01-I02 | 条件分岐・ループを含むサンプル YAML を作成する | Done | `examples/workflows/` |
 | G01-I03 | 不正 YAML の検証エラーをテスト化する | Done | `tests/unit/domain/test_graph_schema.py` |
 
@@ -31,8 +31,8 @@
 
 | Item ID | やるべきこと | 状態 | 根拠 |
 | --- | --- | --- | --- |
-| G02-I01 | Registry インターフェースを ports として定義する | Done | `src/graphyml/ports/outbound/node_registry.py` |
-| G02-I02 | ノード名と callable を紐づける実装を作る | Done | `src/graphyml/adapters/outbound/in_memory_node_registry.py` |
+| G02-I01 | Registry インターフェースを ports として定義する | Done | `src/yagra/ports/outbound/node_registry.py` |
+| G02-I02 | ノード名と callable を紐づける実装を作る | Done | `src/yagra/adapters/outbound/in_memory_node_registry.py` |
 | G02-I03 | 未登録ノード時のエラーハンドリングを整備する | Done | `tests/unit/adapters/test_in_memory_node_registry.py` |
 
 - 完了済み: G02-I01, G02-I02, G02-I03
@@ -45,7 +45,7 @@
 
 | Item ID | やるべきこと | 状態 | 根拠 |
 | --- | --- | --- | --- |
-| G03-I01 | YAML から StateGraph を組み立てるビルダーを実装する | Done | `src/graphyml/application/use_cases/state_graph_builder.py` |
+| G03-I01 | YAML から StateGraph を組み立てるビルダーを実装する | Done | `src/yagra/application/use_cases/state_graph_builder.py` |
 | G03-I02 | 複数 YAML で同一実装を切り替えるサンプルを用意する | Done | `tests/fixtures/workflows/` |
 | G03-I03 | Zero-Boilerplate の利用例を README に記載する | Done | `README.md` |
 
@@ -65,4 +65,9 @@
 
 - 完了済み: G04-I01, G04-I02, G04-I03
 - 未完了: なし
-- 現在地: G-04 の項目は完了。CI とローカルフックで品質ゲートを継続実行できる状態。
+- 現在地: G-04 の項目は完了。CI とローカルフックで品質ゲートを継続実行できる状態。あわせて publish workflow にタグ/版数一致チェックを追加し、公開安全性を強化済み。
+
+## 補足（2026-02-14）
+
+- 配布名・import 名を `yagra` に統一し、公開 API は `Yagra` を主名称とした。
+- 運用方針を「GitHub リポジトリは Private、PyPI 成果物は Public」に統一した。

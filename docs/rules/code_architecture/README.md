@@ -6,9 +6,9 @@
 
 ## 依存方向
 
-- `src/graphyml/adapters` -> `src/graphyml/application`
-- `src/graphyml/application` -> `src/graphyml/domain`
-- `src/graphyml/ports` は契約のみを保持し、実装は持たない。
+- `src/yagra/adapters` -> `src/yagra/application`
+- `src/yagra/application` -> `src/yagra/domain`
+- `src/yagra/ports` は契約のみを保持し、実装は持たない。
 - `domain` は外部ライブラリ・フレームワークへ依存しない。
 
 ## 層責務

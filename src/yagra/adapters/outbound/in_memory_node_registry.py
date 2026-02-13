@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
-from graphyml.ports.outbound import (
+from yagra.ports.outbound import (
     NodeHandler,
     NodeHandlerAlreadyRegisteredError,
     NodeHandlerNotFoundError,

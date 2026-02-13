@@ -5,7 +5,7 @@ from typing import Any
 
 import pytest
 
-from graphyml.domain.services.schema_validator import (
+from yagra.domain.services.schema_validator import (
     GraphSchemaValidationError,
     validate_graph_spec,
 )
