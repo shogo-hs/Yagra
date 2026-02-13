@@ -1,0 +1,35 @@
+version: "1.0"
+start_at: "planner"
+end_at:
+  - "finish"
+
+params:
+  prompt_catalog: "../prompts/support_prompts.yaml"
+  model_catalog: "../models/openai_models.yaml"
+
+nodes:
+  - id: "planner"
+    handler: "planner_loop_handler"
+    params:
+      prompt_ref: "planner"
+      model_ref: "default"
+  - id: "evaluator"
+    handler: "evaluator_loop_handler"
+    params:
+      prompt_ref: "evaluator"
+      model_ref: "default"
+  - id: "finish"
+    handler: "finish_handler"
+    params:
+      prompt_ref: "finish"
+      model_ref: "default"
+
+edges:
+  - source: "planner"
+    target: "evaluator"
+  - source: "evaluator"
+    target: "planner"
+    condition: "retry"
+  - source: "evaluator"
+    target: "finish"
+    condition: "done"

@@ -18,12 +18,12 @@
 | Item ID | やるべきこと | 状態 | 根拠 |
 | --- | --- | --- | --- |
 | G01-I01 | Graphyml YAML の Pydantic スキーマを定義する | Done | `src/graphyml/domain/entities/graph_schema.py` |
-| G01-I02 | 条件分岐・ループを含むサンプル YAML を作成する | Planned | `docs/product/vision.md` |
+| G01-I02 | 条件分岐・ループを含むサンプル YAML を作成する | Done | `examples/workflows/` |
 | G01-I03 | 不正 YAML の検証エラーをテスト化する | Done | `tests/unit/domain/test_graph_schema.py` |
 
-- 完了済み: G01-I01, G01-I03
-- 未完了: G01-I02
-- 現在地: Pydantic スキーマと検証テストは整備済みで、サンプル YAML 整備が次の作業。
+- 完了済み: G01-I01, G01-I02, G01-I03
+- 未完了: なし
+- 現在地: G-01 の項目は完了。分岐・ループを含むサンプル YAML と検証テストを整備済み。
 
 ### G-02: YAML 定義と Python 実処理を疎結合に接続できる
 

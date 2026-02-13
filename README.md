@@ -146,6 +146,24 @@ print(result["answer"])
 別のフローを実行したい場合は `Graphyml.from_workflow("workflows/sales.yaml", ...)` のように
 YAML パスだけを変更すればよい。
 
+### 同梱サンプル YAML
+
+- `examples/workflows/branch-inline.yaml`: 条件分岐（`condition`）で遷移先を切り替える最小例
+- `examples/workflows/loop-split.yaml`: ループ + 条件分岐 + `prompt_ref` / `model_ref` 分割参照の例
+
+`loop-split.yaml` は次のカタログを相対参照するため、`bundle_root` 未指定でも読み込める。
+
+- `examples/prompts/support_prompts.yaml`
+- `examples/models/openai_models.yaml`
+
+実行先の切り替え例:
+
+```python
+app = Graphyml.from_workflow("examples/workflows/branch-inline.yaml", registry=registry)
+# または
+app = Graphyml.from_workflow("examples/workflows/loop-split.yaml", registry=registry)
+```
+
 ## 役割分担（誰が何をするか）
 
 | 区分 | ユーザー | エージェント |
