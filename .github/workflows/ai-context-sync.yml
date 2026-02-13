@@ -1,0 +1,39 @@
+name: AI Context Sync
+
+on:
+  pull_request:
+    paths:
+      - "docs/ai/canonical/**"
+      - "docs/ai/playbook-assets/**"
+      - "docs/ai/playbooks/**"
+      - "scripts/playbooks/**"
+      - "scripts/sync_ai_context.py"
+      - "AGENTS.md"
+      - ".cursor/rules/**"
+  push:
+    branches: [main]
+    paths:
+      - "docs/ai/canonical/**"
+      - "docs/ai/playbook-assets/**"
+      - "docs/ai/playbooks/**"
+      - "scripts/playbooks/**"
+      - "scripts/sync_ai_context.py"
+      - "AGENTS.md"
+      - ".cursor/rules/**"
+
+jobs:
+  check-sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Verify generated AI context files
+        run: python3 scripts/sync_ai_context.py --check

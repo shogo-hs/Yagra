@@ -1,0 +1,64 @@
+name: "Bug Report"
+description: "再現可能な不具合報告テンプレート"
+title: "[Bug] "
+labels:
+  - bug
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: 事象
+      description: 何が起きたかを簡潔に記載
+      placeholder: 例) sync_ai_context.py --check が失敗する
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期待結果
+      description: 本来どうなるべきか
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 再現手順
+      description: 最小手順を番号付きで記載
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: ログ / エラーメッセージ
+      description: 関連ログを貼り付け（秘密情報は除去）
+    validations:
+      required: false
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: 実行環境
+      description: OS、Python、uvバージョンなど
+      placeholder: |
+        OS:
+        python --version:
+        uv --version:
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: ai_checks
+    attributes:
+      label: AI実行時チェック
+      options:
+        - label: 機密情報（APIキー、トークン、秘密鍵）を含んでいない
+          required: true
+        - label: 関連するAGENTS/Playbook/ADRを確認した
+          required: false

@@ -1,0 +1,66 @@
+name: "AI Task Request"
+description: "AI実行を前提にしたタスク依頼テンプレート"
+title: "[AI Task] "
+labels:
+  - ai-task
+body:
+  - type: markdown
+    attributes:
+      value: |
+        AIが実行できるよう、目的・制約・受け入れ基準を具体的に記載してください。
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: 目的
+      description: 何を達成したいかを1〜3行で記載
+      placeholder: 例) AGENTS.mdの運用ルールを強化したい
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: スコープ
+      description: 変更対象のファイル・ディレクトリ・機能
+      placeholder: 例) docs/ai/canonical/*, scripts/sync_ai_context.py
+    validations:
+      required: true
+
+  - type: textarea
+    id: constraints
+    attributes:
+      label: 制約 / 禁止事項
+      description: 絶対に守るべき条件や禁止操作
+      placeholder: 例) pip installは禁止、uv addのみ許可
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 受け入れ基準
+      description: 完了判定の条件
+      placeholder: 例) sync --checkが通る、AGENTSに方針が反映される
+    validations:
+      required: true
+
+  - type: textarea
+    id: validation_commands
+    attributes:
+      label: 検証コマンド
+      description: 実行してほしいコマンドがあれば記載
+      placeholder: |
+        python3 scripts/sync_ai_context.py
+        python3 scripts/sync_ai_context.py --check
+    validations:
+      required: false
+
+  - type: textarea
+    id: references
+    attributes:
+      label: 参照資料
+      description: 関連リンク、設計書、ADRなど
+      placeholder: 例) docs/task-designs/..., docs/adr/...
+    validations:
+      required: false

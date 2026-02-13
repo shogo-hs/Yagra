@@ -1,0 +1,26 @@
+---
+description: "共通Playbook参照ルール"
+alwaysApply: true
+---
+
+<!-- AUTO-GENERATED FILE. DO NOT EDIT DIRECTLY. -->
+<!-- source: docs/ai/canonical/playbooks/* + scripts/sync_ai_context.py -->
+
+# 共通Playbook運用
+
+- 詳細手順の正本は `docs/ai/canonical/playbooks/*.md` とし、実行時は `docs/ai/playbooks/*.md` を参照する。
+- 依頼内容が該当する playbook を選び、実行フローと厳守ルールに従う。
+- 複数 playbook が該当する場合は、最小セットを順に適用する。
+- 手順の重複記述を避け、ルール本文には参照先のみを書く。
+
+## Playbook 参照先
+- 実装前設計: `docs/ai/playbooks/task-design-gate.md`
+- Python の CI / 品質ゲート導入: `docs/ai/playbooks/python-uv-ci-setup.md`
+- 新規プロジェクト初期構築: `docs/ai/playbooks/python-project-bootstrap.md`
+- API 仕様同期: `docs/ai/playbooks/api-spec-sync.md`
+- 設計判断の記録・更新: `docs/ai/playbooks/adr-management.md`
+- コミット実行: `docs/ai/playbooks/git-commit.md`
+
+## 運用注意
+- playbook 更新時は `docs/ai/canonical/playbooks/` を編集する。
+- 反映は `python3 scripts/sync_ai_context.py` を実行する。
