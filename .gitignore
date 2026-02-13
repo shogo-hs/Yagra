@@ -222,3 +222,6 @@ __marimo__/
 .env.keys
 .DS_Store
 .worktrees/
+
+# Internal planning docs
+docs/task-designs/
