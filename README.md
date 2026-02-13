@@ -235,6 +235,27 @@ uv run pytest -q
 uv run pre-commit run --all-files
 ```
 
+## PyPI 公開
+
+公開ワークフローは `v*` タグ push をトリガーに実行されます。
+
+- workflow: `.github/workflows/publish.yml`
+- build: `uv build`
+- 検証: `uvx twine check dist/*`
+- publish: `pypa/gh-action-pypi-publish`（OIDC）
+
+前提:
+
+- PyPI 側で `shogo-hs/Graphyml` リポジトリを Trusted Publisher として登録しておく
+- GitHub Actions の `pypi` environment が利用可能である
+
+リリース実行例:
+
+```bash
+git tag v0.1.1
+git push origin v0.1.1
+```
+
 ## ライセンスと変更履歴
 
 - ライセンス: `LICENSE`（MIT）
