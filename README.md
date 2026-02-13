@@ -1,13 +1,20 @@
-# codex-cursor-python-template
+# Graphyml: Declarative LangGraph Builder
 
-Codex と Cursor を併用する Python プロジェクト向けのテンプレート。
+Graphyml は、YAML 形式の設定から LangGraph の StateGraph を動的に構築する Python ライブラリ。
+ロジック（Python）と構成（YAML）を分離し、エージェントワークフロー改善の反復速度を上げる。
 
 ## 目的
 
-- AI 向け運用ルールの二重管理を防ぐ。
-- `AGENTS.md`（Codex）と `.cursor/rules/*.mdc`（Cursor）を同じ正本から生成する。
-- 手順本文を `docs/ai/canonical/playbooks/` に集約し、実行時は `docs/ai/playbooks/*.md` を参照する。
-- 参照資料と補助スクリプトを repo 同梱で管理し、チーム再現性を確保する。
+- LangGraph 実装のフロー構造とプロンプト設定を YAML 化し、コード修正コストを下げる。
+- Pydantic スキーマ検証で YAML 記述ミスを早期に検出する。
+- Registry Pattern で YAML 定義と Python 関数を疎結合に接続する。
+- `AGENTS.md`（Codex）と `.cursor/rules/*.mdc`（Cursor）を同一正本から生成し、運用規約を統一する。
+
+## プロダクト概要
+
+- Schema-Driven: Pydantic による厳密な定義検証
+- Registry Pattern: 文字列ベース定義と実装関数のマッピング
+- Zero-Boilerplate: YAML 差し替えで異なる Agentic Workflow を切り替え
 
 ## 構成
 

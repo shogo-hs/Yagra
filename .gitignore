@@ -221,3 +221,4 @@ __marimo__/
 .venv/
 .env.keys
 .DS_Store
+.worktrees/

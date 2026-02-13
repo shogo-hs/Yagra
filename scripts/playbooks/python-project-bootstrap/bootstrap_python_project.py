@@ -10,22 +10,13 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[3]
 PLAYBOOK_ASSETS_ROOT = REPO_ROOT / "docs" / "ai" / "playbook-assets"
 TASK_DESIGN_TEMPLATE_PATH = (
-    PLAYBOOK_ASSETS_ROOT
-    / "task-design-gate"
-    / "references"
-    / "_task-design-template.md"
+    PLAYBOOK_ASSETS_ROOT / "task-design-gate" / "references" / "_task-design-template.md"
 )
 API_INDEX_TEMPLATE_PATH = (
-    PLAYBOOK_ASSETS_ROOT
-    / "api-spec-sync"
-    / "references"
-    / "_index_template.md"
+    PLAYBOOK_ASSETS_ROOT / "api-spec-sync" / "references" / "_index_template.md"
 )
 API_ENDPOINT_TEMPLATE_PATH = (
-    PLAYBOOK_ASSETS_ROOT
-    / "api-spec-sync"
-    / "references"
-    / "_endpoint_template.md"
+    PLAYBOOK_ASSETS_ROOT / "api-spec-sync" / "references" / "_endpoint_template.md"
 )
 PRODUCT_VISION_TEMPLATE_PATH = REPO_ROOT / "docs" / "product" / "vision.md"
 PRODUCT_GOALS_TEMPLATE_PATH = REPO_ROOT / "docs" / "product" / "goals.md"
@@ -797,8 +788,15 @@ def main() -> None:
             task_design_dir=task_design_dir,
         ),
         target / "docs" / "rules" / "solid" / "README.md": build_solid_rules(),
-        target / "docs" / "rules" / "code_architecture" / "README.md": build_code_architecture_rules(package_name),
-        target / "docs" / "architecture" / "hexagonal-architecture.md": build_hexagonal_architecture_doc(package_name),
+        target
+        / "docs"
+        / "rules"
+        / "code_architecture"
+        / "README.md": build_code_architecture_rules(package_name),
+        target
+        / "docs"
+        / "architecture"
+        / "hexagonal-architecture.md": build_hexagonal_architecture_doc(package_name),
         target / Path(task_design_dir) / "README.md": build_task_readme(task_design_dir),
         target / Path(task_design_dir) / "_task-design-template.md": build_task_template(),
         target / "docs" / "api" / "index.md": build_api_index(),

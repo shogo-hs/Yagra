@@ -48,7 +48,7 @@ def strip_first_heading(markdown: str) -> str:
 
 
 def read_canonical(root: Path) -> dict[str, str]:
-    """canonical ファイルを読み込む。"""
+    """正本の canonical ファイルを読み込む。"""
     contents: dict[str, str] = {}
     for key, rel_path in CANONICAL_FILES.items():
         path = root / rel_path
@@ -97,7 +97,7 @@ def extract_playbook_routes(routing_markdown: str) -> list[tuple[str, str]]:
 
 
 def read_canonical_playbooks(root: Path, playbook_names: list[str]) -> dict[str, str]:
-    """playbook canonical を読み込む。"""
+    """正本の Playbook canonical を読み込む。"""
     contents: dict[str, str] = {}
     for playbook_name in playbook_names:
         path = root / PLAYBOOK_CANONICAL_DIR / f"{playbook_name}.md"
@@ -108,7 +108,7 @@ def read_canonical_playbooks(root: Path, playbook_names: list[str]) -> dict[str,
 
 
 def with_auto_header(markdown: str, source: str) -> str:
-    """frontmatter がある場合は保持したまま自動生成ヘッダを挿入する。"""
+    """先頭 Frontmatter を維持したまま自動生成ヘッダを挿入する。"""
     header = auto_header(source)
     body = markdown.strip() + "\n"
 
@@ -191,7 +191,9 @@ def build_outputs(
     routing_body = strip_first_heading(canonical["routing"])
     coding_body = strip_first_heading(canonical["coding"])
 
-    cursor_global = "# グローバルポリシー\n\n" + global_body + "\n\n# コーディング標準\n\n" + coding_body
+    cursor_global = (
+        "# グローバルポリシー\n\n" + global_body + "\n\n# コーディング標準\n\n" + coding_body
+    )
     cursor_routing = "# タスクルーティング\n\n" + routing_body
 
     outputs: dict[Path, str] = {
@@ -230,16 +232,10 @@ def validate_agents_size(outputs: dict[Path, str]) -> int:
     size = len(agents_content.encode("utf-8"))
 
     if size > AGENTS_WARN_BYTES:
-        print(
-            f"[WARN] AGENTS.md size is {size} bytes "
-            f"(recommended <= {AGENTS_WARN_BYTES} bytes)."
-        )
+        print(f"[WARN] AGENTS.md size is {size} bytes (recommended <= {AGENTS_WARN_BYTES} bytes).")
 
     if size > AGENTS_HARD_LIMIT_BYTES:
-        print(
-            f"[NG] AGENTS.md size is {size} bytes "
-            f"(hard limit: {AGENTS_HARD_LIMIT_BYTES} bytes)."
-        )
+        print(f"[NG] AGENTS.md size is {size} bytes (hard limit: {AGENTS_HARD_LIMIT_BYTES} bytes).")
         print("Move detailed procedures from AGENTS.md to docs/ai/playbooks/*.md.")
         return 1
     return 0

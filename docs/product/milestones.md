@@ -1,14 +1,15 @@
 # 到達ステップ
 
-最終更新: <YYYY-MM-DD>
+最終更新: 2026-02-13
 
 ## ステップ一覧
 
 | Milestone ID | 対応 Goal ID | 到達ステップ | 完了条件 | 状態 |
 | --- | --- | --- | --- | --- |
-| M-01 | G-01 | <ステップ1> | <完了条件1> | Planned |
-| M-02 | G-02 | <ステップ2> | <完了条件2> | Planned |
-| M-03 | G-03 | <ステップ3> | <完了条件3> | Planned |
+| M-01 | G-01 | Graphyml YAML スキーマ（nodes/edges/params）を確定する | Pydantic モデルで妥当性検証し、失敗ケースをテスト化する | In Progress |
+| M-02 | G-02 | Registry パターンでノード実装をバインド可能にする | 文字列キーから callable 解決ができ、未登録時エラーが明示される | Planned |
+| M-03 | G-03 | YAML から LangGraph StateGraph を構築するビルダーを実装する | 複数 YAML で異なるフローが実行できるデモが動作する | Planned |
+| M-04 | G-04 | CI とローカル品質ゲートを整備する | `ruff` / `mypy` / `pytest` / pre-commit が継続運用可能な状態になる | In Progress |
 
 ## 運用ルール
 

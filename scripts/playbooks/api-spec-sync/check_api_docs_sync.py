@@ -13,10 +13,20 @@ DEFAULT_CODE_PATHS = ["src", "app", "backend", "server"]
 
 
 def run_git(args: list[str]) -> str:
+    """Git コマンドを実行し、標準出力を返す。
+
+    Args:
+        args: `git` に渡すサブコマンドと引数。
+
+    Returns:
+        コマンド実行結果の標準出力。
+
+    Raises:
+        RuntimeError: コマンド実行が失敗した場合。
+    """
     result = subprocess.run(
         ["git", *args],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
         text=True,
         check=False,
     )
@@ -26,6 +36,14 @@ def run_git(args: list[str]) -> str:
 
 
 def has_ref(ref: str) -> bool:
+    """指定した Git ref が存在するかを返す。
+
+    Args:
+        ref: 検証対象の Git ref。
+
+    Returns:
+        ref が存在する場合は `True`、存在しない場合は `False`。
+    """
     result = subprocess.run(
         ["git", "rev-parse", "--verify", "--quiet", ref],
         stdout=subprocess.DEVNULL,
@@ -36,15 +54,37 @@ def has_ref(ref: str) -> bool:
 
 
 def normalize(path: str) -> str:
+    """パス文字列を POSIX 形式に正規化する。
+
+    Args:
+        path: 正規化対象のパス。
+
+    Returns:
+        正規化後のパス文字列。
+    """
     return str(pathlib.PurePosixPath(path.strip()))
 
 
 def is_under(path: str, root: str) -> bool:
+    """パスが指定ルート配下にあるかを判定する。
+
+    Args:
+        path: 判定対象パス。
+        root: ルートとなるパス。
+
+    Returns:
+        `path` が `root` 自身、または `root` 配下であれば `True`。
+    """
     root_norm = normalize(root).rstrip("/")
     return path == root_norm or path.startswith(root_norm + "/")
 
 
 def parse_args() -> argparse.Namespace:
+    """コマンドライン引数を解析する。
+
+    Returns:
+        解析済みの引数オブジェクト。
+    """
     parser = argparse.ArgumentParser(
         description="API実装変更に対してAPIドキュメント更新漏れがないかを検査する"
     )
@@ -78,6 +118,17 @@ def parse_args() -> argparse.Namespace:
 
 
 def collect_changed_files(base_ref: str) -> list[str]:
+    """比較対象 ref から変更ファイル一覧を収集する。
+
+    Args:
+        base_ref: 差分比較の基準となる Git ref。
+
+    Returns:
+        正規化済みの変更ファイルパス一覧。
+
+    Raises:
+        RuntimeError: 指定 ref が見つからない場合。
+    """
     changed: set[str] = set()
 
     if has_ref(base_ref):
@@ -100,6 +151,11 @@ def collect_changed_files(base_ref: str) -> list[str]:
 
 
 def main() -> int:
+    """API ドキュメント同期チェックを実行する。
+
+    Returns:
+        成功時は `0`、更新漏れ検知時は `1`、実行エラー時は `2`。
+    """
     args = parse_args()
 
     try:

@@ -1,6 +1,6 @@
 # 進捗スコアボード
 
-最終更新: <YYYY-MM-DD>
+最終更新: 2026-02-13
 
 ## 更新ルール
 
@@ -11,15 +11,58 @@
 
 ## Goal別進捗
 
-### G-01: <ゴール名>
+### G-01: YAML だけで LangGraph フロー構成を定義できる
 
 **やるべきこと一覧**
 
 | Item ID | やるべきこと | 状態 | 根拠 |
 | --- | --- | --- | --- |
-| G01-I01 | <やるべきこと1> | Planned | <関連ファイル/リンク> |
-| G01-I02 | <やるべきこと2> | Planned | <関連ファイル/リンク> |
+| G01-I01 | Graphyml YAML の Pydantic スキーマを定義する | Planned | `src/graphyml/domain/` |
+| G01-I02 | 条件分岐・ループを含むサンプル YAML を作成する | Planned | `docs/product/vision.md` |
+| G01-I03 | 不正 YAML の検証エラーをテスト化する | Planned | `tests/unit/` |
 
-- 完了済み: <Item IDの列挙>
-- 未完了: <Item IDの列挙>
-- 現在地: <現状を1文で記述>
+- 完了済み: なし
+- 未完了: G01-I01, G01-I02, G01-I03
+- 現在地: 開発基盤を整備し、Schema-Driven 実装に着手する段階。
+
+### G-02: YAML 定義と Python 実処理を疎結合に接続できる
+
+**やるべきこと一覧**
+
+| Item ID | やるべきこと | 状態 | 根拠 |
+| --- | --- | --- | --- |
+| G02-I01 | Registry インターフェースを ports として定義する | Planned | `src/graphyml/ports/` |
+| G02-I02 | ノード名と callable を紐づける実装を作る | Planned | `src/graphyml/adapters/outbound/` |
+| G02-I03 | 未登録ノード時のエラーハンドリングを整備する | Planned | `tests/unit/` |
+
+- 完了済み: なし
+- 未完了: G02-I01, G02-I02, G02-I03
+- 現在地: ユースケース定義前の段階で、Registry は未実装。
+
+### G-03: YAML 差し替えで複数ワークフローを低コストに運用できる
+
+**やるべきこと一覧**
+
+| Item ID | やるべきこと | 状態 | 根拠 |
+| --- | --- | --- | --- |
+| G03-I01 | YAML から StateGraph を組み立てるビルダーを実装する | Planned | `src/graphyml/application/use_cases/` |
+| G03-I02 | 複数 YAML で同一実装を切り替えるサンプルを用意する | Planned | `tests/integration/` |
+| G03-I03 | Zero-Boilerplate の利用例を README に記載する | Planned | `README.md` |
+
+- 完了済み: なし
+- 未完了: G03-I01, G03-I02, G03-I03
+- 現在地: 実装方針のみ確定し、ビルダー実装は未着手。
+
+### G-04: 開発運用で品質ゲートを常時維持できる
+
+**やるべきこと一覧**
+
+| Item ID | やるべきこと | 状態 | 根拠 |
+| --- | --- | --- | --- |
+| G04-I01 | `uv` ベースの品質ゲートを導入する | Done | `pyproject.toml` |
+| G04-I02 | GitHub Actions で lint/type/test を自動実行する | Done | `.github/workflows/ci.yml` |
+| G04-I03 | pre-commit / pre-push をローカルへ導入する | In Progress | `.pre-commit-config.yaml` |
+
+- 完了済み: G04-I01, G04-I02
+- 未完了: G04-I03
+- 現在地: CI は導入済みで、ローカルフック適用を進めている段階。

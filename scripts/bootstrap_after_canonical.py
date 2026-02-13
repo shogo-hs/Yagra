@@ -50,11 +50,7 @@ def main() -> int:
 
     sync_script = root / "scripts" / "sync_ai_context.py"
     bootstrap_script = (
-        root
-        / "scripts"
-        / "playbooks"
-        / "python-project-bootstrap"
-        / "bootstrap_python_project.py"
+        root / "scripts" / "playbooks" / "python-project-bootstrap" / "bootstrap_python_project.py"
     )
 
     try:
