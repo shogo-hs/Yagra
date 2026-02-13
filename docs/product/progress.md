@@ -31,13 +31,13 @@
 
 | Item ID | やるべきこと | 状態 | 根拠 |
 | --- | --- | --- | --- |
-| G02-I01 | Registry インターフェースを ports として定義する | Planned | `src/graphyml/ports/` |
-| G02-I02 | ノード名と callable を紐づける実装を作る | Planned | `src/graphyml/adapters/outbound/` |
-| G02-I03 | 未登録ノード時のエラーハンドリングを整備する | Planned | `tests/unit/` |
+| G02-I01 | Registry インターフェースを ports として定義する | Done | `src/graphyml/ports/outbound/node_registry.py` |
+| G02-I02 | ノード名と callable を紐づける実装を作る | Done | `src/graphyml/adapters/outbound/in_memory_node_registry.py` |
+| G02-I03 | 未登録ノード時のエラーハンドリングを整備する | Done | `tests/unit/adapters/test_in_memory_node_registry.py` |
 
-- 完了済み: なし
-- 未完了: G02-I01, G02-I02, G02-I03
-- 現在地: ユースケース定義前の段階で、Registry は未実装。
+- 完了済み: G02-I01, G02-I02, G02-I03
+- 未完了: なし
+- 現在地: Registry 契約と in-memory 実装は完了し、次はユースケースへの接続（M-03）へ進む段階。
 
 ### G-03: YAML 差し替えで複数ワークフローを低コストに運用できる
 
