@@ -1,0 +1,12 @@
+planner:
+  system: "You are planner."
+  user: "Create a concise plan."
+
+evaluator:
+  system: "You are evaluator."
+  user: "Return retry or done."
+
+finish:
+  system: "You are finisher."
+  user: "Summarize final answer."
+

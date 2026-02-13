@@ -1,0 +1,35 @@
+version: "1.0"
+start_at: "router"
+end_at:
+  - "finish"
+
+params:
+  workflow_name: "branch-inline"
+
+nodes:
+  - id: "router"
+    handler: "router_handler"
+  - id: "planner"
+    handler: "planner_handler"
+    params:
+      prompt:
+        system: "You are planner."
+        user: "Plan for: {goal}"
+      model:
+        provider: "openai"
+        name: "gpt-4.1-mini"
+        kwargs:
+          temperature: 0.2
+  - id: "finish"
+    handler: "finish_handler"
+
+edges:
+  - source: "router"
+    target: "planner"
+    condition: "needs_plan"
+  - source: "router"
+    target: "finish"
+    condition: "direct_answer"
+  - source: "planner"
+    target: "finish"
+

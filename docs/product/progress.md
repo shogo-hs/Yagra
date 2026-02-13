@@ -45,13 +45,13 @@
 
 | Item ID | やるべきこと | 状態 | 根拠 |
 | --- | --- | --- | --- |
-| G03-I01 | YAML から StateGraph を組み立てるビルダーを実装する | Planned | `src/graphyml/application/use_cases/` |
-| G03-I02 | 複数 YAML で同一実装を切り替えるサンプルを用意する | Planned | `tests/integration/` |
+| G03-I01 | YAML から StateGraph を組み立てるビルダーを実装する | Done | `src/graphyml/application/use_cases/state_graph_builder.py` |
+| G03-I02 | 複数 YAML で同一実装を切り替えるサンプルを用意する | Done | `tests/fixtures/workflows/` |
 | G03-I03 | Zero-Boilerplate の利用例を README に記載する | Planned | `README.md` |
 
-- 完了済み: なし
-- 未完了: G03-I01, G03-I02, G03-I03
-- 現在地: 実装方針のみ確定し、ビルダー実装は未着手。
+- 完了済み: G03-I01, G03-I02
+- 未完了: G03-I03
+- 現在地: ビルダーとサンプル実行は完了し、README 利用例の整備が残タスク。
 
 ### G-04: 開発運用で品質ゲートを常時維持できる
 
