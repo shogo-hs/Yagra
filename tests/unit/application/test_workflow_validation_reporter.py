@@ -3,9 +3,15 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+import pytest
 import yaml
 
-from yagra.application.use_cases import validate_workflow_for_ui
+from yagra.application.use_cases import (
+    WorkflowValidationFailedError,
+    format_validation_report,
+    load_validated_graph_spec,
+    validate_workflow_for_ui,
+)
 
 FIXTURES_ROOT = Path(__file__).resolve().parents[2] / "fixtures"
 WORKFLOW_ROOT = FIXTURES_ROOT / "workflows"
@@ -98,3 +104,26 @@ def test_validate_workflow_for_ui_reports_edge_rule_error_with_locations(tmp_pat
         ("edges", 0),
         ("edges", 1, "condition"),
     }
+
+
+def test_load_validated_graph_spec_returns_graph_spec() -> None:
+    spec = load_validated_graph_spec(WORKFLOW_ROOT / "branch-inline.yaml")
+
+    assert spec.start_at == "router"
+    assert len(spec.nodes) == 3
+
+
+def test_load_validated_graph_spec_raises_workflow_validation_failed_error(
+    tmp_path: Path,
+) -> None:
+    payload = _base_payload()
+    payload["edges"] = []
+    workflow_path = _write_workflow(tmp_path / "invalid.yaml", payload)
+
+    with pytest.raises(WorkflowValidationFailedError) as exc:
+        load_validated_graph_spec(workflow_path)
+
+    report = exc.value.report
+    assert report.is_valid is False
+    assert any(issue.code == "schema_error" for issue in report.issues)
+    assert "workflow validation failed" in format_validation_report(report)

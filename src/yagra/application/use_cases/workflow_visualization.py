@@ -8,11 +8,10 @@ from dataclasses import dataclass
 from os import PathLike
 from pathlib import Path
 
-from yagra.application.use_cases.workflow_loader import load_graph_spec_from_workflow
 from yagra.application.use_cases.workflow_validation_reporter import (
-    WorkflowValidationIssue,
-    WorkflowValidationReport,
-    validate_workflow_for_ui,
+    WorkflowValidationFailedError,
+    format_validation_report,
+    load_validated_graph_spec,
 )
 
 
@@ -65,21 +64,14 @@ def render_workflow_visualization_html(
     Raises:
         ValueError: workflow 検証に失敗した場合。
     """
-    validation_report = validate_workflow_for_ui(
-        workflow_path=workflow_path,
-        bundle_root=bundle_root,
-    )
-    if not validation_report.is_valid:
-        message = _format_validation_issues(validation_report.issues)
-        raise ValueError(message)
-
-    workflow_abspath = Path(workflow_path).expanduser().resolve()
-    resolved_title = title if title is not None else workflow_abspath.name
-    view = build_workflow_visualization_view(
-        workflow_path=workflow_path,
-        bundle_root=bundle_root,
-        title=resolved_title,
-    )
+    try:
+        view = build_workflow_visualization_view(
+            workflow_path=workflow_path,
+            bundle_root=bundle_root,
+            title=title,
+        )
+    except WorkflowValidationFailedError as exc:
+        raise ValueError(format_validation_report(exc.report)) from exc
     return _render_html(view)
 
 
@@ -99,7 +91,7 @@ def build_workflow_visualization_view(
         可視化表示モデル。
     """
     workflow_abspath = Path(workflow_path).expanduser().resolve()
-    spec = load_graph_spec_from_workflow(workflow_path=workflow_abspath, bundle_root=bundle_root)
+    spec = load_validated_graph_spec(workflow_path=workflow_abspath, bundle_root=bundle_root)
     resolved_title = title if title is not None else workflow_abspath.name
 
     nodes = tuple(
@@ -271,36 +263,3 @@ def _render_edge_row(edge: WorkflowEdgeView) -> str:
         f"<td{cond_class}>{condition}</td>"
         "</tr>"
     )
-
-
-def format_validation_report(report: WorkflowValidationReport) -> str:
-    """検証レポートを CLI 表示向け文字列へ整形する。"""
-    if report.is_valid:
-        return "workflow validation passed"
-    return _format_validation_issues(report.issues)
-
-
-def _format_validation_issues(issues: list[WorkflowValidationIssue]) -> str:
-    """検証問題一覧を改行区切り文字列へ変換する。"""
-    lines: list[str] = ["workflow validation failed:"]
-    for issue in issues:
-        location = _format_location(issue.location)
-        lines.append(f"- [{issue.code}] {issue.message} (at: {location})")
-    return "\n".join(lines)
-
-
-def _format_location(location: tuple[str | int, ...]) -> str:
-    """Location タプルをドット記法へ変換する。"""
-    if not location:
-        return "<root>"
-
-    parts: list[str] = []
-    for part in location:
-        if isinstance(part, int):
-            parts.append(f"[{part}]")
-        else:
-            if parts:
-                parts.append(f".{part}")
-            else:
-                parts.append(part)
-    return "".join(parts)

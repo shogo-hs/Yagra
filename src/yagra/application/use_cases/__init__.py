@@ -1,16 +1,18 @@
 """Yagra のユースケース群を公開する。"""
 
+from yagra.application.services import EdgeRuleIssue, collect_edge_rule_issues
 from yagra.application.use_cases.state_graph_builder import (
-    EdgeRuleIssue,
     GraphBuildError,
     build_from_workflow_path,
     build_state_graph,
-    collect_edge_rule_issues,
 )
 from yagra.application.use_cases.workflow_loader import load_graph_spec_from_workflow
 from yagra.application.use_cases.workflow_validation_reporter import (
+    WorkflowValidationFailedError,
     WorkflowValidationIssue,
     WorkflowValidationReport,
+    format_validation_report,
+    load_validated_graph_spec,
     validate_workflow_for_ui,
 )
 from yagra.application.use_cases.workflow_visualization import (
@@ -18,7 +20,6 @@ from yagra.application.use_cases.workflow_visualization import (
     WorkflowNodeView,
     WorkflowVisualizationView,
     build_workflow_visualization_view,
-    format_validation_report,
     render_workflow_visualization_html,
 )
 
@@ -26,6 +27,7 @@ __all__ = [
     "EdgeRuleIssue",
     "GraphBuildError",
     "WorkflowEdgeView",
+    "WorkflowValidationFailedError",
     "WorkflowValidationIssue",
     "WorkflowValidationReport",
     "WorkflowNodeView",
@@ -35,6 +37,7 @@ __all__ = [
     "build_state_graph",
     "collect_edge_rule_issues",
     "format_validation_report",
+    "load_validated_graph_spec",
     "load_graph_spec_from_workflow",
     "render_workflow_visualization_html",
     "validate_workflow_for_ui",

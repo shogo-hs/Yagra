@@ -11,7 +11,7 @@ import yaml
 from pydantic import ValidationError
 
 from yagra.application.services import WorkflowReferenceError, resolve_workflow_references
-from yagra.application.use_cases.state_graph_builder import collect_edge_rule_issues
+from yagra.application.services.edge_rule_validator import collect_edge_rule_issues
 from yagra.domain.entities import GraphSpec
 from yagra.domain.services.schema_validator import collect_graph_structure_issues
 
@@ -37,6 +37,63 @@ class WorkflowValidationReport:
     def is_valid(self) -> bool:
         """問題が存在しないかを返す。"""
         return not self.issues
+
+
+class WorkflowValidationFailedError(ValueError):
+    """Workflow 検証失敗を保持する例外。"""
+
+    def __init__(self, report: WorkflowValidationReport) -> None:
+        """検証失敗例外を初期化する。
+
+        Args:
+            report: 検証失敗内容を含むレポート。
+        """
+        self.report = report
+        super().__init__(format_validation_report(report))
+
+
+def load_validated_graph_spec(
+    workflow_path: str | PathLike[str],
+    bundle_root: str | PathLike[str] | None = None,
+) -> GraphSpec:
+    """Workflow を検証し、成功時のみ GraphSpec を返す。
+
+    Args:
+        workflow_path: 入口となる workflow YAML のパス。
+        bundle_root: 分割参照時の基準ディレクトリ。未指定時は workflow 親を使う。
+
+    Returns:
+        検証済みの `GraphSpec`。
+
+    Raises:
+        WorkflowValidationFailedError: workflow の検証に失敗した場合。
+    """
+    report = validate_workflow_for_ui(workflow_path=workflow_path, bundle_root=bundle_root)
+    if not report.is_valid:
+        raise WorkflowValidationFailedError(report)
+
+    workflow_abspath = Path(workflow_path).expanduser().resolve()
+    bundle_root_path = Path(bundle_root).expanduser().resolve() if bundle_root is not None else None
+    payload = _load_yaml_mapping_for_ui(path=workflow_abspath, report=WorkflowValidationReport())
+    if payload is None:
+        # validate_workflow_for_ui が valid の時点でここには到達しない想定。
+        raise WorkflowValidationFailedError(
+            WorkflowValidationReport(
+                issues=[
+                    WorkflowValidationIssue(
+                        code="schema_error",
+                        message="workflow payload loading failed unexpectedly",
+                        location=(),
+                    )
+                ]
+            )
+        )
+    resolved_payload = resolve_workflow_references(
+        payload=payload,
+        workflow_path=workflow_abspath,
+        bundle_root=bundle_root_path,
+    )
+    return GraphSpec.model_validate(resolved_payload)
 
 
 def validate_workflow_for_ui(
@@ -139,6 +196,20 @@ def _load_yaml_mapping_for_ui(
     return payload
 
 
+def format_validation_report(report: WorkflowValidationReport) -> str:
+    """検証レポートを可読なメッセージへ整形する。
+
+    Args:
+        report: 整形対象の検証レポート。
+
+    Returns:
+        整形済みメッセージ。
+    """
+    if report.is_valid:
+        return "workflow validation passed"
+    return _format_validation_issues(report.issues)
+
+
 def _validate_graph_spec_for_ui(
     resolved_payload: dict[str, Any],
     report: WorkflowValidationReport,
@@ -210,3 +281,43 @@ def _normalize_location(raw_loc: Any) -> Location:
         else:
             normalized.append(str(part))
     return tuple(normalized)
+
+
+def _format_validation_issues(issues: list[WorkflowValidationIssue]) -> str:
+    """検証問題一覧を改行区切り文字列へ変換する。
+
+    Args:
+        issues: 変換対象の問題一覧。
+
+    Returns:
+        整形済みのメッセージ文字列。
+    """
+    lines: list[str] = ["workflow validation failed:"]
+    for issue in issues:
+        location = _format_location(issue.location)
+        lines.append(f"- [{issue.code}] {issue.message} (at: {location})")
+    return "\n".join(lines)
+
+
+def _format_location(location: Location) -> str:
+    """Location タプルをドット記法へ変換する。
+
+    Args:
+        location: 表示対象の location タプル。
+
+    Returns:
+        ドット記法化した location 文字列。
+    """
+    if not location:
+        return "<root>"
+
+    parts: list[str] = []
+    for part in location:
+        if isinstance(part, int):
+            parts.append(f"[{part}]")
+        else:
+            if parts:
+                parts.append(f".{part}")
+            else:
+                parts.append(part)
+    return "".join(parts)

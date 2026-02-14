@@ -3,14 +3,9 @@
 from __future__ import annotations
 
 from os import PathLike
-from pathlib import Path
-from typing import Any
 
-import yaml
-
-from yagra.application.services import resolve_workflow_references
+from yagra.application.use_cases.workflow_validation_reporter import load_validated_graph_spec
 from yagra.domain.entities import GraphSpec
-from yagra.domain.services import validate_graph_spec
 
 
 def load_graph_spec_from_workflow(
@@ -27,27 +22,6 @@ def load_graph_spec_from_workflow(
         参照解決・スキーマ検証済みの `GraphSpec`。
 
     Raises:
-        ValueError: workflow が辞書形式でない場合。
+        WorkflowValidationFailedError: workflow 検証に失敗した場合。
     """
-    workflow_abspath = Path(workflow_path).expanduser().resolve()
-    payload = _load_yaml_mapping(workflow_abspath)
-
-    bundle_root_path: Path | None = None
-    if bundle_root is not None:
-        bundle_root_path = Path(bundle_root).expanduser().resolve()
-
-    resolved_payload = resolve_workflow_references(
-        payload=payload,
-        workflow_path=workflow_abspath,
-        bundle_root=bundle_root_path,
-    )
-    return validate_graph_spec(resolved_payload)
-
-
-def _load_yaml_mapping(path: Path) -> dict[str, Any]:
-    """YAML ファイルを辞書として読み込む。"""
-    with path.open("r", encoding="utf-8") as handle:
-        data = yaml.safe_load(handle)
-    if not isinstance(data, dict):
-        raise ValueError(f"workflow must be a mapping: {path}")
-    return data
+    return load_validated_graph_spec(workflow_path=workflow_path, bundle_root=bundle_root)
