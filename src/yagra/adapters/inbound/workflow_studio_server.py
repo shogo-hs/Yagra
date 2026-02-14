@@ -1807,11 +1807,12 @@ def _studio_html() -> str:
               ? String(Number(maxTokensRaw))
               : "";
             const refParts = splitPromptReference(nodeEditor.promptRef);
-            nodeEditor.promptFilePath = refParts.path;
+            const workspacePromptPath = promptRefPathToWorkspacePath(refParts.path);
+            nodeEditor.promptFilePath = workspacePromptPath;
             nodeEditor.promptKey = refParts.keyPath;
             nodeEditor.promptFileParseError = "";
-            if (refParts.path) {
-              void loadPromptFromYaml(refParts.path, {
+            if (workspacePromptPath) {
+              void loadPromptFromYaml(workspacePromptPath, {
                 preferredKeyPath: refParts.keyPath,
                 updatePromptRef: false,
                 quiet: true,
@@ -1874,6 +1875,138 @@ def _studio_html() -> str:
             path: text.slice(0, hashIndex).trim(),
             keyPath: text.slice(hashIndex + 1).trim(),
           };
+        }
+
+        function normalizePosixPath(rawPath) {
+          const text = normalizeText(rawPath);
+          if (!text) {
+            return "";
+          }
+          const isAbsolute = text.startsWith("/");
+          const normalized = text.replace(/\\/g, "/");
+          const segments = normalized.split("/");
+          const stack = [];
+          for (const segment of segments) {
+            if (!segment || segment === ".") {
+              continue;
+            }
+            if (segment === "..") {
+              if (stack.length > 0 && stack[stack.length - 1] !== "..") {
+                stack.pop();
+              } else if (!isAbsolute) {
+                stack.push("..");
+              }
+              continue;
+            }
+            stack.push(segment);
+          }
+          const joined = stack.join("/");
+          if (isAbsolute) {
+            return joined ? `/${joined}` : "/";
+          }
+          return joined;
+        }
+
+        function joinPosixPath(basePath, childPath) {
+          const base = normalizePosixPath(basePath);
+          const child = normalizePosixPath(childPath);
+          if (!base) {
+            return child;
+          }
+          if (!child) {
+            return base;
+          }
+          if (child.startsWith("/")) {
+            return child;
+          }
+          return normalizePosixPath(`${base}/${child}`);
+        }
+
+        function relativePosixPath(fromDir, toPath) {
+          const from = normalizePosixPath(fromDir);
+          const to = normalizePosixPath(toPath);
+          if (!to) {
+            return "";
+          }
+          if (to.startsWith("/")) {
+            return to;
+          }
+          const fromSegments = from ? from.split("/") : [];
+          const toSegments = to.split("/");
+          let index = 0;
+          while (
+            index < fromSegments.length
+            && index < toSegments.length
+            && fromSegments[index] === toSegments[index]
+          ) {
+            index += 1;
+          }
+          const upSegments = Array(fromSegments.length - index).fill("..");
+          const tailSegments = toSegments.slice(index);
+          const relSegments = [...upSegments, ...tailSegments];
+          if (relSegments.length === 0) {
+            return ".";
+          }
+          return relSegments.join("/");
+        }
+
+        function getWorkflowDirectoryRelative() {
+          const workflowPath = normalizePosixPath(studioTargetPath.value);
+          const workspaceRoot = normalizePosixPath(studioWorkspaceRoot.value);
+          if (!workflowPath || !workspaceRoot || !workflowPath.startsWith("/")) {
+            return "";
+          }
+          const workspacePrefix = workspaceRoot.endsWith("/") ? workspaceRoot : `${workspaceRoot}/`;
+          if (!workflowPath.startsWith(workspacePrefix)) {
+            return "";
+          }
+          const workflowRelativePath = workflowPath.slice(workspacePrefix.length);
+          const slashIndex = workflowRelativePath.lastIndexOf("/");
+          if (slashIndex < 0) {
+            return "";
+          }
+          return workflowRelativePath.slice(0, slashIndex);
+        }
+
+        function promptRefPathToWorkspacePath(rawPath) {
+          const normalizedPath = normalizePosixPath(rawPath);
+          if (!normalizedPath) {
+            return "";
+          }
+          if (normalizedPath.startsWith("/")) {
+            const workspaceRoot = normalizePosixPath(studioWorkspaceRoot.value);
+            if (!workspaceRoot) {
+              return normalizedPath;
+            }
+            const workspacePrefix = workspaceRoot.endsWith("/") ? workspaceRoot : `${workspaceRoot}/`;
+            if (!normalizedPath.startsWith(workspacePrefix)) {
+              return normalizedPath;
+            }
+            return normalizePosixPath(normalizedPath.slice(workspacePrefix.length));
+          }
+          const workflowDir = getWorkflowDirectoryRelative();
+          return joinPosixPath(workflowDir, normalizedPath);
+        }
+
+        function workspacePathToPromptRefPath(rawPath) {
+          const normalizedPath = normalizePosixPath(rawPath);
+          if (!normalizedPath) {
+            return "";
+          }
+          if (normalizedPath.startsWith("/")) {
+            const workspaceRoot = normalizePosixPath(studioWorkspaceRoot.value);
+            if (!workspaceRoot) {
+              return normalizedPath;
+            }
+            const workspacePrefix = workspaceRoot.endsWith("/") ? workspaceRoot : `${workspaceRoot}/`;
+            if (!normalizedPath.startsWith(workspacePrefix)) {
+              return normalizedPath;
+            }
+            return workspacePathToPromptRefPath(normalizedPath.slice(workspacePrefix.length));
+          }
+          const workflowDir = getWorkflowDirectoryRelative();
+          const relative = relativePosixPath(workflowDir, normalizedPath);
+          return relative === "." ? "" : relative;
         }
 
         function normalizePromptKeyPath(rawKeyPath) {
@@ -1940,21 +2073,7 @@ def _studio_html() -> str:
         }
 
         function resolveDefaultPromptDirectory() {
-          const workflowPath = normalizeText(studioTargetPath.value);
-          const workspaceRoot = normalizeText(studioWorkspaceRoot.value);
-          if (!workflowPath || !workspaceRoot) {
-            return "prompts";
-          }
-          const rootPrefix = workspaceRoot.endsWith("/") ? workspaceRoot : `${workspaceRoot}/`;
-          if (!workflowPath.startsWith(rootPrefix)) {
-            return "prompts";
-          }
-          const workflowRelativePath = workflowPath.slice(rootPrefix.length);
-          const slashIndex = workflowRelativePath.lastIndexOf("/");
-          if (slashIndex < 0) {
-            return "prompts";
-          }
-          const workflowDir = workflowRelativePath.slice(0, slashIndex);
+          const workflowDir = getWorkflowDirectoryRelative();
           return workflowDir ? `${workflowDir}/prompts` : "prompts";
         }
 
@@ -2381,7 +2500,7 @@ def _studio_html() -> str:
             const finalPrompt = Object.keys(promptObj).length > 0 ? promptObj : null;
             const promptKey = normalizePromptKeyPath(nodeEditor.promptKey);
             nodeEditor.promptKey = promptKey;
-            let promptFilePath = normalizeText(nodeEditor.promptFilePath);
+            let promptFilePath = normalizePosixPath(nodeEditor.promptFilePath);
             let promptRef = normalizeText(nodeEditor.promptRef);
             if (!promptFilePath) {
               const createdPath = await createPromptFileForNode(
@@ -2390,13 +2509,15 @@ def _studio_html() -> str:
                 promptUser,
                 promptKey,
               );
-              promptFilePath = createdPath;
+              promptFilePath = normalizePosixPath(createdPath);
               nodeEditor.promptFilePath = createdPath;
               nodeEditor.promptFileParseError = "";
-              promptRef = buildPromptReference(createdPath, promptKey);
+              const promptRefPath = workspacePathToPromptRefPath(promptFilePath) || promptFilePath;
+              promptRef = buildPromptReference(promptRefPath, promptKey);
               nodeEditor.promptRef = promptRef;
             } else {
-              promptRef = buildPromptReference(promptFilePath, promptKey);
+              const promptRefPath = workspacePathToPromptRefPath(promptFilePath) || promptFilePath;
+              promptRef = buildPromptReference(promptRefPath, promptKey);
               nodeEditor.promptRef = promptRef;
             }
 
@@ -2779,6 +2900,7 @@ def _studio_html() -> str:
           const resolvedPath = normalizeText(data.path) || targetPath;
           nodeEditor.promptFilePath = resolvedPath;
           nodeEditor.promptFileParseError = normalizeText(data.parse_error);
+          const resolvedPromptRefPath = workspacePathToPromptRefPath(resolvedPath) || resolvedPath;
           const promptEntries = Array.isArray(data.prompt_entries)
             ? data.prompt_entries
               .filter(item => isRecord(item))
@@ -2794,7 +2916,7 @@ def _studio_html() -> str:
             const fallbackKey = normalizeText(preferredKeyPath);
             nodeEditor.promptKey = fallbackKey;
             if (updatePromptRef) {
-              nodeEditor.promptRef = buildPromptReference(resolvedPath, fallbackKey);
+              nodeEditor.promptRef = buildPromptReference(resolvedPromptRefPath, fallbackKey);
             }
             if (!quiet) {
               if (nodeEditor.promptFileParseError) {
@@ -2809,10 +2931,16 @@ def _studio_html() -> str:
           nodeEditor.promptSystem = selectedEntry.system;
           nodeEditor.promptUser = selectedEntry.user;
           if (updatePromptRef) {
-            nodeEditor.promptRef = buildPromptReference(resolvedPath, selectedEntry.key_path);
+            nodeEditor.promptRef = buildPromptReference(
+              resolvedPromptRefPath,
+              selectedEntry.key_path,
+            );
           }
           if (!quiet) {
-            const resolvedRef = buildPromptReference(resolvedPath, selectedEntry.key_path);
+            const resolvedRef = buildPromptReference(
+              resolvedPromptRefPath,
+              selectedEntry.key_path,
+            );
             setStatus(`prompt loaded: ${resolvedRef}`);
           }
           return {
@@ -2837,7 +2965,8 @@ def _studio_html() -> str:
             return;
           }
           const currentRef = splitPromptReference(nodeEditor.promptRef);
-          const preferredKeyPath = currentRef.path === path
+          const currentRefWorkspacePath = promptRefPathToWorkspacePath(currentRef.path);
+          const preferredKeyPath = currentRefWorkspacePath === path
             ? currentRef.keyPath
             : normalizeText(nodeEditor.promptKey);
           try {
@@ -2895,15 +3024,16 @@ def _studio_html() -> str:
             return;
           }
           const parsed = splitPromptReference(nodeEditor.promptRef);
-          nodeEditor.promptFilePath = parsed.path;
+          const workspacePath = promptRefPathToWorkspacePath(parsed.path);
+          nodeEditor.promptFilePath = workspacePath;
           nodeEditor.promptKey = parsed.keyPath;
-          if (!parsed.path) {
+          if (!workspacePath) {
             nodeEditor.promptFileParseError = "";
             nodeEditor.promptKeyOptions = [];
             setStatus("prompt_ref cleared");
             return;
           }
-          const loaded = await loadPromptFromYaml(parsed.path, {
+          const loaded = await loadPromptFromYaml(workspacePath, {
             preferredKeyPath: parsed.keyPath,
             updatePromptRef: false,
             quiet: false,

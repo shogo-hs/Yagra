@@ -7,6 +7,13 @@
 ### Changed
 - なし
 
+## [0.1.4] - 2026-02-14
+
+### Fixed
+- Studio で subdirectory 配下の workflow を編集する際、`prompt_ref` に workspace 相対パスが保存されて resolver 解決に失敗する不具合を修正。
+  - 保存時は `prompt_ref` を workflow 相対パスへ正規化。
+  - 読込時は workflow 相対 `prompt_ref` を workspace 相対へ変換して Studio file API と整合。
+
 ## [0.1.3] - 2026-02-14
 
 ### Added
