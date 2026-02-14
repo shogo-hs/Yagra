@@ -613,8 +613,11 @@ def _studio_html() -> str:
     .graph-node.selected { border-color: #0b63be; box-shadow: 0 4px 10px rgba(10, 111, 216, 0.24); }
     .graph-node-title { font-size: 12px; font-weight: 700; }
     .graph-node-sub { font-size: 11px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .graph-node-ports { margin-top: 8px; display: flex; justify-content: flex-end; }
-    .port-btn { border: 1px solid #0b63be; background: #fff; color: var(--accent); border-radius: 6px; padding: 2px 6px; font-size: 11px; font-weight: 700; cursor: pointer; }
+    .node-port { position: absolute; top: 50%; width: 16px; height: 16px; border-radius: 999px; border: 2px solid #0b63be; background: #fff; transform: translateY(-50%); cursor: crosshair; }
+    .node-port.input-port { left: -10px; }
+    .node-port.output-port { right: -10px; background: #e8f2ff; }
+    .node-port:hover { box-shadow: 0 0 0 3px rgba(10, 111, 216, 0.2); }
+    .node-port.drop-target { box-shadow: 0 0 0 4px rgba(36, 150, 81, 0.25); border-color: #1f8f50; background: #effcf4; }
     .mode { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
     .guide { margin-bottom: 8px; padding: 8px 10px; border: 1px dashed var(--line); border-radius: 8px; background: #f8fbff; font-size: 12px; color: #2a4365; }
     .guide strong { display: block; margin-bottom: 4px; }
@@ -697,7 +700,7 @@ def _studio_html() -> str:
             <button id="applyEdgeBtn" class="secondary" type="button">Apply Edge Edit</button>
             <button id="toggleRewireBtn" class="secondary" type="button">Enable Rewire Mode</button>
           </div>
-          <div class="hint">ノードの Connect ボタンをドラッグして接続追加。Rewire Mode では選択エッジを、ドラッグ起点ノード→ドロップ先ノードへ再接続します。</div>
+          <div class="hint">ノード右側の丸ポート（output）から左側の丸ポート（input）へドラッグして接続。Rewire Mode では同操作で選択エッジを再接続します。</div>
         </div>
       </article>
       <article class="panel stack">
@@ -706,8 +709,8 @@ def _studio_html() -> str:
           <div class="guide">
             <strong>Quick Guide</strong>
             1) Add Node で追加<br />
-            2) ノードの Connect をドラッグして接続追加<br />
-            3) エッジ線をクリックして選択し、Enable Rewire Mode 後に Connect をドラッグして再接続<br />
+            2) ノード右側ポート(output)から左側ポート(input)へドラッグして接続追加<br />
+            3) エッジ線をクリックして選択し、Enable Rewire Mode 後に output→input でドラッグして再接続<br />
             4) Preview Diff を確認して Save
           </div>
           <div id="selectionSummary" class="selection-summary"></div>
@@ -891,9 +894,14 @@ def _studio_html() -> str:
       };
     }
 
-    function nodeCenter(nodeId) {
+    function nodeInputAnchor(nodeId) {
       const pos = getNodePosition(nodeId);
-      return { x: pos.x + 70, y: pos.y + 30 };
+      return { x: pos.x - 2, y: pos.y + 30 };
+    }
+
+    function nodeOutputAnchor(nodeId) {
+      const pos = getNodePosition(nodeId);
+      return { x: pos.x + 142, y: pos.y + 30 };
     }
 
     function toCanvasPoint(clientX, clientY) {
@@ -901,19 +909,21 @@ def _studio_html() -> str:
       return { x: clientX - rect.left, y: clientY - rect.top };
     }
 
-    function resolveDropNodeId(target) {
+    function resolveDropTargetNodeId(target) {
       if (!(target instanceof Element)) return null;
-      const nodeEl = target.closest(".graph-node");
+      const inputPort = target.closest("[data-port-input]");
+      if (!(inputPort instanceof HTMLElement)) return null;
+      const nodeEl = inputPort.closest(".graph-node");
       if (!(nodeEl instanceof HTMLElement)) return null;
       return nodeEl.dataset.nodeId || null;
     }
 
     function updateConnectionModeLabel() {
       if (state.activeRewireEdgeIndex === null) {
-        connectionModeLabel.textContent = "connection mode: create edge (drag Connect from source to target)";
+        connectionModeLabel.textContent = "connection mode: create edge (drag output port -> input port)";
         return;
       }
-      connectionModeLabel.textContent = `connection mode: rewire edge[${state.activeRewireEdgeIndex}] (drag Connect for new source/target)`;
+      connectionModeLabel.textContent = `connection mode: rewire edge[${state.activeRewireEdgeIndex}] (drag output port -> input port)`;
     }
 
     function updateRewireButton() {
@@ -1337,8 +1347,8 @@ def _studio_html() -> str:
 
       const activeEdgeIndex = Number(edgeSelect.value);
       for (const edge of state.formEdges) {
-        const source = nodeCenter(edge.source);
-        const target = nodeCenter(edge.target);
+        const source = nodeOutputAnchor(edge.source);
+        const target = nodeInputAnchor(edge.target);
         const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
         line.setAttribute("x1", String(source.x));
         line.setAttribute("y1", String(source.y));
@@ -1372,7 +1382,7 @@ def _studio_html() -> str:
       }
 
       if (state.dragConnection) {
-        const source = nodeCenter(state.dragConnection.sourceNodeId);
+        const source = nodeOutputAnchor(state.dragConnection.sourceNodeId);
         const ghost = document.createElementNS("http://www.w3.org/2000/svg", "line");
         ghost.setAttribute("x1", String(source.x));
         ghost.setAttribute("y1", String(source.y));
@@ -1386,6 +1396,8 @@ def _studio_html() -> str:
 
       for (const node of state.formNodes) {
         const pos = getNodePosition(node.id);
+        const isDropTarget =
+          state.dragConnection && state.dragConnection.hoverTargetNodeId === node.id;
         const nodeEl = document.createElement("div");
         nodeEl.className = "graph-node";
         if (node.id === nodeSelect.value) nodeEl.classList.add("selected");
@@ -1394,20 +1406,25 @@ def _studio_html() -> str:
         nodeEl.style.left = `${Math.round(pos.x)}px`;
         nodeEl.style.top = `${Math.round(pos.y)}px`;
         nodeEl.innerHTML = `
+          <button type="button" class="node-port input-port${isDropTarget ? " drop-target" : ""}" data-node-port="true" data-port-input="true" aria-label="input port"></button>
+          <button type="button" class="node-port output-port" data-node-port="true" data-port-output="true" aria-label="output port"></button>
           <div class="graph-node-title">${escapeHtml(node.id)}</div>
           <div class="graph-node-sub">${escapeHtml(node.handler)}</div>
-          <div class="graph-node-ports">
-            <button type="button" class="port-btn" data-connect="true">Connect</button>
-          </div>
         `;
 
         nodeEl.addEventListener("pointerdown", event => startNodeDrag(event, node.id));
-        const connectBtn = nodeEl.querySelector("[data-connect]");
-        if (connectBtn instanceof HTMLElement) {
-          connectBtn.addEventListener("pointerdown", event => startConnectionDrag(event, node.id));
+        const outputPort = nodeEl.querySelector("[data-port-output]");
+        if (outputPort instanceof HTMLElement) {
+          outputPort.addEventListener("pointerdown", event => startConnectionDrag(event, node.id));
+        }
+        const inputPort = nodeEl.querySelector("[data-port-input]");
+        if (inputPort instanceof HTMLElement) {
+          inputPort.addEventListener("pointerdown", event => {
+            event.stopPropagation();
+          });
         }
         nodeEl.addEventListener("click", event => {
-          if (event.target instanceof Element && event.target.closest("[data-connect]")) return;
+          if (event.target instanceof Element && event.target.closest("[data-node-port]")) return;
           nodeSelect.value = node.id;
           renderNodeForm(node.id);
           renderSelectionSummary();
@@ -1600,12 +1617,13 @@ def _studio_html() -> str:
         rewireEdgeIndex: state.activeRewireEdgeIndex,
         pointerX: point.x,
         pointerY: point.y,
+        hoverTargetNodeId: null,
       };
       const modeText =
         state.activeRewireEdgeIndex === null
           ? `create edge from ${sourceNodeId}`
           : `rewire edge[${state.activeRewireEdgeIndex}] with source ${sourceNodeId}`;
-      setStatus(`${modeText}: drop on target node`);
+      setStatus(`${modeText}: drop on input port`);
       renderGraph();
       event.preventDefault();
       event.stopPropagation();
@@ -1614,7 +1632,7 @@ def _studio_html() -> str:
     function startNodeDrag(event, nodeId) {
       if (!state.revision) return;
       if (event.button !== 0) return;
-      if (event.target instanceof Element && event.target.closest("[data-connect]")) {
+      if (event.target instanceof Element && event.target.closest("[data-node-port]")) {
         return;
       }
 
@@ -1686,6 +1704,8 @@ def _studio_html() -> str:
         const point = toCanvasPoint(event.clientX, event.clientY);
         state.dragConnection.pointerX = point.x;
         state.dragConnection.pointerY = point.y;
+        const hoverTarget = document.elementFromPoint(event.clientX, event.clientY);
+        state.dragConnection.hoverTargetNodeId = resolveDropTargetNodeId(hoverTarget);
         renderGraph();
       }
     }
@@ -1701,10 +1721,14 @@ def _studio_html() -> str:
 
       if (state.dragConnection) {
         const connection = state.dragConnection;
+        const pointerTarget = document.elementFromPoint(event.clientX, event.clientY);
+        const targetNodeId =
+          resolveDropTargetNodeId(pointerTarget) ||
+          resolveDropTargetNodeId(event.target) ||
+          connection.hoverTargetNodeId;
         state.dragConnection = null;
-        const targetNodeId = resolveDropNodeId(event.target);
         if (!targetNodeId) {
-          setStatus("connection canceled");
+          setStatus("connection canceled (drop on input port)");
           renderGraph();
           return;
         }
