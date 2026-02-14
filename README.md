@@ -196,8 +196,8 @@ yagra studio \
 
 1. 必要に応じて `Add Node` でノードを追加し、Node/Edge フォームで値を編集して `Apply ...`
    - `Add Node` は選択中ノードの近傍（未選択時は自動レイアウト位置）へ自動配置されます。
-2. Graph Canvas 上でノードをドラッグして位置調整し、右側ポート（output）から左側ポート（input）へドラッグしてエッジ追加
-3. 再接続時はエッジ線をクリックして対象を選択し、`Enable Rewire Mode` を押して output→input でドラッグ（ドラッグ起点が新 source、ドロップ先が新 target）
+2. Graph Canvas 上でノードをドラッグして位置調整し、右側ポート（output）から左側ポート（input）へドラッグしてエッジ追加（戻りループは下側 output → 上側 input で接続）
+3. 再接続時はエッジ端点をドラッグして接続先を変更（ドラッグ起点が新 source、ドロップ先が新 target）
 4. `Preview Diff` で変更差分と validation を確認
 5. `Save` で workflow を保存（backup 作成）
 6. 必要なら `Rollback` で `backup_id` から復元
