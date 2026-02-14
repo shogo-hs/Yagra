@@ -179,9 +179,9 @@ yagra visualize \
 
 検証エラーがある場合は HTML は生成せず、エラー一覧を標準エラーへ出力します。
 
-### `yagra studio`（編集保存基盤）
+### `yagra studio`（フォーム編集 + 保存）
 
-Workflow の diff 確認・保存・rollback を行うローカル WebUI/API を起動します。
+Workflow の `prompt` / `model` / `condition` をフォーム編集し、diff 確認・保存・rollback を行うローカル WebUI/API を起動します。
 
 ```bash
 yagra studio \
@@ -191,6 +191,13 @@ yagra studio \
 ```
 
 起動後はブラウザで `http://127.0.0.1:8787/` を開きます。
+
+主な編集フロー:
+
+1. Node/Edge フォームで値を編集して `Apply ... Edit`
+2. `Preview Diff` で変更差分と validation を確認
+3. `Save` で workflow を保存（backup 作成）
+4. 必要なら `Rollback` で `backup_id` から復元
 
 オプション:
 
@@ -207,6 +214,11 @@ yagra studio \
 - atomic write（中途半端な書き込み防止）
 - backup 作成（`<backup-dir>/<workflow-stem>/<backup_id>.*`）
 - 失敗時の自動復旧
+
+フォーム向け API:
+
+- `GET /api/workflow/form`
+- `POST /api/workflow/form/preview`
 
 ## 仕様上の契約（Implicit Contracts）
 

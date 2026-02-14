@@ -1,0 +1,282 @@
+"""Workflow フォーム編集向けの表示モデルを生成する。"""
+
+from __future__ import annotations
+
+from collections.abc import Mapping
+from copy import deepcopy
+from dataclasses import dataclass
+from os import PathLike
+from pathlib import Path
+from typing import Any
+
+import yaml
+
+from yagra.application.use_cases.workflow_edit_session import compute_workflow_revision
+
+
+@dataclass(frozen=True, slots=True)
+class WorkflowNodeFormItem:
+    """フォーム編集用のノード表示情報を保持する。"""
+
+    id: str
+    handler: str
+    prompt_ref: str | None
+    model_ref: str | None
+    prompt: dict[str, Any] | None
+    model: dict[str, Any] | None
+
+
+@dataclass(frozen=True, slots=True)
+class WorkflowEdgeFormItem:
+    """フォーム編集用のエッジ表示情報を保持する。"""
+
+    index: int
+    source: str
+    target: str
+    condition: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class WorkflowFormView:
+    """フォーム編集画面の表示モデルを保持する。"""
+
+    revision: str
+    nodes: tuple[WorkflowNodeFormItem, ...]
+    edges: tuple[WorkflowEdgeFormItem, ...]
+    prompt_catalog_keys: tuple[str, ...]
+    model_catalog_keys: tuple[str, ...]
+
+
+def build_workflow_form_view(
+    workflow: Mapping[str, Any],
+    ui_state: Mapping[str, Any],
+    workflow_path: str | PathLike[str],
+    bundle_root: str | PathLike[str] | None = None,
+) -> WorkflowFormView:
+    """Workflow と UI 状態からフォーム編集向け表示モデルを生成する。
+
+    Args:
+        workflow: 表示対象の workflow データ。
+        ui_state: 現在の UI サイドカーデータ。
+        workflow_path: workflow ファイルパス。
+        bundle_root: 分割参照解決の基準ディレクトリ。
+
+    Returns:
+        フォーム表示に必要な情報を含む `WorkflowFormView`。
+
+    Raises:
+        ValueError: workflow の構造が想定外の場合。
+    """
+    workflow_mapping = _ensure_mapping(workflow, label="workflow")
+    ui_state_mapping = _ensure_mapping(ui_state, label="ui_state")
+    nodes_raw = workflow_mapping.get("nodes")
+    edges_raw = workflow_mapping.get("edges")
+    if not isinstance(nodes_raw, list):
+        raise ValueError("workflow.nodes must be a list")
+    if not isinstance(edges_raw, list):
+        raise ValueError("workflow.edges must be a list")
+
+    nodes: list[WorkflowNodeFormItem] = []
+    for node_raw in nodes_raw:
+        if not isinstance(node_raw, Mapping):
+            continue
+        node = dict(node_raw)
+        node_id = node.get("id")
+        handler = node.get("handler")
+        if not isinstance(node_id, str) or not isinstance(handler, str):
+            continue
+        params = node.get("params")
+        if params is None:
+            params = {}
+        if not isinstance(params, Mapping):
+            continue
+        params_mapping = dict(params)
+        nodes.append(
+            WorkflowNodeFormItem(
+                id=node_id,
+                handler=handler,
+                prompt_ref=_as_optional_string(params_mapping.get("prompt_ref")),
+                model_ref=_as_optional_string(params_mapping.get("model_ref")),
+                prompt=_as_optional_mapping(params_mapping.get("prompt")),
+                model=_as_optional_mapping(params_mapping.get("model")),
+            )
+        )
+
+    edges: list[WorkflowEdgeFormItem] = []
+    for index, edge_raw in enumerate(edges_raw):
+        if not isinstance(edge_raw, Mapping):
+            continue
+        edge = dict(edge_raw)
+        source = edge.get("source")
+        target = edge.get("target")
+        condition = edge.get("condition")
+        if not isinstance(source, str) or not isinstance(target, str):
+            continue
+        if condition is not None and not isinstance(condition, str):
+            continue
+        edges.append(
+            WorkflowEdgeFormItem(
+                index=index,
+                source=source,
+                target=target,
+                condition=condition,
+            )
+        )
+
+    workflow_abspath = Path(workflow_path).expanduser().resolve()
+    bundle_root_path = Path(bundle_root).expanduser().resolve() if bundle_root is not None else None
+    prompt_catalog_keys = _resolve_catalog_keys(
+        workflow=workflow_mapping,
+        workflow_abspath=workflow_abspath,
+        bundle_root=bundle_root_path,
+        catalog_name="prompt_catalog",
+    )
+    model_catalog_keys = _resolve_catalog_keys(
+        workflow=workflow_mapping,
+        workflow_abspath=workflow_abspath,
+        bundle_root=bundle_root_path,
+        catalog_name="model_catalog",
+    )
+
+    return WorkflowFormView(
+        revision=compute_workflow_revision(workflow_mapping, ui_state_mapping),
+        nodes=tuple(nodes),
+        edges=tuple(edges),
+        prompt_catalog_keys=prompt_catalog_keys,
+        model_catalog_keys=model_catalog_keys,
+    )
+
+
+def _resolve_catalog_keys(
+    workflow: dict[str, Any],
+    workflow_abspath: Path,
+    bundle_root: Path | None,
+    catalog_name: str,
+) -> tuple[str, ...]:
+    """workflow.params の catalog 参照から利用可能キーを抽出する。
+
+    Args:
+        workflow: workflow データ。
+        workflow_abspath: workflow 絶対パス。
+        bundle_root: 分割参照解決の基準ディレクトリ。
+        catalog_name: 抽出対象カタログ名。
+
+    Returns:
+        利用可能キー一覧。取得できない場合は空タプル。
+    """
+    params = workflow.get("params")
+    if not isinstance(params, Mapping):
+        return ()
+    catalog_path_raw = params.get(catalog_name)
+    if not isinstance(catalog_path_raw, str) or not catalog_path_raw.strip():
+        return ()
+
+    catalog_path = _resolve_catalog_path(
+        catalog_path=catalog_path_raw.strip(),
+        workflow_abspath=workflow_abspath,
+        bundle_root=bundle_root,
+    )
+    if not catalog_path.exists():
+        return ()
+
+    try:
+        with catalog_path.open("r", encoding="utf-8") as handle:
+            payload = yaml.safe_load(handle)
+    except (OSError, yaml.YAMLError):
+        return ()
+    if not isinstance(payload, Mapping):
+        return ()
+
+    key_paths = _collect_key_paths(dict(payload), prefix="")
+    return tuple(sorted(set(key_paths)))
+
+
+def _resolve_catalog_path(
+    catalog_path: str, workflow_abspath: Path, bundle_root: Path | None
+) -> Path:
+    """Catalog パスを workflow 基準で絶対パスへ解決する。
+
+    Args:
+        catalog_path: workflow で指定された catalog パス。
+        workflow_abspath: workflow 絶対パス。
+        bundle_root: 分割参照解決の基準ディレクトリ。
+
+    Returns:
+        解決後の絶対パス。
+    """
+    raw_path = Path(catalog_path)
+    if raw_path.is_absolute():
+        return raw_path.resolve()
+    if bundle_root is not None:
+        return (bundle_root / raw_path).resolve()
+    return (workflow_abspath.parent / raw_path).resolve()
+
+
+def _collect_key_paths(payload: dict[str, Any], prefix: str) -> list[str]:
+    """辞書を再帰走査し `a.b.c` 形式のキー一覧を返す。
+
+    Args:
+        payload: 走査対象の辞書。
+        prefix: 親キー接頭辞。
+
+    Returns:
+        収集したキー一覧。
+    """
+    paths: list[str] = []
+    for key, value in payload.items():
+        if not isinstance(key, str):
+            continue
+        current = f"{prefix}.{key}" if prefix else key
+        paths.append(current)
+        if isinstance(value, Mapping):
+            paths.extend(_collect_key_paths(dict(value), prefix=current))
+    return paths
+
+
+def _as_optional_mapping(value: Any) -> dict[str, Any] | None:
+    """値を任意辞書として正規化する。
+
+    Args:
+        value: 変換対象値。
+
+    Returns:
+        辞書値、または `None`。
+    """
+    if not isinstance(value, Mapping):
+        return None
+    return deepcopy(dict(value))
+
+
+def _as_optional_string(value: Any) -> str | None:
+    """値を任意文字列として正規化する。
+
+    Args:
+        value: 変換対象値。
+
+    Returns:
+        文字列値、または `None`。
+    """
+    if not isinstance(value, str):
+        return None
+    normalized = value.strip()
+    if not normalized:
+        return None
+    return normalized
+
+
+def _ensure_mapping(payload: Mapping[str, Any], label: str) -> dict[str, Any]:
+    """入力が辞書互換であることを検証して辞書化する。
+
+    Args:
+        payload: 検証対象データ。
+        label: エラー文言で使う入力名。
+
+    Returns:
+        shallow copy した辞書データ。
+
+    Raises:
+        ValueError: payload が辞書互換でない場合。
+    """
+    if not isinstance(payload, Mapping):
+        raise ValueError(f"{label} must be a mapping")
+    return dict(payload)

@@ -189,3 +189,71 @@ def test_workflow_studio_api_returns_conflict_for_stale_revision(tmp_path: Path)
         server.shutdown()
         server.server_close()
         thread.join(timeout=2)
+
+
+def test_workflow_studio_form_preview_and_save(tmp_path: Path) -> None:
+    workflow_path = _write_workflow(tmp_path / "workflow.yaml", _base_payload())
+    backup_dir = tmp_path / ".yagra-backups"
+
+    server = create_workflow_studio_server(
+        workflow_path=workflow_path,
+        backup_dir=backup_dir,
+        host="127.0.0.1",
+        port=0,
+    )
+    thread = Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    base_url = _server_base_url(server)
+
+    try:
+        status, form_payload = _request_json("GET", f"{base_url}/api/workflow/form")
+        assert status == 200
+        base_revision = str(form_payload["revision"])
+        assert len(form_payload["nodes"]) == 3
+        assert len(form_payload["edges"]) == 3
+
+        status, preview = _request_json(
+            "POST",
+            f"{base_url}/api/workflow/form/preview",
+            {
+                "base_revision": base_revision,
+                "node_edits": [
+                    {
+                        "node_id": "planner",
+                        "prompt": {"system": "edited prompt"},
+                        "model": {"provider": "openai", "name": "gpt-4.1-nano"},
+                    }
+                ],
+                "edge_edits": [{"edge_index": 2, "condition": "done"}],
+            },
+        )
+        assert status == 200
+        assert preview["summary"]["total"] >= 1
+        assert preview["validation_report"]["is_valid"] is True
+        assert (
+            preview["candidate_workflow"]["nodes"][1]["params"]["prompt"]["system"]
+            == "edited prompt"
+        )
+        assert preview["candidate_workflow"]["edges"][2]["condition"] == "done"
+
+        status, save_payload = _request_json(
+            "POST",
+            f"{base_url}/api/workflow/save",
+            {
+                "workflow": preview["candidate_workflow"],
+                "ui_state": preview["candidate_ui_state"],
+                "base_revision": base_revision,
+            },
+        )
+        assert status == 200
+        assert save_payload["backup_id"]
+
+        status, after_form = _request_json("GET", f"{base_url}/api/workflow/form")
+        assert status == 200
+        planner = next(item for item in after_form["nodes"] if item["id"] == "planner")
+        assert planner["prompt"]["system"] == "edited prompt"
+        assert planner["model"]["name"] == "gpt-4.1-nano"
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
