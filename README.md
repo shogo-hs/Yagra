@@ -195,6 +195,7 @@ yagra studio \
 主な編集フロー:
 
 1. 必要に応じて `Add Node` でノードを追加し、Node/Edge フォームで値を編集して `Apply ...`
+   - `Add Node` は選択中ノードの近傍（未選択時は自動レイアウト位置）へ自動配置されます。
 2. Graph Canvas 上でノードをドラッグして位置調整し、`Connect` をドラッグしてエッジ追加
 3. 再接続時はエッジを選択して `Start Rewire Mode` を押し、`Connect` をドラッグして新ターゲットへ接続
 4. `Preview Diff` で変更差分と validation を確認

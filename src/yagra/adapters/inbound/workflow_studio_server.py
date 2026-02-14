@@ -616,6 +616,8 @@ def _studio_html() -> str:
     .graph-node-ports { margin-top: 8px; display: flex; justify-content: flex-end; }
     .port-btn { border: 1px solid #0b63be; background: #fff; color: var(--accent); border-radius: 6px; padding: 2px 6px; font-size: 11px; font-weight: 700; cursor: pointer; }
     .mode { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    .guide { margin-bottom: 8px; padding: 8px 10px; border: 1px dashed var(--line); border-radius: 8px; background: #f8fbff; font-size: 12px; color: #2a4365; }
+    .guide strong { display: block; margin-bottom: 4px; }
     .inline-row button { width: 100%; }
     @media (max-width: 1240px) { .layout { grid-template-columns: 1fr; } }
   </style>
@@ -676,18 +678,8 @@ def _studio_html() -> str:
               <input id="nodeCreateHandlerInput" type="text" placeholder="review_handler" />
             </div>
           </div>
-          <div class="inline-row">
-            <div class="field">
-              <label for="nodeCreateXInput">x (optional)</label>
-              <input id="nodeCreateXInput" type="text" placeholder="560" />
-            </div>
-            <div class="field">
-              <label for="nodeCreateYInput">y (optional)</label>
-              <input id="nodeCreateYInput" type="text" placeholder="180" />
-            </div>
-          </div>
           <button id="addNodeBtn" class="secondary">Add Node</button>
-          <div class="hint">追加後にキャンバス上でドラッグして配置を調整できます。</div>
+          <div class="hint">位置は自動配置されます。追加後にキャンバス上でドラッグして調整できます。</div>
         </div>
         <div class="split">
           <h2>Edge Form</h2>
@@ -710,6 +702,13 @@ def _studio_html() -> str:
       <article class="panel stack">
         <div>
           <h2>Graph Canvas</h2>
+          <div class="guide">
+            <strong>Quick Guide</strong>
+            1) Add Node で追加<br />
+            2) ノードの Connect をドラッグして接続追加<br />
+            3) Edge を選んで Start Rewire Mode 後に Connect をドラッグして再接続<br />
+            4) Preview Diff を確認して Save
+          </div>
           <div id="connectionModeLabel" class="mode">connection mode: idle</div>
           <div id="graphCanvas" class="graph-canvas">
             <svg id="graphEdgeLayer" class="graph-edge-layer"></svg>
@@ -778,8 +777,6 @@ def _studio_html() -> str:
     const nodeModelJsonInput = document.getElementById("nodeModelJsonInput");
     const nodeCreateIdInput = document.getElementById("nodeCreateIdInput");
     const nodeCreateHandlerInput = document.getElementById("nodeCreateHandlerInput");
-    const nodeCreateXInput = document.getElementById("nodeCreateXInput");
-    const nodeCreateYInput = document.getElementById("nodeCreateYInput");
     const edgeConditionInput = document.getElementById("edgeConditionInput");
     const promptRefOptions = document.getElementById("promptRefOptions");
     const modelRefOptions = document.getElementById("modelRefOptions");
@@ -821,16 +818,6 @@ def _studio_html() -> str:
       }
     }
 
-    function parseOptionalNumber(raw, label) {
-      const value = String(raw || "").trim();
-      if (!value) return null;
-      const parsed = Number(value);
-      if (!Number.isFinite(parsed)) {
-        throw new Error(`${label} must be a valid number`);
-      }
-      return parsed;
-    }
-
     function deepClone(value) {
       return JSON.parse(JSON.stringify(value));
     }
@@ -839,10 +826,30 @@ def _studio_html() -> str:
       return Math.min(max, Math.max(min, value));
     }
 
+    function canvasMetrics() {
+      const rect = graphCanvas.getBoundingClientRect();
+      const width = Math.max(320, Math.floor(rect.width || graphCanvas.clientWidth || 320));
+      const height = Math.max(360, Math.floor(rect.height || graphCanvas.clientHeight || 360));
+      return { width, height };
+    }
+
     function defaultNodePosition(index) {
-      const col = index % 4;
-      const row = Math.floor(index / 4);
-      return { x: 32 + col * 180, y: 28 + row * 120 };
+      const { width } = canvasMetrics();
+      const nodeWidth = 140;
+      const paddingX = 16;
+      const gapX = 24;
+      const gapY = 96;
+      const usableWidth = Math.max(nodeWidth, width - paddingX * 2);
+      const columns = Math.max(
+        1,
+        Math.floor((usableWidth + gapX) / (nodeWidth + gapX)),
+      );
+      const col = index % columns;
+      const row = Math.floor(index / columns);
+      return {
+        x: paddingX + col * (nodeWidth + gapX),
+        y: 24 + row * gapY,
+      };
     }
 
     function ensurePositionsContainer() {
@@ -1138,6 +1145,29 @@ def _studio_html() -> str:
       return text ? text : null;
     }
 
+    function suggestNodeCreatePosition() {
+      const selectedNodeId = nodeSelect.value;
+      if (selectedNodeId) {
+        const selectedIndex = state.formNodes.findIndex(node => node.id === selectedNodeId);
+        if (selectedIndex >= 0) {
+          const base = getNodePosition(selectedNodeId);
+          const { width, height } = canvasMetrics();
+          const maxX = Math.max(10, width - 150);
+          const maxY = Math.max(10, height - 72);
+          return {
+            x: clamp(base.x + 170, 10, maxX),
+            y: clamp(base.y, 10, maxY),
+          };
+        }
+      }
+      const fallback = defaultNodePosition(state.formNodes.length);
+      const { width, height } = canvasMetrics();
+      return {
+        x: clamp(fallback.x, 10, Math.max(10, width - 150)),
+        y: clamp(fallback.y, 10, Math.max(10, height - 72)),
+      };
+    }
+
     function applyNodeCreateToWorkflow(create) {
       ensureWorkflowArrays();
       const knownNodeIds = collectKnownNodeIds();
@@ -1369,15 +1399,10 @@ def _studio_html() -> str:
       const handler = nodeCreateHandlerInput.value.trim();
       if (!nodeId) throw new Error("node id is required");
       if (!handler) throw new Error("handler is required");
-      const x = parseOptionalNumber(nodeCreateXInput.value, "x");
-      const y = parseOptionalNumber(nodeCreateYInput.value, "y");
-      if ((x === null) !== (y === null)) {
-        throw new Error("x and y must be set together");
-      }
       return {
         node_id: nodeId,
         handler,
-        position: x === null || y === null ? null : { x, y },
+        position: suggestNodeCreatePosition(),
       };
     }
 
@@ -1417,15 +1442,15 @@ def _studio_html() -> str:
         applyNodeCreateToWorkflow(create);
         rebuildFormStateFromWorkflow();
         renderNodeOptions();
+        nodeSelect.value = create.node_id;
+        renderNodeForm(create.node_id);
         renderEdgeOptions();
         renderEditors();
         renderPending();
         renderGraph();
         nodeCreateIdInput.value = "";
         nodeCreateHandlerInput.value = "";
-        nodeCreateXInput.value = "";
-        nodeCreateYInput.value = "";
-        setStatus(`node created: ${create.node_id}`);
+        setStatus(`node created: ${create.node_id} (auto placed)`);
       } catch (err) {
         setStatus(errorMessage(err), true);
       }

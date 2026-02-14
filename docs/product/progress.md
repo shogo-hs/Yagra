@@ -79,12 +79,12 @@
 | G05-I04 | 編集保存時の差分確認とロールバック方針を整備する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` |
 | G05-I05 | prompt/model/条件をフォーム編集できるようにする | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` |
 | G05-I06 | DnD でノード追加とエッジ接続変更を行い round-trip 整合を維持する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` |
-| G05-I07 | 主要操作の情報設計と導線を見直し、初見でも操作順が分かる UI にする | Todo | `docs/product/milestones.md` (M-10) |
+| G05-I07 | 主要操作の情報設計と導線を見直し、初見でも操作順が分かる UI にする | In Progress | `src/yagra/adapters/inbound/workflow_studio_server.py` |
 | G05-I08 | レイアウト/配色/ラベル体系を改善し、可読性と視認性を向上する | Todo | `docs/product/milestones.md` (M-11) |
 
 - 完了済み: G05-I01, G05-I02, G05-I03, G05-I04, G05-I05, G05-I06
 - 未完了: G05-I07, G05-I08
-- 現在地: M-05〜M-09 で機能到達（可視化・フォーム編集・DnD 編集）は完了。次は M-10/M-11 で操作理解性と視覚品質を改善するフェーズ。
+- 現在地: M-05〜M-09 で機能到達（可視化・フォーム編集・DnD 編集）は完了。M-10 の第1段として Add Node の自動配置と Quick Guide 表示を反映し、操作導線の明確化を開始。
 
 ## 補足（2026-02-14）
 
