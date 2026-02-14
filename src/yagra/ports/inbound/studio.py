@@ -49,7 +49,15 @@ class StudioPort(ABC):
 
     @abstractmethod
     def get_studio_files(self) -> dict[str, Any]:
-        """ワークスペース配下の workflow 候補一覧を返す。"""
+        """ワークスペース配下の workflow / YAML 候補一覧を返す。"""
+
+    @abstractmethod
+    def read_studio_yaml_file(self, body: dict[str, Any]) -> dict[str, Any]:
+        """ワークスペース配下の YAML ファイル内容を返す。"""
+
+    @abstractmethod
+    def save_studio_yaml_file(self, body: dict[str, Any]) -> dict[str, Any]:
+        """ワークスペース配下の YAML ファイルを作成・更新する。"""
 
     @abstractmethod
     def open_studio_target(self, body: dict[str, Any]) -> dict[str, Any]:

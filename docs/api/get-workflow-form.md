@@ -46,13 +46,12 @@ curl -X GET 'http://127.0.0.1:8787/api/workflow/form'
 | field | type | nullable | 説明 |
 | --- | --- | --- | --- |
 | revision | string | No | 現在リビジョン |
-| nodes | object[] | No | ノード編集項目（`id`,`handler`,`prompt_ref`,`model_ref`,`prompt`,`model`） |
+| nodes | object[] | No | ノード編集項目（`id`,`handler`,`prompt_ref`,`prompt`,`model`） |
 | edges | object[] | No | エッジ編集項目（`index`,`source`,`target`,`condition`） |
 | prompt_catalog_keys | string[] | No | prompt catalog候補キー |
-| model_catalog_keys | string[] | No | model catalog候補キー |
 | workflow | object | No | workflow 生データ |
 | ui_state | object | No | ui_state 生データ |
-| catalog_preview | object | No | `prompt_catalog_path`,`model_catalog_path`,`...keys`,`issues[]` |
+| catalog_preview | object | No | `prompt_catalog_path`,`prompt_catalog_keys`,`issues[]` |
 | validation_report | object | No | `is_valid`,`issues[]` |
 
 ### 3.3 成功レスポンス例
@@ -65,21 +64,17 @@ curl -X GET 'http://127.0.0.1:8787/api/workflow/form'
       "id": "planner",
       "handler": "planner_handler",
       "prompt_ref": "planning.special",
-      "model_ref": "default",
       "prompt": null,
-      "model": {"temperature": 0.2}
+      "model": {"provider": "openai", "name": "gpt-4.1-mini", "temperature": 0.2}
     }
   ],
   "edges": [],
   "prompt_catalog_keys": ["planning", "planning.special"],
-  "model_catalog_keys": ["default"],
   "workflow": {},
   "ui_state": {},
   "catalog_preview": {
     "prompt_catalog_path": "/tmp/prompts.yaml",
-    "model_catalog_path": "/tmp/models.yaml",
     "prompt_catalog_keys": ["planning.special"],
-    "model_catalog_keys": ["default"],
     "issues": []
   },
   "validation_report": {"is_valid": true, "issues": []}
@@ -96,6 +91,7 @@ curl -X GET 'http://127.0.0.1:8787/api/workflow/form'
 ## 5. 備考
 
 - UIでは通常このAPIをロード起点として利用する。
+- `model_ref` は廃止。モデル設定は `nodes[].params.model` のインライン定義を使用する。
 
 ## 6. 実装同期メモ
 

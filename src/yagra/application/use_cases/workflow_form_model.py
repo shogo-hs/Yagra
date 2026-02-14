@@ -21,7 +21,6 @@ class WorkflowNodeFormItem:
     id: str
     handler: str
     prompt_ref: str | None
-    model_ref: str | None
     prompt: dict[str, Any] | None
     model: dict[str, Any] | None
 
@@ -44,7 +43,6 @@ class WorkflowFormView:
     nodes: tuple[WorkflowNodeFormItem, ...]
     edges: tuple[WorkflowEdgeFormItem, ...]
     prompt_catalog_keys: tuple[str, ...]
-    model_catalog_keys: tuple[str, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -61,9 +59,7 @@ class WorkflowCatalogPreview:
     """workflow.params の catalog 設定プレビューを表す。"""
 
     prompt_catalog_path: str | None
-    model_catalog_path: str | None
     prompt_catalog_keys: tuple[str, ...]
-    model_catalog_keys: tuple[str, ...]
     issues: tuple[WorkflowCatalogIssue, ...]
 
 
@@ -120,7 +116,6 @@ def build_workflow_form_view(
                 id=node_id,
                 handler=handler,
                 prompt_ref=_as_optional_string(params_mapping.get("prompt_ref")),
-                model_ref=_as_optional_string(params_mapping.get("model_ref")),
                 prompt=_as_optional_mapping(params_mapping.get("prompt")),
                 model=_as_optional_mapping(params_mapping.get("model")),
             )
@@ -160,7 +155,6 @@ def build_workflow_form_view(
         nodes=tuple(nodes),
         edges=tuple(edges),
         prompt_catalog_keys=catalog_preview.prompt_catalog_keys,
-        model_catalog_keys=catalog_preview.model_catalog_keys,
     )
 
 
@@ -188,9 +182,7 @@ def build_workflow_catalog_preview(
     if not isinstance(params_raw, Mapping):
         return WorkflowCatalogPreview(
             prompt_catalog_path=None,
-            model_catalog_path=None,
             prompt_catalog_keys=(),
-            model_catalog_keys=(),
             issues=(
                 WorkflowCatalogIssue(
                     code="invalid_workflow_params",
@@ -207,18 +199,10 @@ def build_workflow_catalog_preview(
         params=params,
         catalog_name="prompt_catalog",
     )
-    model_catalog_path, model_catalog_keys, model_issues = _resolve_catalog_setting(
-        workflow_abspath=workflow_abspath,
-        bundle_root=bundle_root_path,
-        params=params,
-        catalog_name="model_catalog",
-    )
     return WorkflowCatalogPreview(
         prompt_catalog_path=prompt_catalog_path,
-        model_catalog_path=model_catalog_path,
         prompt_catalog_keys=prompt_catalog_keys,
-        model_catalog_keys=model_catalog_keys,
-        issues=tuple(prompt_issues + model_issues),
+        issues=tuple(prompt_issues),
     )
 
 

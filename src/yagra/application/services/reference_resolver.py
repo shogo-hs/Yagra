@@ -1,4 +1,4 @@
-"""workflow から prompt/model 参照を解決する。"""
+"""workflow の `prompt_ref` 参照を解決する。"""
 
 from __future__ import annotations
 
@@ -31,7 +31,7 @@ def resolve_workflow_references(
     workflow_path: Path,
     bundle_root: Path | None = None,
 ) -> dict[str, Any]:
-    """Workflow の `prompt_ref` / `model_ref` を解決する。
+    """Workflow の `prompt_ref` を解決する。
 
     Args:
         payload: `workflow.yaml` を辞書化したデータ。
@@ -55,10 +55,6 @@ def resolve_workflow_references(
     prompt_catalog = _as_optional_string(
         params.get("prompt_catalog"),
         location=("params", "prompt_catalog"),
-    )
-    model_catalog = _as_optional_string(
-        params.get("model_catalog"),
-        location=("params", "model_catalog"),
     )
 
     nodes = resolved.get("nodes")
@@ -112,34 +108,10 @@ def resolve_workflow_references(
                     override=prompt_override,
                 )
 
-        model_ref = _as_optional_string(
-            node_params.get("model_ref"),
-            location=("nodes", index, "params", "model_ref"),
-        )
-        if model_ref is not None:
-            resolved_model = _resolve_reference(
-                reference=model_ref,
-                default_catalog=model_catalog,
-                workflow_path=workflow_path,
-                bundle_root=bundle_root,
-                ref_label="model_ref",
+        if "model_ref" in node_params:
+            raise WorkflowReferenceError(
+                "model_ref is no longer supported; define params.model inline",
                 location=("nodes", index, "params", "model_ref"),
-            )
-            model_override = _as_optional_mapping(
-                node_params.get("model"),
-                location=("nodes", index, "params", "model"),
-            )
-            if model_override is None:
-                node_params["model"] = resolved_model
-                continue
-            if not isinstance(resolved_model, Mapping):
-                raise WorkflowReferenceError(
-                    "model_ref must resolve to a mapping when model override is provided",
-                    location=("nodes", index, "params", "model_ref"),
-                )
-            node_params["model"] = _merge_mapping(
-                base=deepcopy(dict(resolved_model)),
-                override=model_override,
             )
 
     return resolved

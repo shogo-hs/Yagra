@@ -153,6 +153,12 @@ def _build_handler_class(
             if path == "/api/studio/create":
                 self._handle_create_studio_target(body)
                 return
+            if path == "/api/studio/file/read":
+                self._handle_read_studio_yaml_file(body)
+                return
+            if path == "/api/studio/file/save":
+                self._handle_save_studio_yaml_file(body)
+                return
 
             self._write_json(404, {"error": "not_found"})
 
@@ -177,6 +183,18 @@ def _build_handler_class(
         def _handle_create_studio_target(self, body: dict[str, Any]) -> None:
             """新規 workflow を作成して Studio 編集対象として開く。"""
             payload = self._execute_studio_call(lambda: self._studio.create_studio_target(body))
+            if payload is not None:
+                self._write_json(200, payload)
+
+        def _handle_read_studio_yaml_file(self, body: dict[str, Any]) -> None:
+            """ワークスペース配下の YAML ファイル内容を返す。"""
+            payload = self._execute_studio_call(lambda: self._studio.read_studio_yaml_file(body))
+            if payload is not None:
+                self._write_json(200, payload)
+
+        def _handle_save_studio_yaml_file(self, body: dict[str, Any]) -> None:
+            """ワークスペース配下の YAML ファイルを作成・更新する。"""
+            payload = self._execute_studio_call(lambda: self._studio.save_studio_yaml_file(body))
             if payload is not None:
                 self._write_json(200, payload)
 
@@ -763,20 +781,11 @@ def _studio_html() -> str:
                 placeholder="./prompts/support_prompts.yaml"
               />
             </div>
-            <div class="field">
-              <label for="modelCatalogInput">model_catalog</label>
-              <input
-                id="modelCatalogInput"
-                v-model.trim="workflowMeta.modelCatalog"
-                type="text"
-                placeholder="./models/openai_models.yaml"
-              />
-            </div>
             <div class="toolbar">
               <button type="button" class="secondary" @click="previewCatalogs">Reload Catalog Keys</button>
             </div>
             <div class="hint">
-              prompt keys: {{ promptCatalogKeys.length }} / model keys: {{ modelCatalogKeys.length }}
+              prompt keys: {{ promptCatalogKeys.length }}
             </div>
             <div v-if="catalogPreviewIssues.length > 0" class="hint danger">
               {{ catalogPreviewIssues.join(" / ") }}
@@ -852,16 +861,6 @@ def _studio_html() -> str:
                     placeholder="planner"
                   />
                 </div>
-                <div class="field">
-                  <label for="nodeModelRefInput">model_ref</label>
-                  <input
-                    id="nodeModelRefInput"
-                    v-model="nodeEditor.modelRef"
-                    type="text"
-                    list="modelRefOptions"
-                    placeholder="default"
-                  />
-                </div>
               </div>
               <div class="field">
                 <label for="nodePromptSystemInput">system prompt</label>
@@ -922,8 +921,60 @@ def _studio_html() -> str:
                 </div>
               </div>
               <button type="button" class="secondary" @click="applyNodeEdit">Apply Node Edit</button>
-              <div class="hint">node id は空文字/重複不可です。system/user prompt と model settings の空欄は該当キー削除として扱います。model_ref 利用時は model settings が上書き設定として扱われます。</div>
+              <div class="hint">node id は空文字/重複不可です。system/user prompt と model settings の空欄は該当キー削除として扱います。</div>
             </template>
+          </section>
+
+          <section class="side-section">
+            <h2>Prompt File</h2>
+            <div class="field">
+              <label for="promptFileSelect">yaml file</label>
+              <select id="promptFileSelect" v-model="promptFile.path">
+                <option value="">(select yaml)</option>
+                <option v-for="path in yamlFiles" :key="'yaml-' + path" :value="path">
+                  {{ path }}
+                </option>
+              </select>
+            </div>
+            <div class="toolbar">
+              <button type="button" class="secondary" @click="loadPromptFile">Load File</button>
+              <button type="button" class="secondary" @click="usePromptFileInPromptRef">Use In prompt_ref</button>
+            </div>
+            <div class="field">
+              <label for="promptFileKeySelect">key path</label>
+              <select id="promptFileKeySelect" v-model="promptFile.keyPath">
+                <option value="">(select key)</option>
+                <option v-for="key in promptFile.keyPaths" :key="'key-' + key" :value="key">
+                  {{ key }}
+                </option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="promptFileCreatePathInput">save path</label>
+              <input
+                id="promptFileCreatePathInput"
+                v-model.trim="promptFile.createPath"
+                type="text"
+                placeholder="prompts/new_task.yaml"
+              />
+            </div>
+            <label class="check-item">
+              <input v-model="promptFile.overwrite" type="checkbox" />
+              <span>既存 YAML を上書きする</span>
+            </label>
+            <div class="field">
+              <label for="promptFileContentInput">yaml content</label>
+              <textarea
+                id="promptFileContentInput"
+                v-model="promptFile.content"
+                placeholder="task_name:\n  system: You are ...\n  user: {{input}}"
+              ></textarea>
+            </div>
+            <div class="toolbar">
+              <button type="button" class="secondary" @click="savePromptFile">Save File</button>
+            </div>
+            <div v-if="promptFile.parseError" class="hint danger">{{ promptFile.parseError }}</div>
+            <div class="hint">`prompt_ref` は `<path>#<key>` 形式で設定します。</div>
           </section>
 
           <section class="side-section">
@@ -946,9 +997,6 @@ def _studio_html() -> str:
 
           <datalist id="promptRefOptions">
             <option v-for="key in promptCatalogKeys" :key="'prompt-' + key" :value="key"></option>
-          </datalist>
-          <datalist id="modelRefOptions">
-            <option v-for="key in modelCatalogKeys" :key="'model-' + key" :value="key"></option>
           </datalist>
         </aside>
       </section>
@@ -1667,7 +1715,7 @@ def _studio_html() -> str:
         });
 
         const promptCatalogKeys = ref([]);
-        const modelCatalogKeys = ref([]);
+        const yamlFiles = ref([]);
         const catalogPreviewIssues = ref([]);
         const nodes = ref([]);
         const edges = ref([]);
@@ -1678,7 +1726,15 @@ def _studio_html() -> str:
           startAt: "",
           endAt: [],
           promptCatalog: "",
-          modelCatalog: "",
+        });
+        const promptFile = reactive({
+          path: "",
+          createPath: "",
+          content: "",
+          keyPath: "",
+          keyPaths: [],
+          parseError: "",
+          overwrite: true,
         });
 
         const selectedNodeId = ref(null);
@@ -1693,7 +1749,6 @@ def _studio_html() -> str:
           id: "",
           handler: "",
           promptRef: "",
-          modelRef: "",
           promptSystem: "",
           promptUser: "",
           modelProvider: "",
@@ -1752,7 +1807,6 @@ def _studio_html() -> str:
               nodeEditor.id = "";
               nodeEditor.handler = "";
               nodeEditor.promptRef = "";
-              nodeEditor.modelRef = "";
               nodeEditor.promptSystem = "";
               nodeEditor.promptUser = "";
               nodeEditor.modelProvider = "";
@@ -1779,7 +1833,6 @@ def _studio_html() -> str:
             nodeEditor.id = normalizeText(node.id);
             nodeEditor.handler = normalizeText(data.handler);
             nodeEditor.promptRef = normalizeText(data.promptRef);
-            nodeEditor.modelRef = normalizeText(data.modelRef);
             nodeEditor.promptSystem = typeof prompt?.system === "string"
               ? prompt.system
               : "";
@@ -1860,7 +1913,7 @@ def _studio_html() -> str:
           revision.value = null;
           backupId.value = "";
           promptCatalogKeys.value = [];
-          modelCatalogKeys.value = [];
+          yamlFiles.value = [];
           catalogPreviewIssues.value = [];
           nodes.value = [];
           edges.value = [];
@@ -1870,7 +1923,13 @@ def _studio_html() -> str:
           workflowMeta.startAt = "";
           workflowMeta.endAt = [];
           workflowMeta.promptCatalog = "";
-          workflowMeta.modelCatalog = "";
+          promptFile.path = "";
+          promptFile.createPath = "";
+          promptFile.content = "";
+          promptFile.keyPath = "";
+          promptFile.keyPaths = [];
+          promptFile.parseError = "";
+          promptFile.overwrite = true;
           selectedNodeId.value = null;
           selectedEdgeId.value = null;
           validationText.value = "-";
@@ -2032,11 +2091,6 @@ def _studio_html() -> str:
                     : typeof params.prompt_ref === "string"
                       ? params.prompt_ref
                       : "",
-                  modelRef: typeof formItem?.model_ref === "string"
-                    ? formItem.model_ref
-                    : typeof params.model_ref === "string"
-                      ? params.model_ref
-                      : "",
                   prompt: promptObj,
                   model: modelObj,
                   isStart: startIds.has(node.id),
@@ -2115,16 +2169,11 @@ def _studio_html() -> str:
             rawNode.handler = normalizeText(data.handler);
             const params = isRecord(rawNode.params) ? deepClone(rawNode.params) : {};
             delete params.prompt_ref;
-            delete params.model_ref;
             delete params.prompt;
             delete params.model;
             const promptRef = normalizeText(data.promptRef);
-            const modelRef = normalizeText(data.modelRef);
             if (promptRef) {
               params.prompt_ref = promptRef;
-            }
-            if (modelRef) {
-              params.model_ref = modelRef;
             }
             if (isRecord(data.prompt)) {
               params.prompt = deepClone(data.prompt);
@@ -2160,17 +2209,12 @@ def _studio_html() -> str:
             : {};
           const rootParams = isRecord(payload.params) ? deepClone(payload.params) : {};
           const promptCatalog = normalizeText(workflowMeta.promptCatalog);
-          const modelCatalog = normalizeText(workflowMeta.modelCatalog);
           if (promptCatalog) {
             rootParams.prompt_catalog = promptCatalog;
           } else {
             delete rootParams.prompt_catalog;
           }
-          if (modelCatalog) {
-            rootParams.model_catalog = modelCatalog;
-          } else {
-            delete rootParams.model_catalog;
-          }
+          delete rootParams.model_catalog;
           payload.version = normalizedMeta.version;
           payload.start_at = normalizedMeta.startAt;
           payload.end_at = normalizedMeta.endAt;
@@ -2310,7 +2354,6 @@ def _studio_html() -> str:
                   id: nextNodeId,
                   handler: normalizeText(nodeEditor.handler),
                   promptRef: normalizeText(nodeEditor.promptRef),
-                  modelRef: normalizeText(nodeEditor.modelRef),
                   prompt: finalPrompt,
                   model: finalModel,
                 },
@@ -2410,7 +2453,6 @@ def _studio_html() -> str:
                 id: nodeId,
                 handler,
                 promptRef: "",
-                modelRef: "",
                 prompt: null,
                 model: null,
                 isStart: false,
@@ -2571,15 +2613,105 @@ def _studio_html() -> str:
           workflowCandidates.value = Array.isArray(data.workflows)
             ? data.workflows.filter(item => typeof item === "string")
             : [];
+          yamlFiles.value = Array.isArray(data.yaml_files)
+            ? data.yaml_files.filter(item => typeof item === "string")
+            : [];
           const selected = normalizeText(launcher.openWorkflowPath);
           if (!selected || !workflowCandidates.value.includes(selected)) {
             launcher.openWorkflowPath = workflowCandidates.value[0] || "";
+          }
+          const currentYamlPath = normalizeText(promptFile.path);
+          if (!currentYamlPath || !yamlFiles.value.includes(currentYamlPath)) {
+            promptFile.path = yamlFiles.value[0] || "";
+          }
+          if (!normalizeText(promptFile.createPath) && normalizeText(promptFile.path)) {
+            promptFile.createPath = normalizeText(promptFile.path);
           }
           const workspaceRoot = normalizeText(data.workspace_root);
           if (workspaceRoot) {
             studioWorkspaceRoot.value = workspaceRoot;
           }
           return true;
+        }
+
+        async function loadPromptFile() {
+          const path = normalizeText(promptFile.path);
+          if (!path) {
+            setStatus("yaml file path is required", true);
+            return;
+          }
+          setStatus(`loading yaml: ${path} ...`);
+          const { response, data } = await requestJson("/api/studio/file/read", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ path }),
+          });
+          if (!response.ok) {
+            setStatus(data.message || data.error || "yaml load failed", true);
+            return;
+          }
+          promptFile.path = normalizeText(data.path) || path;
+          promptFile.createPath = normalizeText(data.path) || path;
+          promptFile.content = typeof data.content === "string" ? data.content : "";
+          promptFile.keyPaths = Array.isArray(data.key_paths)
+            ? data.key_paths.filter(item => typeof item === "string")
+            : [];
+          const selectedKey = normalizeText(promptFile.keyPath);
+          if (!selectedKey || !promptFile.keyPaths.includes(selectedKey)) {
+            promptFile.keyPath = promptFile.keyPaths[0] || "";
+          }
+          promptFile.parseError = normalizeText(data.parse_error);
+          setStatus(`yaml loaded: ${promptFile.path}`);
+        }
+
+        async function savePromptFile() {
+          const path = normalizeText(promptFile.createPath) || normalizeText(promptFile.path);
+          if (!path) {
+            setStatus("save path is required", true);
+            return;
+          }
+          if (typeof promptFile.content !== "string" || !normalizeText(promptFile.content)) {
+            setStatus("yaml content is required", true);
+            return;
+          }
+          setStatus(`saving yaml: ${path} ...`);
+          const { response, data } = await requestJson("/api/studio/file/save", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              path,
+              content: promptFile.content,
+              overwrite: Boolean(promptFile.overwrite),
+            }),
+          });
+          if (!response.ok) {
+            setStatus(data.message || data.error || "yaml save failed", true);
+            return;
+          }
+          promptFile.path = normalizeText(data.path) || path;
+          promptFile.createPath = normalizeText(data.path) || path;
+          await loadStudioFiles();
+          await loadPromptFile();
+          setStatus(`yaml saved: ${promptFile.path}`);
+        }
+
+        function usePromptFileInPromptRef() {
+          if (!selectedNode.value) {
+            setStatus("node is not selected", true);
+            return;
+          }
+          const path = normalizeText(promptFile.path);
+          const keyPath = normalizeText(promptFile.keyPath);
+          if (!path) {
+            setStatus("yaml file path is required", true);
+            return;
+          }
+          if (!keyPath) {
+            setStatus("yaml key path is required", true);
+            return;
+          }
+          nodeEditor.promptRef = `${path}#${keyPath}`;
+          setStatus(`prompt_ref set: ${nodeEditor.promptRef}`);
         }
 
         async function refreshStudioFiles() {
@@ -2678,7 +2810,6 @@ def _studio_html() -> str:
           }
 
           promptCatalogKeys.value = Array.isArray(data.prompt_catalog_keys) ? data.prompt_catalog_keys : [];
-          modelCatalogKeys.value = Array.isArray(data.model_catalog_keys) ? data.model_catalog_keys : [];
           catalogPreviewIssues.value = normalizeCatalogIssues(data.issues);
           if (catalogPreviewIssues.value.length > 0) {
             setStatus("catalog issues found", true);
@@ -2709,16 +2840,11 @@ def _studio_html() -> str:
           const catalogPreview = isRecord(data.catalog_preview) ? data.catalog_preview : {};
           revision.value = typeof data.revision === "string" ? data.revision : null;
           promptCatalogKeys.value = Array.isArray(data.prompt_catalog_keys) ? data.prompt_catalog_keys : [];
-          modelCatalogKeys.value = Array.isArray(data.model_catalog_keys) ? data.model_catalog_keys : [];
           const previewPromptKeys = Array.isArray(catalogPreview.prompt_catalog_keys)
             ? catalogPreview.prompt_catalog_keys
             : [];
-          const previewModelKeys = Array.isArray(catalogPreview.model_catalog_keys)
-            ? catalogPreview.model_catalog_keys
-            : [];
-          if (previewPromptKeys.length > 0 || previewModelKeys.length > 0) {
+          if (previewPromptKeys.length > 0) {
             promptCatalogKeys.value = previewPromptKeys;
-            modelCatalogKeys.value = previewModelKeys;
           }
           catalogPreviewIssues.value = normalizeCatalogIssues(catalogPreview.issues);
           originalWorkflow.value = isRecord(data.workflow) ? deepClone(data.workflow) : {};
@@ -2729,7 +2855,6 @@ def _studio_html() -> str:
           workflowMeta.startAt = resolveWorkflowStartAt(data.workflow?.start_at);
           workflowMeta.endAt = normalizeNodeIdList(data.workflow?.end_at);
           workflowMeta.promptCatalog = normalizeText(data.workflow?.params?.prompt_catalog);
-          workflowMeta.modelCatalog = normalizeText(data.workflow?.params?.model_catalog);
           onWorkflowMetaChange();
           edges.value = buildEdgesFromPayload(data.workflow, data.ui_state, data.edges, nodes.value);
           refreshEdgeMetadata();
@@ -2898,9 +3023,10 @@ def _studio_html() -> str:
           workflowCandidates,
           launcher,
           promptCatalogKeys,
-          modelCatalogKeys,
+          yamlFiles,
           catalogPreviewIssues,
           workflowMeta,
+          promptFile,
           nodeIdOptions,
           nodes,
           edges,
@@ -2919,6 +3045,9 @@ def _studio_html() -> str:
           openStudioTarget,
           createStudioTarget,
           previewCatalogs,
+          loadPromptFile,
+          savePromptFile,
+          usePromptFileInPromptRef,
           previewDiff,
           saveWorkflow,
           rollbackWorkflow,

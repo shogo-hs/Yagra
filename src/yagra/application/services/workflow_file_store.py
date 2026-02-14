@@ -113,6 +113,15 @@ class WorkflowFileStore:
         text = json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
         self._atomic_write_text(Path(ui_state_path).expanduser().resolve(), text)
 
+    def write_text_atomic(self, path: str | PathLike[str], text: str) -> None:
+        """任意テキストを atomic write で保存する。
+
+        Args:
+            path: 保存対象パス。
+            text: 保存する文字列。
+        """
+        self._atomic_write_text(Path(path).expanduser().resolve(), text)
+
     def create_backup(
         self,
         workflow_path: str | PathLike[str],

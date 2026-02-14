@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, TypedDict
 
+import pytest
 import yaml
 
 from yagra import Yagra
@@ -132,8 +133,8 @@ def test_graphyml_from_workflow_accepts_registry_mapping_and_state_schema() -> N
     assert result["planner_model"] == "gpt-4.1-mini"
 
 
-def test_graphyml_from_workflow_merges_model_ref_with_inline_overrides(tmp_path: Path) -> None:
-    workflow_path = tmp_path / "model-override.yaml"
+def test_graphyml_from_workflow_rejects_model_ref(tmp_path: Path) -> None:
+    workflow_path = tmp_path / "model-ref-unsupported.yaml"
     workflow_path.write_text(
         yaml.safe_dump(
             {
@@ -147,12 +148,12 @@ def test_graphyml_from_workflow_merges_model_ref_with_inline_overrides(tmp_path:
                         "handler": "apply_model_handler",
                         "params": {
                             "model_ref": "default",
-                            "model": {"temperature": 0.55},
+                            "model": {"provider": "openai", "name": "gpt-4.1-mini"},
                         },
                     },
                 ],
                 "edges": [{"source": "start", "target": "apply_model"}],
-                "params": {"model_catalog": "models/openai_models.yaml"},
+                "params": {},
             },
             sort_keys=False,
             allow_unicode=True,
@@ -167,28 +168,20 @@ def test_graphyml_from_workflow_merges_model_ref_with_inline_overrides(tmp_path:
     def _apply_model_handler(state: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
         _ = state
         model = params.get("model", {})
-        kwargs = model.get("kwargs", {}) if isinstance(model, dict) else {}
         return {
             "provider": model.get("provider") if isinstance(model, dict) else None,
             "name": model.get("name") if isinstance(model, dict) else None,
-            "temperature": model.get("temperature") if isinstance(model, dict) else None,
-            "kwargs_temperature": kwargs.get("temperature") if isinstance(kwargs, dict) else None,
         }
 
-    engine = Yagra.from_workflow(
-        workflow_path=workflow_path,
-        registry={
-            "start_handler": _start_handler,
-            "apply_model_handler": _apply_model_handler,
-        },
-        bundle_root=FIXTURES_ROOT,
-    )
-
-    result = engine.invoke({})
-    assert result["provider"] == "openai"
-    assert result["name"] == "gpt-4.1-mini"
-    assert result["temperature"] == 0.55
-    assert result["kwargs_temperature"] == 0.1
+    with pytest.raises(ValueError, match="model_ref is no longer supported"):
+        Yagra.from_workflow(
+            workflow_path=workflow_path,
+            registry={
+                "start_handler": _start_handler,
+                "apply_model_handler": _apply_model_handler,
+            },
+            bundle_root=FIXTURES_ROOT,
+        )
 
 
 def test_graphyml_from_workflow_normalizes_runtime_params_and_hides_ref_keys(
@@ -209,15 +202,18 @@ def test_graphyml_from_workflow_normalizes_runtime_params_and_hides_ref_keys(
                         "params": {
                             "prompt_ref": "planner",
                             "prompt": {"system": "Override planner system prompt."},
-                            "model_ref": "default",
-                            "model": {"temperature": 0.42},
+                            "model": {
+                                "provider": "openai",
+                                "name": "gpt-4.1-mini",
+                                "temperature": 0.42,
+                                "kwargs": {"temperature": 0.1},
+                            },
                         },
                     },
                 ],
                 "edges": [{"source": "start", "target": "inspect"}],
                 "params": {
                     "prompt_catalog": "prompts/support_prompts.yaml",
-                    "model_catalog": "models/openai_models.yaml",
                 },
             },
             sort_keys=False,
@@ -242,7 +238,6 @@ def test_graphyml_from_workflow_normalizes_runtime_params_and_hides_ref_keys(
             "model_temperature": model.get("temperature") if isinstance(model, dict) else None,
             "kwargs_temperature": kwargs.get("temperature") if isinstance(kwargs, dict) else None,
             "has_prompt_ref": "prompt_ref" in params,
-            "has_model_ref": "model_ref" in params,
         }
 
     engine = Yagra.from_workflow(
@@ -261,4 +256,3 @@ def test_graphyml_from_workflow_normalizes_runtime_params_and_hides_ref_keys(
     assert result["model_temperature"] == 0.42
     assert result["kwargs_temperature"] == 0.1
     assert result["has_prompt_ref"] is False
-    assert result["has_model_ref"] is False

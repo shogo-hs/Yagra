@@ -7,6 +7,8 @@ from pathlib import Path
 from threading import Lock
 from typing import Any
 
+import yaml
+
 from yagra.application.services.workflow_file_store import (
     WorkflowBackupNotFoundError,
     WorkflowFileStore,
@@ -76,6 +78,22 @@ def _resolve_workflow_path_in_workspace(raw_path: str, workspace_root: Path) -> 
     return candidate
 
 
+def _resolve_yaml_path_in_workspace(raw_path: str, workspace_root: Path) -> Path:
+    """ワークスペース内の YAML パスを絶対パスへ解決する。"""
+    text = raw_path.strip()
+    if not text:
+        raise ValueError("path must be a non-empty string")
+    source = Path(text).expanduser()
+    candidate = source.resolve() if source.is_absolute() else (workspace_root / source).resolve()
+    try:
+        candidate.relative_to(workspace_root)
+    except ValueError as exc:
+        raise ValueError("path must be inside workspace_root") from exc
+    if candidate.suffix.lower() not in _WORKFLOW_EXTENSIONS:
+        raise ValueError("path must end with .yaml or .yml")
+    return candidate
+
+
 def _resolve_ui_state_for_target(workflow_path: Path, ui_state_override: Path | None) -> Path:
     """対象 workflow に対応する UI サイドカーパスを返す。"""
     if ui_state_override is not None:
@@ -93,6 +111,30 @@ def _list_workflow_candidates(workspace_root: Path) -> list[str]:
             continue
         candidates.append(path.relative_to(workspace_root).as_posix())
     return candidates
+
+
+def _list_yaml_candidates(workspace_root: Path) -> list[str]:
+    """ワークスペース配下の YAML 候補一覧を返す。"""
+    return _list_workflow_candidates(workspace_root)
+
+
+def _to_workspace_relative_path(path: Path, workspace_root: Path) -> str:
+    """絶対パスを workspace_root 基準の相対パスへ変換する。"""
+    return path.relative_to(workspace_root).as_posix()
+
+
+def _collect_yaml_key_paths(payload: Any, prefix: str = "") -> list[str]:
+    """YAML マッピングから `a.b.c` 形式のキー一覧を返す。"""
+    if not isinstance(payload, dict):
+        return []
+    key_paths: list[str] = []
+    for key, value in payload.items():
+        if not isinstance(key, str) or not key:
+            continue
+        current = f"{prefix}.{key}" if prefix else key
+        key_paths.append(current)
+        key_paths.extend(_collect_yaml_key_paths(value, prefix=current))
+    return key_paths
 
 
 def _build_initial_workflow_payload() -> dict[str, Any]:
@@ -136,13 +178,123 @@ class StudioService(StudioPort):
         }
 
     def get_studio_files(self) -> dict[str, Any]:
-        """ワークスペース配下の workflow 候補一覧を返す。"""
+        """ワークスペース配下の workflow/YAML 候補一覧を返す。"""
         with self._config.lock:
             workspace_root = self._config.workspace_root
             workflows = _list_workflow_candidates(workspace_root)
+            yaml_files = _list_yaml_candidates(workspace_root)
         return {
             "workspace_root": str(workspace_root),
             "workflows": workflows,
+            "yaml_files": yaml_files,
+        }
+
+    def read_studio_yaml_file(self, body: dict[str, Any]) -> dict[str, Any]:
+        """ワークスペース配下の YAML ファイル内容を返す。"""
+        raw_path = body.get("path")
+        if not isinstance(raw_path, str):
+            raise StudioBadRequestError(error="path must be a string")
+
+        with self._config.lock:
+            workspace_root = self._config.workspace_root
+            try:
+                yaml_path = _resolve_yaml_path_in_workspace(
+                    raw_path=raw_path,
+                    workspace_root=workspace_root,
+                )
+            except ValueError as exc:
+                raise StudioBadRequestError(
+                    error="invalid_yaml_path",
+                    message=str(exc),
+                ) from exc
+
+            if not yaml_path.exists() or not yaml_path.is_file():
+                raise StudioNotFoundError(
+                    error="yaml_file_not_found",
+                    message=f"yaml file not found: {yaml_path}",
+                )
+
+            try:
+                content = yaml_path.read_text(encoding="utf-8")
+            except OSError as exc:
+                raise StudioUnprocessableEntityError(
+                    error="yaml_read_failed",
+                    message=f"yaml file read failed: {yaml_path}: {exc}",
+                ) from exc
+
+        parse_error: str | None = None
+        key_paths: list[str] = []
+        try:
+            loaded = yaml.safe_load(content)
+            if isinstance(loaded, dict):
+                key_paths = sorted(set(_collect_yaml_key_paths(loaded)))
+            elif loaded is not None:
+                parse_error = "yaml root must be a mapping to extract prompt keys"
+        except yaml.YAMLError as exc:
+            parse_error = str(exc)
+
+        return {
+            "path": _to_workspace_relative_path(yaml_path, workspace_root),
+            "content": content,
+            "key_paths": key_paths,
+            "parse_error": parse_error,
+        }
+
+    def save_studio_yaml_file(self, body: dict[str, Any]) -> dict[str, Any]:
+        """ワークスペース配下の YAML ファイルを作成・更新する。"""
+        raw_path = body.get("path")
+        content = body.get("content")
+        overwrite = body.get("overwrite", False)
+        if not isinstance(raw_path, str):
+            raise StudioBadRequestError(error="path must be a string")
+        if not isinstance(content, str):
+            raise StudioBadRequestError(error="content must be a string")
+        if not isinstance(overwrite, bool):
+            raise StudioBadRequestError(error="overwrite must be a boolean")
+
+        with self._config.lock:
+            workspace_root = self._config.workspace_root
+            try:
+                yaml_path = _resolve_yaml_path_in_workspace(
+                    raw_path=raw_path,
+                    workspace_root=workspace_root,
+                )
+            except ValueError as exc:
+                raise StudioBadRequestError(
+                    error="invalid_yaml_path",
+                    message=str(exc),
+                ) from exc
+
+            if yaml_path.exists() and not yaml_path.is_file():
+                raise StudioBadRequestError(
+                    error="invalid_yaml_path",
+                    message=f"path is not a file: {yaml_path}",
+                )
+            if yaml_path.exists() and not overwrite:
+                raise StudioConflictError(
+                    error="yaml_file_exists",
+                    message=f"yaml file already exists: {yaml_path}",
+                )
+
+            try:
+                yaml.safe_load(content)
+            except yaml.YAMLError as exc:
+                raise StudioBadRequestError(
+                    error="invalid_yaml_content",
+                    message=str(exc),
+                ) from exc
+
+            store = WorkflowFileStore(backup_root=self._config.backup_dir)
+            try:
+                store.write_text_atomic(path=yaml_path, text=content)
+            except OSError as exc:
+                raise StudioUnprocessableEntityError(
+                    error="yaml_save_failed",
+                    message=f"yaml file save failed: {yaml_path}: {exc}",
+                ) from exc
+
+        return {
+            "path": _to_workspace_relative_path(yaml_path, workspace_root),
         }
 
     def open_studio_target(self, body: dict[str, Any]) -> dict[str, Any]:
@@ -550,7 +702,6 @@ def _form_view_to_dict(view: WorkflowFormView) -> dict[str, Any]:
         "nodes": [_node_form_item_to_dict(node) for node in view.nodes],
         "edges": [_edge_form_item_to_dict(edge) for edge in view.edges],
         "prompt_catalog_keys": list(view.prompt_catalog_keys),
-        "model_catalog_keys": list(view.model_catalog_keys),
     }
 
 
@@ -560,7 +711,6 @@ def _node_form_item_to_dict(item: WorkflowNodeFormItem) -> dict[str, Any]:
         "id": item.id,
         "handler": item.handler,
         "prompt_ref": item.prompt_ref,
-        "model_ref": item.model_ref,
         "prompt": item.prompt,
         "model": item.model,
     }
@@ -601,9 +751,7 @@ def _catalog_preview_to_dict(preview: WorkflowCatalogPreview) -> dict[str, Any]:
     """Catalog プレビュー結果を API 応答形式へ変換する。"""
     return {
         "prompt_catalog_path": preview.prompt_catalog_path,
-        "model_catalog_path": preview.model_catalog_path,
         "prompt_catalog_keys": list(preview.prompt_catalog_keys),
-        "model_catalog_keys": list(preview.model_catalog_keys),
         "issues": [
             {"code": issue.code, "message": issue.message, "location": list(issue.location)}
             for issue in preview.issues

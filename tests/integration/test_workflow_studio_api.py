@@ -138,10 +138,68 @@ def test_workflow_studio_api_launcher_open_and_create(tmp_path: Path) -> None:
         thread.join(timeout=2)
 
 
+def test_workflow_studio_api_supports_prompt_yaml_read_and_save(tmp_path: Path) -> None:
+    workspace_root = tmp_path / "workspace"
+    _write_workflow(workspace_root / "workflows" / "main.yaml", _base_payload())
+
+    server = create_workflow_studio_server(
+        workspace_root=workspace_root,
+        backup_dir=tmp_path / ".yagra-backups",
+        host="127.0.0.1",
+        port=0,
+    )
+    thread = Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    base_url = _server_base_url(server)
+
+    try:
+        status, save_payload = _request_json(
+            "POST",
+            f"{base_url}/api/studio/file/save",
+            {
+                "path": "prompts/new_task.yaml",
+                "content": "intent:\n  system: classify\n  user: '{{input}}'\n",
+                "overwrite": False,
+            },
+        )
+        assert status == 200
+        assert save_payload["path"] == "prompts/new_task.yaml"
+        assert (workspace_root / "prompts" / "new_task.yaml").exists()
+
+        status, read_payload = _request_json(
+            "POST",
+            f"{base_url}/api/studio/file/read",
+            {"path": "prompts/new_task.yaml"},
+        )
+        assert status == 200
+        assert read_payload["path"] == "prompts/new_task.yaml"
+        assert "intent" in read_payload["content"]
+        assert "intent" in read_payload["key_paths"]
+
+        status, files_payload = _request_json("GET", f"{base_url}/api/studio/files")
+        assert status == 200
+        assert "prompts/new_task.yaml" in files_payload["yaml_files"]
+
+        status, conflict_payload = _request_json(
+            "POST",
+            f"{base_url}/api/studio/file/save",
+            {
+                "path": "prompts/new_task.yaml",
+                "content": "intent:\n  system: classify\n",
+                "overwrite": False,
+            },
+        )
+        assert status == 409
+        assert conflict_payload["error"] == "yaml_file_exists"
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+
 def test_workflow_studio_api_catalog_preview_and_catalog_save(tmp_path: Path) -> None:
     workflow_path = _write_workflow(tmp_path / "workflow.yaml", _base_payload())
     prompt_catalog_path = tmp_path / "prompts.yaml"
-    model_catalog_path = tmp_path / "models.yaml"
     prompt_catalog_path.write_text(
         yaml.safe_dump(
             {
@@ -149,19 +207,6 @@ def test_workflow_studio_api_catalog_preview_and_catalog_save(tmp_path: Path) ->
                     "special": {
                         "system": "You are planner.",
                     }
-                }
-            },
-            sort_keys=False,
-            allow_unicode=True,
-        ),
-        encoding="utf-8",
-    )
-    model_catalog_path.write_text(
-        yaml.safe_dump(
-            {
-                "default": {
-                    "provider": "openai",
-                    "name": "gpt-4.1-mini",
                 }
             },
             sort_keys=False,
@@ -188,12 +233,14 @@ def test_workflow_studio_api_catalog_preview_and_catalog_save(tmp_path: Path) ->
         candidate_workflow = deepcopy(form_payload["workflow"])
         candidate_workflow["params"] = {
             "prompt_catalog": str(prompt_catalog_path.resolve()),
-            "model_catalog": str(model_catalog_path.resolve()),
         }
         candidate_workflow["nodes"][1]["params"] = {
             "prompt_ref": "planning.special",
-            "model_ref": "default",
-            "model": {"temperature": 0.35},
+            "model": {
+                "provider": "openai",
+                "name": "gpt-4.1-mini",
+                "temperature": 0.35,
+            },
         }
 
         status, preview_payload = _request_json(
@@ -204,7 +251,6 @@ def test_workflow_studio_api_catalog_preview_and_catalog_save(tmp_path: Path) ->
         assert status == 200
         assert preview_payload["issues"] == []
         assert "planning.special" in preview_payload["prompt_catalog_keys"]
-        assert "default" in preview_payload["model_catalog_keys"]
 
         status, save_payload = _request_json(
             "POST",
@@ -223,10 +269,6 @@ def test_workflow_studio_api_catalog_preview_and_catalog_save(tmp_path: Path) ->
         assert after_form["workflow"]["params"]["prompt_catalog"] == str(
             prompt_catalog_path.resolve()
         )
-        assert after_form["workflow"]["params"]["model_catalog"] == str(
-            model_catalog_path.resolve()
-        )
-        assert after_form["workflow"]["nodes"][1]["params"]["model_ref"] == "default"
         assert after_form["workflow"]["nodes"][1]["params"]["model"]["temperature"] == 0.35
         assert after_form["catalog_preview"]["issues"] == []
     finally:

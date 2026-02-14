@@ -60,9 +60,7 @@ def test_build_workflow_form_view_includes_catalog_keys_and_refs() -> None:
     assert len(view.nodes) == 3
     planner = next(item for item in view.nodes if item.id == "planner")
     assert planner.prompt_ref == "planner"
-    assert planner.model_ref == "default"
     assert "planner" in view.prompt_catalog_keys
-    assert "default" in view.model_catalog_keys
 
     assert len(view.edges) == 3
     retry_edge = next(item for item in view.edges if item.condition == "retry")
@@ -82,11 +80,9 @@ def test_build_workflow_form_view_handles_inline_prompt_and_model(tmp_path: Path
 
     planner = next(item for item in view.nodes if item.id == "planner")
     assert planner.prompt_ref is None
-    assert planner.model_ref is None
     assert planner.prompt == {"system": "You are planner.", "user": "Create a plan."}
     assert planner.model == {"provider": "openai", "name": "gpt-4.1-mini"}
     assert view.prompt_catalog_keys == ()
-    assert view.model_catalog_keys == ()
 
 
 def test_build_workflow_form_view_allows_missing_nodes_and_edges(tmp_path: Path) -> None:
@@ -115,9 +111,7 @@ def test_build_workflow_catalog_preview_collects_keys() -> None:
     )
 
     assert preview.prompt_catalog_path is not None
-    assert preview.model_catalog_path is not None
     assert "planner" in preview.prompt_catalog_keys
-    assert "default" in preview.model_catalog_keys
     assert preview.issues == ()
 
 
@@ -127,7 +121,6 @@ def test_build_workflow_catalog_preview_reports_missing_and_invalid_catalogs(
     payload = _base_payload()
     payload["params"] = {
         "prompt_catalog": "prompts/missing.yaml",
-        "model_catalog": 123,
     }
     workflow_path = _write_workflow(tmp_path / "catalog-preview-error.yaml", payload)
 
@@ -138,4 +131,3 @@ def test_build_workflow_catalog_preview_reports_missing_and_invalid_catalogs(
 
     issue_codes = {issue.code for issue in preview.issues}
     assert "catalog_not_found" in issue_codes
-    assert "catalog_path_type_error" in issue_codes

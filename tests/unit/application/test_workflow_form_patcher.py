@@ -20,7 +20,6 @@ def _base_payload() -> dict[str, Any]:
                 "handler": "planner_handler",
                 "params": {
                     "prompt_ref": "planner",
-                    "model_ref": "default",
                     "prompt": {"system": "old prompt"},
                     "model": {"provider": "openai", "name": "gpt-4.1-mini"},
                 },
@@ -43,7 +42,6 @@ def test_apply_form_edits_updates_node_and_edge() -> None:
             {
                 "node_id": "planner",
                 "prompt_ref": "planner_v2",
-                "model_ref": "turbo",
                 "prompt": {"system": "new prompt"},
                 "model": {"provider": "openai", "name": "gpt-4.1-nano"},
             }
@@ -54,7 +52,6 @@ def test_apply_form_edits_updates_node_and_edge() -> None:
     assert patched is not workflow
     planner_params = patched["nodes"][1]["params"]
     assert planner_params["prompt_ref"] == "planner_v2"
-    assert planner_params["model_ref"] == "turbo"
     assert planner_params["prompt"]["system"] == "new prompt"
     assert planner_params["model"]["name"] == "gpt-4.1-nano"
     assert patched["edges"][1]["condition"] == "done"
@@ -69,7 +66,6 @@ def test_apply_form_edits_clears_optional_fields() -> None:
             {
                 "node_id": "planner",
                 "prompt_ref": "",
-                "model_ref": None,
                 "prompt": None,
                 "model": None,
             }
@@ -79,7 +75,6 @@ def test_apply_form_edits_clears_optional_fields() -> None:
 
     planner_params = patched["nodes"][1]["params"]
     assert "prompt_ref" not in planner_params
-    assert "model_ref" not in planner_params
     assert "prompt" not in planner_params
     assert "model" not in planner_params
     assert "condition" not in patched["edges"][0]

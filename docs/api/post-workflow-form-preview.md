@@ -45,7 +45,7 @@ curl -X POST 'http://127.0.0.1:8787/api/workflow/form/preview' \
   -d '{
     "base_revision": "9e9b...",
     "node_creates": [],
-    "node_edits": [{"node_id":"planner","model_ref":"default"}],
+    "node_edits": [{"node_id":"planner","prompt_ref":"planning.special"}],
     "edge_creates": [],
     "edge_rewires": [],
     "edge_edits": [],
@@ -103,6 +103,7 @@ curl -X POST 'http://127.0.0.1:8787/api/workflow/form/preview' \
 ## 5. 備考
 
 - `node_creates` 等の入力契約は空配列でも必須。
+- `model_ref` は廃止。`node_edits[].model` でインライン更新する。
 
 ## 6. 実装同期メモ
 

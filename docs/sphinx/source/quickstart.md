@@ -107,8 +107,9 @@ yagra studio --workflow workflows/support.yaml --port 8787
 ```
 
 `yagra studio` 実行後は `http://127.0.0.1:8787/` を開いて編集できます。
-`prompt_ref` / `model_ref` を使う場合は、Workflow Settings で `prompt_catalog` / `model_catalog` を設定し、
+`prompt_ref` を使う場合は、Workflow Settings で `prompt_catalog` を設定し、
 `Reload Catalog Keys` で候補キーを確認してから Node Properties で参照キーを入力してください。
+`model_ref` は廃止されているため、モデル設定は `nodes[].params.model` にインライン定義してください。
 
 ## Next
 

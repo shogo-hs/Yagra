@@ -138,7 +138,6 @@ def _normalize_runtime_params(node_params: Mapping[str, Any]) -> dict[str, Any]:
     """実行時に handler へ渡す node params を正規化する。"""
     normalized = deepcopy(dict(node_params))
     normalized.pop("prompt_ref", None)
-    normalized.pop("model_ref", None)
     return normalized
 
 
