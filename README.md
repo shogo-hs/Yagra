@@ -221,7 +221,7 @@ yagra studio \
 
 - `GET /api/workflow/form`
 - `POST /api/workflow/form/preview`
-  - 非互換（後方互換なし）: 下記フィールドはすべて必須
+  - M-09 の入力契約として、下記フィールドはすべて必須
   - `base_revision`, `ui_state`
   - `node_creates[]` / `node_edits[]`
   - `edge_creates[]` / `edge_rewires[]` / `edge_edits[]`
