@@ -138,6 +138,103 @@ def test_workflow_studio_api_launcher_open_and_create(tmp_path: Path) -> None:
         thread.join(timeout=2)
 
 
+def test_workflow_studio_api_catalog_preview_and_catalog_save(tmp_path: Path) -> None:
+    workflow_path = _write_workflow(tmp_path / "workflow.yaml", _base_payload())
+    prompt_catalog_path = tmp_path / "prompts.yaml"
+    model_catalog_path = tmp_path / "models.yaml"
+    prompt_catalog_path.write_text(
+        yaml.safe_dump(
+            {
+                "planning": {
+                    "special": {
+                        "system": "You are planner.",
+                    }
+                }
+            },
+            sort_keys=False,
+            allow_unicode=True,
+        ),
+        encoding="utf-8",
+    )
+    model_catalog_path.write_text(
+        yaml.safe_dump(
+            {
+                "default": {
+                    "provider": "openai",
+                    "name": "gpt-4.1-mini",
+                }
+            },
+            sort_keys=False,
+            allow_unicode=True,
+        ),
+        encoding="utf-8",
+    )
+    backup_dir = tmp_path / ".yagra-backups"
+
+    server = create_workflow_studio_server(
+        workflow_path=workflow_path,
+        backup_dir=backup_dir,
+        host="127.0.0.1",
+        port=0,
+    )
+    thread = Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    base_url = _server_base_url(server)
+
+    try:
+        status, form_payload = _request_json("GET", f"{base_url}/api/workflow/form")
+        assert status == 200
+        base_revision = str(form_payload["revision"])
+        candidate_workflow = deepcopy(form_payload["workflow"])
+        candidate_workflow["params"] = {
+            "prompt_catalog": str(prompt_catalog_path.resolve()),
+            "model_catalog": str(model_catalog_path.resolve()),
+        }
+        candidate_workflow["nodes"][1]["params"] = {
+            "prompt_ref": "planning.special",
+            "model_ref": "default",
+            "model": {"temperature": 0.35},
+        }
+
+        status, preview_payload = _request_json(
+            "POST",
+            f"{base_url}/api/workflow/catalogs/preview",
+            {"workflow": candidate_workflow},
+        )
+        assert status == 200
+        assert preview_payload["issues"] == []
+        assert "planning.special" in preview_payload["prompt_catalog_keys"]
+        assert "default" in preview_payload["model_catalog_keys"]
+
+        status, save_payload = _request_json(
+            "POST",
+            f"{base_url}/api/workflow/save",
+            {
+                "workflow": candidate_workflow,
+                "ui_state": form_payload["ui_state"],
+                "base_revision": base_revision,
+            },
+        )
+        assert status == 200
+        assert save_payload["backup_id"]
+
+        status, after_form = _request_json("GET", f"{base_url}/api/workflow/form")
+        assert status == 200
+        assert after_form["workflow"]["params"]["prompt_catalog"] == str(
+            prompt_catalog_path.resolve()
+        )
+        assert after_form["workflow"]["params"]["model_catalog"] == str(
+            model_catalog_path.resolve()
+        )
+        assert after_form["workflow"]["nodes"][1]["params"]["model_ref"] == "default"
+        assert after_form["workflow"]["nodes"][1]["params"]["model"]["temperature"] == 0.35
+        assert after_form["catalog_preview"]["issues"] == []
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+
 def test_workflow_studio_api_supports_diff_save_rollback(tmp_path: Path) -> None:
     workflow_path = _write_workflow(tmp_path / "workflow.yaml", _base_payload())
     backup_dir = tmp_path / ".yagra-backups"

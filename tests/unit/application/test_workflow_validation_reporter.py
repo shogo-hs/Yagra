@@ -127,3 +127,49 @@ def test_load_validated_graph_spec_raises_workflow_validation_failed_error(
     assert report.is_valid is False
     assert any(issue.code == "schema_error" for issue in report.issues)
     assert "workflow validation failed" in format_validation_report(report)
+
+
+def test_load_validated_graph_spec_merges_model_ref_with_model_overrides(tmp_path: Path) -> None:
+    payload = _base_payload()
+    payload["params"] = {
+        "model_catalog": str((FIXTURES_ROOT / "models" / "openai_models.yaml").resolve()),
+    }
+    payload["nodes"][1]["params"] = {
+        "model_ref": "default",
+        "model": {
+            "temperature": 0.7,
+            "max_tokens": 512,
+        },
+    }
+    workflow_path = _write_workflow(tmp_path / "model-merge.yaml", payload)
+
+    spec = load_validated_graph_spec(workflow_path)
+
+    planner_node = next(node for node in spec.nodes if node.id == "planner")
+    model = planner_node.params["model"]
+    assert model["provider"] == "openai"
+    assert model["name"] == "gpt-4.1-mini"
+    assert model["temperature"] == 0.7
+    assert model["max_tokens"] == 512
+    assert model["kwargs"]["temperature"] == 0.1
+
+
+def test_validate_workflow_for_ui_reports_error_when_model_override_is_not_mapping(
+    tmp_path: Path,
+) -> None:
+    payload = _base_payload()
+    payload["params"] = {
+        "model_catalog": str((FIXTURES_ROOT / "models" / "openai_models.yaml").resolve()),
+    }
+    payload["nodes"][1]["params"] = {
+        "model_ref": "default",
+        "model": "invalid",
+    }
+    workflow_path = _write_workflow(tmp_path / "model-override-invalid.yaml", payload)
+
+    report = validate_workflow_for_ui(workflow_path)
+
+    assert report.is_valid is False
+    issue = report.issues[0]
+    assert issue.code == "reference_error"
+    assert issue.location == ("nodes", 1, "params", "model")

@@ -47,6 +47,26 @@ class WorkflowFormView:
     model_catalog_keys: tuple[str, ...]
 
 
+@dataclass(frozen=True, slots=True)
+class WorkflowCatalogIssue:
+    """catalog 読み込み時の問題を表す。"""
+
+    code: str
+    message: str
+    location: tuple[str | int, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class WorkflowCatalogPreview:
+    """workflow.params の catalog 設定プレビューを表す。"""
+
+    prompt_catalog_path: str | None
+    model_catalog_path: str | None
+    prompt_catalog_keys: tuple[str, ...]
+    model_catalog_keys: tuple[str, ...]
+    issues: tuple[WorkflowCatalogIssue, ...]
+
+
 def build_workflow_form_view(
     workflow: Mapping[str, Any],
     ui_state: Mapping[str, Any],
@@ -129,70 +149,155 @@ def build_workflow_form_view(
 
     workflow_abspath = Path(workflow_path).expanduser().resolve()
     bundle_root_path = Path(bundle_root).expanduser().resolve() if bundle_root is not None else None
-    prompt_catalog_keys = _resolve_catalog_keys(
+    catalog_preview = build_workflow_catalog_preview(
         workflow=workflow_mapping,
-        workflow_abspath=workflow_abspath,
+        workflow_path=workflow_abspath,
         bundle_root=bundle_root_path,
-        catalog_name="prompt_catalog",
-    )
-    model_catalog_keys = _resolve_catalog_keys(
-        workflow=workflow_mapping,
-        workflow_abspath=workflow_abspath,
-        bundle_root=bundle_root_path,
-        catalog_name="model_catalog",
     )
 
     return WorkflowFormView(
         revision=compute_workflow_revision(workflow_mapping, ui_state_mapping),
         nodes=tuple(nodes),
         edges=tuple(edges),
-        prompt_catalog_keys=prompt_catalog_keys,
-        model_catalog_keys=model_catalog_keys,
+        prompt_catalog_keys=catalog_preview.prompt_catalog_keys,
+        model_catalog_keys=catalog_preview.model_catalog_keys,
     )
 
 
-def _resolve_catalog_keys(
-    workflow: dict[str, Any],
-    workflow_abspath: Path,
-    bundle_root: Path | None,
-    catalog_name: str,
-) -> tuple[str, ...]:
-    """workflow.params の catalog 参照から利用可能キーを抽出する。
+def build_workflow_catalog_preview(
+    workflow: Mapping[str, Any],
+    workflow_path: str | PathLike[str],
+    bundle_root: str | PathLike[str] | None = None,
+) -> WorkflowCatalogPreview:
+    """workflow.params の catalog 設定を解決し、候補キーと問題を返す。
 
     Args:
         workflow: workflow データ。
-        workflow_abspath: workflow 絶対パス。
+        workflow_path: workflow ファイルパス。
         bundle_root: 分割参照解決の基準ディレクトリ。
-        catalog_name: 抽出対象カタログ名。
 
     Returns:
-        利用可能キー一覧。取得できない場合は空タプル。
+        catalog 設定プレビュー。
     """
-    params = workflow.get("params")
-    if not isinstance(params, Mapping):
-        return ()
+    workflow_mapping = _ensure_mapping(workflow, label="workflow")
+    workflow_abspath = Path(workflow_path).expanduser().resolve()
+    bundle_root_path = Path(bundle_root).expanduser().resolve() if bundle_root is not None else None
+    params_raw = workflow_mapping.get("params")
+    if params_raw is None:
+        params_raw = {}
+    if not isinstance(params_raw, Mapping):
+        return WorkflowCatalogPreview(
+            prompt_catalog_path=None,
+            model_catalog_path=None,
+            prompt_catalog_keys=(),
+            model_catalog_keys=(),
+            issues=(
+                WorkflowCatalogIssue(
+                    code="invalid_workflow_params",
+                    message="workflow.params must be a mapping",
+                    location=("params",),
+                ),
+            ),
+        )
+
+    params = dict(params_raw)
+    prompt_catalog_path, prompt_catalog_keys, prompt_issues = _resolve_catalog_setting(
+        workflow_abspath=workflow_abspath,
+        bundle_root=bundle_root_path,
+        params=params,
+        catalog_name="prompt_catalog",
+    )
+    model_catalog_path, model_catalog_keys, model_issues = _resolve_catalog_setting(
+        workflow_abspath=workflow_abspath,
+        bundle_root=bundle_root_path,
+        params=params,
+        catalog_name="model_catalog",
+    )
+    return WorkflowCatalogPreview(
+        prompt_catalog_path=prompt_catalog_path,
+        model_catalog_path=model_catalog_path,
+        prompt_catalog_keys=prompt_catalog_keys,
+        model_catalog_keys=model_catalog_keys,
+        issues=tuple(prompt_issues + model_issues),
+    )
+
+
+def _resolve_catalog_setting(
+    workflow_abspath: Path,
+    bundle_root: Path | None,
+    params: Mapping[str, Any],
+    catalog_name: str,
+) -> tuple[str | None, tuple[str, ...], list[WorkflowCatalogIssue]]:
+    """単一 catalog 設定を解決し、キー候補と問題を返す。"""
+    location = ("params", catalog_name)
     catalog_path_raw = params.get(catalog_name)
-    if not isinstance(catalog_path_raw, str) or not catalog_path_raw.strip():
-        return ()
+    if catalog_path_raw is None:
+        return None, (), []
+    if not isinstance(catalog_path_raw, str):
+        return (
+            None,
+            (),
+            [
+                WorkflowCatalogIssue(
+                    code="catalog_path_type_error",
+                    message=f"{catalog_name} must be a string",
+                    location=location,
+                )
+            ],
+        )
+    if not catalog_path_raw.strip():
+        return None, (), []
 
     catalog_path = _resolve_catalog_path(
         catalog_path=catalog_path_raw.strip(),
         workflow_abspath=workflow_abspath,
         bundle_root=bundle_root,
     )
+    catalog_abspath = str(catalog_path)
     if not catalog_path.exists():
-        return ()
+        return (
+            catalog_abspath,
+            (),
+            [
+                WorkflowCatalogIssue(
+                    code="catalog_not_found",
+                    message=f"catalog file not found: {catalog_path}",
+                    location=location,
+                )
+            ],
+        )
 
     try:
         with catalog_path.open("r", encoding="utf-8") as handle:
             payload = yaml.safe_load(handle)
-    except (OSError, yaml.YAMLError):
-        return ()
+    except (OSError, yaml.YAMLError) as exc:
+        return (
+            catalog_abspath,
+            (),
+            [
+                WorkflowCatalogIssue(
+                    code="catalog_load_error",
+                    message=f"catalog file load failed: {catalog_path}: {exc}",
+                    location=location,
+                )
+            ],
+        )
+
     if not isinstance(payload, Mapping):
-        return ()
+        return (
+            catalog_abspath,
+            (),
+            [
+                WorkflowCatalogIssue(
+                    code="catalog_not_mapping",
+                    message=f"catalog must be a mapping: {catalog_path}",
+                    location=location,
+                )
+            ],
+        )
 
     key_paths = _collect_key_paths(dict(payload), prefix="")
-    return tuple(sorted(set(key_paths)))
+    return catalog_abspath, tuple(sorted(set(key_paths))), []
 
 
 def _resolve_catalog_path(

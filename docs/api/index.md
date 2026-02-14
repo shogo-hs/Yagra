@@ -1,62 +1,68 @@
-# <サービス名> API エンドポイント一覧
+# Yagra Workflow Studio API エンドポイント一覧
 
-最終更新: `<YYYY-MM-DD>`
-ベースURL: `<https://api.example.com>`
+最終更新: `2026-02-14`
+ベースURL: `http://127.0.0.1:<port>`（`yagra studio --port <port>`）
 
 ## 1. 運用ルール
 
-- API実装の変更と同時にこの一覧を更新する。
+- API実装の変更と同時にこの一覧と個票を更新する。
 - 1エンドポイントにつき詳細ドキュメントは1ファイルにする。
-- 一覧リンク切れを残さない。
+- 実装の一次情報は `src/yagra/adapters/inbound/workflow_studio_server.py` とする。
 
 ## 2. 共通仕様
 
 ### 2.1 認証
 
-- 対象: `<例: /api/v1/*>`
-- ヘッダー: `<例: Authorization: Bearer <ID_TOKEN>>`
-- 未認証時: `<例: 401 Unauthorized>`
+- 認証: なし（ローカル Studio サーバー前提）。
 
 ### 2.2 共通ヘッダー
 
-- `Content-Type: application/json`（ボディありの場合）
-- `X-Request-Id`（任意）
+- `Content-Type: application/json`（POSTでJSONボディを送る場合）
 
-### 2.3 エラーフォーマット
+### 2.3 共通エラー形式
 
 ```json
 {
-  "error": {
-    "message": "Authorization header is missing",
-    "type": "http_error",
-    "details": {
-      "field": "optional"
-    }
-  }
+  "error": "invalid_json",
+  "message": "request body is not valid JSON: ..."
 }
 ```
 
-### 2.4 タイムアウト・リトライ方針（任意）
+補足:
+- `error` は必須。
+- `message` はエラー種別に応じて付与される。
+- `404` の未知パスは `{ "error": "not_found" }`。
 
-- タイムアウト: `<例: 30s>`
-- リトライ: `<例: GETのみ最大2回>`
+### 2.4 主要エラーコード
+
+- `studio_target_required` (`409`): workflow ターゲット未選択。
+- `revision_conflict` (`409`): `base_revision` が最新と不一致。
+- `validation_failed` (`422`): 保存候補の workflow 検証失敗。
+- `load_failed` (`422`): workflow/ui_state 読み込み失敗。
 
 ## 3. エンドポイント一覧
 
-### <ドメイン名1>
+### Studio Target / Workspace
 
-- [GET /path](./sample-get.md) - `<概要>`
-- [POST /path](./sample-post.md) - `<概要>`
+- [GET /api/studio/target](./get-studio-target.md) - 現在の編集ターゲット情報を取得
+- [GET /api/studio/files](./get-studio-files.md) - workspace 配下の workflow 候補一覧を取得
+- [POST /api/studio/open](./post-studio-open.md) - 既存 workflow を編集ターゲットとして開く
+- [POST /api/studio/create](./post-studio-create.md) - 新規 workflow を作成して開く
 
-### <ドメイン名2>
+### Workflow Read / Edit
 
-- [PATCH /path/{id}](./sample-patch.md) - `<概要>`
-- [DELETE /path/{id}](./sample-delete.md) - `<概要>`
+- [GET /api/workflow](./get-workflow.md) - 現在の workflow/ui_state/revision を取得
+- [GET /api/workflow/form](./get-workflow-form.md) - フォーム編集向け workflow ビューを取得
+- [POST /api/workflow/diff](./post-workflow-diff.md) - 候補 workflow の差分を取得
+- [POST /api/workflow/form/preview](./post-workflow-form-preview.md) - フォーム入力から候補 workflow を生成して差分取得
+- [POST /api/workflow/catalogs/preview](./post-workflow-catalogs-preview.md) - catalog 参照設定と候補キーを確認
+- [POST /api/workflow/save](./post-workflow-save.md) - 候補 workflow を保存（backup作成）
+- [POST /api/workflow/rollback](./post-workflow-rollback.md) - backup 指定で復元
 
-## 4. 非推奨 / 廃止（任意）
+## 4. 非推奨 / 廃止
 
-- `GET /legacy/path` - `<廃止日/代替API>`
+- 該当なし。
 
-## 5. 変更履歴（任意）
+## 5. 変更履歴
 
-- `<YYYY-MM-DD>`: `<変更内容要約>`
+- `2026-02-14`: Studio API の実装準拠で一覧・個票を初回整備。

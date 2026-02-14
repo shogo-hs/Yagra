@@ -200,11 +200,13 @@ yagra studio \
 
 1. 必要に応じて `Add Node` でノードを追加し、Node/Edge フォームで値を編集して `Apply ...`
    - `Add Node` は選択中ノードの近傍（未選択時は自動レイアウト位置）へ自動配置されます。
-2. Graph Canvas 上でノードをドラッグして位置調整し、右側ポート（output）から左側ポート（input）へドラッグしてエッジ追加（戻りループは下側 output → 上側 input で接続）
-3. 再接続時はエッジ端点をドラッグして接続先を変更（ドラッグ起点が新 source、ドロップ先が新 target）
-4. `Preview Diff` で変更差分と validation を確認
-5. `Save` で workflow を保存（backup 作成）
-6. 必要なら `Rollback` で `backup_id` から復元
+2. `Workflow Settings` で `prompt_catalog` / `model_catalog` を設定し、必要なら `Reload Catalog Keys` で候補キーを更新
+3. Graph Canvas 上でノードをドラッグして位置調整し、右側ポート（output）から左側ポート（input）へドラッグしてエッジ追加（戻りループは下側 output → 上側 input で接続）
+4. 再接続時はエッジ端点をドラッグして接続先を変更（ドラッグ起点が新 source、ドロップ先が新 target）
+5. Node Properties で `prompt_ref` / `model_ref` と `Model Runtime Params (LiteLLM)`（`temperature` など）を設定
+6. `Preview Diff` で変更差分と validation を確認
+7. `Save` で workflow を保存（backup 作成）
+8. 必要なら `Rollback` で `backup_id` から復元
 
 補足:
 - Studio 画面は操作性優先のため `Workflow/UI State` の生JSONは常時表示しません。必要時は `GET /api/workflow` / `GET /api/workflow/form` で確認してください。
@@ -249,6 +251,8 @@ yagra studio \
 - handler が受け取る `params` には解決済み値が入ります。
   - `params["prompt"]`
   - `params["model"]`
+- `model_ref` と `model` を同時指定した場合、`model_ref` 解決結果に `model` が上書きマージされます（ノード側優先）。
+  - 例: catalog で provider/name を共通化しつつ、ノードごとに `temperature` だけ上書き可能。
 - 参照形式:
   - `<key>`（`workflow.params.prompt_catalog` / `model_catalog` を使用）
   - `<path>#<key.path>`（明示参照）

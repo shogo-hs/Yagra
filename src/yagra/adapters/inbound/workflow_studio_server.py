@@ -22,9 +22,11 @@ from yagra.application.use_cases.workflow_edit_session import (
     load_workflow_edit_session,
 )
 from yagra.application.use_cases.workflow_form_model import (
+    WorkflowCatalogPreview,
     WorkflowEdgeFormItem,
     WorkflowFormView,
     WorkflowNodeFormItem,
+    build_workflow_catalog_preview,
     build_workflow_form_view,
 )
 from yagra.application.use_cases.workflow_form_patcher import apply_form_edits
@@ -253,6 +255,9 @@ def _build_handler_class(
             if path == "/api/workflow/form/preview":
                 self._handle_form_preview(body)
                 return
+            if path == "/api/workflow/catalogs/preview":
+                self._handle_catalog_preview(body)
+                return
             if path == "/api/workflow/save":
                 self._handle_save(body)
                 return
@@ -447,6 +452,11 @@ def _build_handler_class(
                         workflow_path=workflow_path,
                         bundle_root=self._config.bundle_root,
                     )
+                    catalog_preview = build_workflow_catalog_preview(
+                        workflow=session.workflow,
+                        workflow_path=workflow_path,
+                        bundle_root=self._config.bundle_root,
+                    )
                 except ValueError as exc:
                     self._write_json(422, {"error": "load_failed", "message": str(exc)})
                     return
@@ -454,6 +464,7 @@ def _build_handler_class(
             payload = _form_view_to_dict(form_view)
             payload["workflow"] = session.workflow
             payload["ui_state"] = session.ui_state
+            payload["catalog_preview"] = _catalog_preview_to_dict(catalog_preview)
             payload["validation_report"] = _validation_report_to_dict(session.validation_report)
             self._write_json(200, payload)
 
@@ -595,6 +606,30 @@ def _build_handler_class(
             response_payload["candidate_workflow"] = candidate_workflow
             response_payload["candidate_ui_state"] = candidate_ui_state
             self._write_json(200, response_payload)
+
+        def _handle_catalog_preview(self, body: dict[str, Any]) -> None:
+            """Workflow の catalog 設定プレビューを返す。"""
+            candidate_workflow = body.get("workflow")
+            if not isinstance(candidate_workflow, dict):
+                self._write_json(400, {"error": "workflow must be a mapping"})
+                return
+
+            with self._config.lock:
+                target_paths = self._require_active_target_paths()
+                if target_paths is None:
+                    return
+                workflow_path, _ = target_paths
+                try:
+                    catalog_preview = build_workflow_catalog_preview(
+                        workflow=candidate_workflow,
+                        workflow_path=workflow_path,
+                        bundle_root=self._config.bundle_root,
+                    )
+                except ValueError as exc:
+                    self._write_json(400, {"error": "invalid_payload", "message": str(exc)})
+                    return
+
+            self._write_json(200, _catalog_preview_to_dict(catalog_preview))
 
         def _handle_save(self, body: dict[str, Any]) -> None:
             """編集案を保存する。"""
@@ -837,6 +872,20 @@ def _validation_report_to_dict(report: WorkflowValidationReport) -> dict[str, An
         "issues": [
             {"code": issue.code, "message": issue.message, "location": list(issue.location)}
             for issue in report.issues
+        ],
+    }
+
+
+def _catalog_preview_to_dict(preview: WorkflowCatalogPreview) -> dict[str, Any]:
+    """Catalog プレビュー結果を API 応答形式へ変換する。"""
+    return {
+        "prompt_catalog_path": preview.prompt_catalog_path,
+        "model_catalog_path": preview.model_catalog_path,
+        "prompt_catalog_keys": list(preview.prompt_catalog_keys),
+        "model_catalog_keys": list(preview.model_catalog_keys),
+        "issues": [
+            {"code": issue.code, "message": issue.message, "location": list(issue.location)}
+            for issue in preview.issues
         ],
     }
 
@@ -1313,6 +1362,33 @@ def _studio_html() -> str:
               <input id="workflowVersionInput" v-model="workflowMeta.version" type="text" placeholder="1.0" />
             </div>
             <div class="field">
+              <label for="promptCatalogInput">prompt_catalog</label>
+              <input
+                id="promptCatalogInput"
+                v-model.trim="workflowMeta.promptCatalog"
+                type="text"
+                placeholder="./prompts/support_prompts.yaml"
+              />
+            </div>
+            <div class="field">
+              <label for="modelCatalogInput">model_catalog</label>
+              <input
+                id="modelCatalogInput"
+                v-model.trim="workflowMeta.modelCatalog"
+                type="text"
+                placeholder="./models/openai_models.yaml"
+              />
+            </div>
+            <div class="toolbar">
+              <button type="button" class="secondary" @click="previewCatalogs">Reload Catalog Keys</button>
+            </div>
+            <div class="hint">
+              prompt keys: {{ promptCatalogKeys.length }} / model keys: {{ modelCatalogKeys.length }}
+            </div>
+            <div v-if="catalogPreviewIssues.length > 0" class="hint danger">
+              {{ catalogPreviewIssues.join(" / ") }}
+            </div>
+            <div class="field">
               <label for="workflowStartAtInput">start_at</label>
               <select id="workflowStartAtInput" v-model="workflowMeta.startAt" @change="onWorkflowMetaChange">
                 <option value="">(select node)</option>
@@ -1398,8 +1474,33 @@ def _studio_html() -> str:
                 <label for="nodeModelJsonInput">model (JSON object)</label>
                 <textarea id="nodeModelJsonInput" v-model="nodeEditor.modelJson"></textarea>
               </div>
+              <div class="field">
+                <label>Model Runtime Params (LiteLLM)</label>
+                <div class="inline-row">
+                  <input
+                    id="nodeModelTemperatureInput"
+                    v-model.trim="nodeEditor.temperature"
+                    type="text"
+                    placeholder="temperature (e.g. 0.2)"
+                  />
+                  <input
+                    id="nodeModelTopPInput"
+                    v-model.trim="nodeEditor.topP"
+                    type="text"
+                    placeholder="top_p (e.g. 0.9)"
+                  />
+                </div>
+                <div class="field">
+                  <input
+                    id="nodeModelMaxTokensInput"
+                    v-model.trim="nodeEditor.maxTokens"
+                    type="text"
+                    placeholder="max_tokens (e.g. 512)"
+                  />
+                </div>
+              </div>
               <button type="button" class="secondary" @click="applyNodeEdit">Apply Node Edit</button>
-              <div class="hint">空文字の prompt_ref / model_ref / JSON は削除として扱います。</div>
+              <div class="hint">空文字の prompt_ref / model_ref / JSON は削除として扱います。model_ref 利用時は model(JSON/Runtime Params) が上書き設定として扱われます。</div>
             </template>
           </section>
 
@@ -2160,6 +2261,7 @@ def _studio_html() -> str:
 
         const promptCatalogKeys = ref([]);
         const modelCatalogKeys = ref([]);
+        const catalogPreviewIssues = ref([]);
         const nodes = ref([]);
         const edges = ref([]);
         const originalWorkflow = ref({});
@@ -2168,6 +2270,8 @@ def _studio_html() -> str:
           version: "1.0",
           startAt: "",
           endAt: [],
+          promptCatalog: "",
+          modelCatalog: "",
         });
 
         const selectedNodeId = ref(null);
@@ -2184,6 +2288,9 @@ def _studio_html() -> str:
           modelRef: "",
           promptJson: "",
           modelJson: "",
+          temperature: "",
+          topP: "",
+          maxTokens: "",
         });
         const edgeEditor = reactive({
           condition: "",
@@ -2237,9 +2344,17 @@ def _studio_html() -> str:
               nodeEditor.modelRef = "";
               nodeEditor.promptJson = "";
               nodeEditor.modelJson = "";
+              nodeEditor.temperature = "";
+              nodeEditor.topP = "";
+              nodeEditor.maxTokens = "";
               return;
             }
             const data = isRecord(node.data) ? node.data : {};
+            const model = isRecord(data.model) ? data.model : null;
+            const modelKwargs = isRecord(model?.kwargs) ? model.kwargs : null;
+            const temperatureRaw = model?.temperature ?? modelKwargs?.temperature;
+            const topPRaw = model?.top_p ?? modelKwargs?.top_p;
+            const maxTokensRaw = model?.max_tokens ?? modelKwargs?.max_tokens;
             nodeEditor.handler = normalizeText(data.handler);
             nodeEditor.promptRef = normalizeText(data.promptRef);
             nodeEditor.modelRef = normalizeText(data.modelRef);
@@ -2248,6 +2363,15 @@ def _studio_html() -> str:
               : "";
             nodeEditor.modelJson = isRecord(data.model)
               ? JSON.stringify(data.model, null, 2)
+              : "";
+            nodeEditor.temperature = Number.isFinite(Number(temperatureRaw))
+              ? String(Number(temperatureRaw))
+              : "";
+            nodeEditor.topP = Number.isFinite(Number(topPRaw))
+              ? String(Number(topPRaw))
+              : "";
+            nodeEditor.maxTokens = Number.isInteger(Number(maxTokensRaw))
+              ? String(Number(maxTokensRaw))
               : "";
           },
           { immediate: true },
@@ -2270,11 +2394,48 @@ def _studio_html() -> str:
           status.isError = isError;
         }
 
+        function parseOptionalNumber(raw, label) {
+          const text = normalizeText(raw);
+          if (!text) {
+            return null;
+          }
+          const value = Number(text);
+          if (!Number.isFinite(value)) {
+            throw new Error(`${label} must be a number`);
+          }
+          return value;
+        }
+
+        function parseOptionalInteger(raw, label) {
+          const value = parseOptionalNumber(raw, label);
+          if (value === null) {
+            return null;
+          }
+          if (!Number.isInteger(value)) {
+            throw new Error(`${label} must be an integer`);
+          }
+          return value;
+        }
+
+        function normalizeCatalogIssues(issues) {
+          if (!Array.isArray(issues)) {
+            return [];
+          }
+          return issues
+            .filter(item => isRecord(item))
+            .map(item => {
+              const code = normalizeText(item.code) || "catalog_issue";
+              const message = normalizeText(item.message) || "catalog issue";
+              return `[${code}] ${message}`;
+            });
+        }
+
         function resetEditorState() {
           revision.value = null;
           backupId.value = "";
           promptCatalogKeys.value = [];
           modelCatalogKeys.value = [];
+          catalogPreviewIssues.value = [];
           nodes.value = [];
           edges.value = [];
           originalWorkflow.value = {};
@@ -2282,6 +2443,8 @@ def _studio_html() -> str:
           workflowMeta.version = "1.0";
           workflowMeta.startAt = "";
           workflowMeta.endAt = [];
+          workflowMeta.promptCatalog = "";
+          workflowMeta.modelCatalog = "";
           selectedNodeId.value = null;
           selectedEdgeId.value = null;
           validationText.value = "-";
@@ -2569,11 +2732,29 @@ def _studio_html() -> str:
           const payload = isRecord(originalWorkflow.value)
             ? deepClone(originalWorkflow.value)
             : {};
+          const rootParams = isRecord(payload.params) ? deepClone(payload.params) : {};
+          const promptCatalog = normalizeText(workflowMeta.promptCatalog);
+          const modelCatalog = normalizeText(workflowMeta.modelCatalog);
+          if (promptCatalog) {
+            rootParams.prompt_catalog = promptCatalog;
+          } else {
+            delete rootParams.prompt_catalog;
+          }
+          if (modelCatalog) {
+            rootParams.model_catalog = modelCatalog;
+          } else {
+            delete rootParams.model_catalog;
+          }
           payload.version = normalizedMeta.version;
           payload.start_at = normalizedMeta.startAt;
           payload.end_at = normalizedMeta.endAt;
           payload.nodes = workflowNodes;
           payload.edges = workflowEdges;
+          if (Object.keys(rootParams).length > 0) {
+            payload.params = rootParams;
+          } else {
+            payload.params = {};
+          }
           return payload;
         }
 
@@ -2616,6 +2797,25 @@ def _studio_html() -> str:
           try {
             const promptObj = parseJsonObjectOrNull(nodeEditor.promptJson, "prompt");
             const modelObj = parseJsonObjectOrNull(nodeEditor.modelJson, "model");
+            const temperature = parseOptionalNumber(nodeEditor.temperature, "temperature");
+            const topP = parseOptionalNumber(nodeEditor.topP, "top_p");
+            const maxTokens = parseOptionalInteger(nodeEditor.maxTokens, "max_tokens");
+            const runtimeOverrides = {};
+            if (temperature !== null) {
+              runtimeOverrides.temperature = temperature;
+            }
+            if (topP !== null) {
+              runtimeOverrides.top_p = topP;
+            }
+            if (maxTokens !== null) {
+              runtimeOverrides.max_tokens = maxTokens;
+            }
+            const hasRuntimeOverrides = Object.keys(runtimeOverrides).length > 0;
+            const nextModel = isRecord(modelObj) ? deepClone(modelObj) : {};
+            if (hasRuntimeOverrides) {
+              Object.assign(nextModel, runtimeOverrides);
+            }
+            const finalModel = Object.keys(nextModel).length > 0 ? nextModel : null;
             const nodeId = selectedNode.value.id;
             nodes.value = nodes.value.map(node => {
               if (node.id !== nodeId) {
@@ -2631,7 +2831,7 @@ def _studio_html() -> str:
                   promptRef: normalizeText(nodeEditor.promptRef),
                   modelRef: normalizeText(nodeEditor.modelRef),
                   prompt: promptObj,
-                  model: modelObj,
+                  model: finalModel,
                 },
               };
             });
@@ -2935,6 +3135,41 @@ def _studio_html() -> str:
           setStatus(`created: ${workflowPath}`);
         }
 
+        async function previewCatalogs() {
+          if (!hasTarget.value) {
+            setStatus("workflow target is not selected", true);
+            return;
+          }
+          setStatus("loading catalog keys...");
+          const { response, data } = await requestJson("/api/workflow/catalogs/preview", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ workflow: buildWorkflowPayload() }),
+          });
+          if (response.status === 409 && data.error === "studio_target_required") {
+            resetEditorState();
+            hasTarget.value = false;
+            showLauncher.value = true;
+            await loadStudioTarget();
+            await loadStudioFiles();
+            setStatus("workflow target を選択してください");
+            return;
+          }
+          if (!response.ok) {
+            setStatus(data.message || data.error || "catalog preview failed", true);
+            return;
+          }
+
+          promptCatalogKeys.value = Array.isArray(data.prompt_catalog_keys) ? data.prompt_catalog_keys : [];
+          modelCatalogKeys.value = Array.isArray(data.model_catalog_keys) ? data.model_catalog_keys : [];
+          catalogPreviewIssues.value = normalizeCatalogIssues(data.issues);
+          if (catalogPreviewIssues.value.length > 0) {
+            setStatus("catalog issues found", true);
+            return;
+          }
+          setStatus("catalog keys updated");
+        }
+
         async function loadWorkflow() {
           setStatus("loading...");
           const { response, data } = await requestJson("/api/workflow/form");
@@ -2954,9 +3189,21 @@ def _studio_html() -> str:
           hasTarget.value = true;
           showLauncher.value = false;
 
+          const catalogPreview = isRecord(data.catalog_preview) ? data.catalog_preview : {};
           revision.value = typeof data.revision === "string" ? data.revision : null;
           promptCatalogKeys.value = Array.isArray(data.prompt_catalog_keys) ? data.prompt_catalog_keys : [];
           modelCatalogKeys.value = Array.isArray(data.model_catalog_keys) ? data.model_catalog_keys : [];
+          const previewPromptKeys = Array.isArray(catalogPreview.prompt_catalog_keys)
+            ? catalogPreview.prompt_catalog_keys
+            : [];
+          const previewModelKeys = Array.isArray(catalogPreview.model_catalog_keys)
+            ? catalogPreview.model_catalog_keys
+            : [];
+          if (previewPromptKeys.length > 0 || previewModelKeys.length > 0) {
+            promptCatalogKeys.value = previewPromptKeys;
+            modelCatalogKeys.value = previewModelKeys;
+          }
+          catalogPreviewIssues.value = normalizeCatalogIssues(catalogPreview.issues);
           originalWorkflow.value = isRecord(data.workflow) ? deepClone(data.workflow) : {};
           baseUiState.value = isRecord(data.ui_state) ? deepClone(data.ui_state) : {};
 
@@ -2964,6 +3211,8 @@ def _studio_html() -> str:
           workflowMeta.version = normalizeText(data.workflow?.version) || "1.0";
           workflowMeta.startAt = resolveWorkflowStartAt(data.workflow?.start_at);
           workflowMeta.endAt = normalizeNodeIdList(data.workflow?.end_at);
+          workflowMeta.promptCatalog = normalizeText(data.workflow?.params?.prompt_catalog);
+          workflowMeta.modelCatalog = normalizeText(data.workflow?.params?.model_catalog);
           onWorkflowMetaChange();
           edges.value = buildEdgesFromPayload(data.workflow, data.ui_state, data.edges, nodes.value);
           refreshEdgeMetadata();
@@ -3133,6 +3382,7 @@ def _studio_html() -> str:
           launcher,
           promptCatalogKeys,
           modelCatalogKeys,
+          catalogPreviewIssues,
           workflowMeta,
           nodeIdOptions,
           nodes,
@@ -3151,6 +3401,7 @@ def _studio_html() -> str:
           closeLauncher,
           openStudioTarget,
           createStudioTarget,
+          previewCatalogs,
           previewDiff,
           saveWorkflow,
           rollbackWorkflow,

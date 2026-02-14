@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
@@ -101,13 +101,29 @@ def resolve_workflow_references(
             location=("nodes", index, "params", "model_ref"),
         )
         if model_ref is not None:
-            node_params["model"] = _resolve_reference(
+            resolved_model = _resolve_reference(
                 reference=model_ref,
                 default_catalog=model_catalog,
                 workflow_path=workflow_path,
                 bundle_root=bundle_root,
                 ref_label="model_ref",
                 location=("nodes", index, "params", "model_ref"),
+            )
+            model_override = _as_optional_mapping(
+                node_params.get("model"),
+                location=("nodes", index, "params", "model"),
+            )
+            if model_override is None:
+                node_params["model"] = resolved_model
+                continue
+            if not isinstance(resolved_model, Mapping):
+                raise WorkflowReferenceError(
+                    "model_ref must resolve to a mapping when model override is provided",
+                    location=("nodes", index, "params", "model_ref"),
+                )
+            node_params["model"] = _merge_mapping(
+                base=deepcopy(dict(resolved_model)),
+                override=model_override,
             )
 
     return resolved
@@ -261,3 +277,23 @@ def _as_optional_string(value: Any, location: Location = ()) -> str | None:
     if not normalized:
         return None
     return normalized
+
+
+def _as_optional_mapping(value: Any, location: Location = ()) -> dict[str, Any] | None:
+    """値を任意辞書として正規化する。"""
+    if value is None:
+        return None
+    if not isinstance(value, Mapping):
+        raise WorkflowReferenceError("override value must be a mapping", location=location)
+    return deepcopy(dict(value))
+
+
+def _merge_mapping(base: dict[str, Any], override: Mapping[str, Any]) -> dict[str, Any]:
+    """辞書を再帰マージし、override 側を優先する。"""
+    merged = deepcopy(base)
+    for key, value in override.items():
+        if key in merged and isinstance(merged[key], Mapping) and isinstance(value, Mapping):
+            merged[key] = _merge_mapping(dict(merged[key]), dict(value))
+            continue
+        merged[key] = deepcopy(value)
+    return merged

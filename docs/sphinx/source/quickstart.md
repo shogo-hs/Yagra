@@ -102,10 +102,13 @@ Workflow をブラウザで確認・編集したい場合は CLI を使えます
 
 ```bash
 yagra visualize --workflow workflows/support.yaml --output /tmp/workflow.html
+yagra studio --port 8787
 yagra studio --workflow workflows/support.yaml --port 8787
 ```
 
 `yagra studio` 実行後は `http://127.0.0.1:8787/` を開いて編集できます。
+`prompt_ref` / `model_ref` を使う場合は、Workflow Settings で `prompt_catalog` / `model_catalog` を設定し、
+`Reload Catalog Keys` で候補キーを確認してから Node Properties で参照キーを入力してください。
 
 ## Next
 

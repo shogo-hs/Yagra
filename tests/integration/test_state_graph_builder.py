@@ -3,6 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, TypedDict
 
+import yaml
+
 from yagra import Yagra
 from yagra.adapters.outbound import InMemoryNodeRegistry
 
@@ -128,3 +130,62 @@ def test_graphyml_from_workflow_accepts_registry_mapping_and_state_schema() -> N
     assert result["planned"] is True
     assert result["done"] is True
     assert result["planner_model"] == "gpt-4.1-mini"
+
+
+def test_graphyml_from_workflow_merges_model_ref_with_inline_overrides(tmp_path: Path) -> None:
+    workflow_path = tmp_path / "model-override.yaml"
+    workflow_path.write_text(
+        yaml.safe_dump(
+            {
+                "version": "1.0",
+                "start_at": "start",
+                "end_at": ["apply_model"],
+                "nodes": [
+                    {"id": "start", "handler": "start_handler"},
+                    {
+                        "id": "apply_model",
+                        "handler": "apply_model_handler",
+                        "params": {
+                            "model_ref": "default",
+                            "model": {"temperature": 0.55},
+                        },
+                    },
+                ],
+                "edges": [{"source": "start", "target": "apply_model"}],
+                "params": {"model_catalog": "models/openai_models.yaml"},
+            },
+            sort_keys=False,
+            allow_unicode=True,
+        ),
+        encoding="utf-8",
+    )
+
+    def _start_handler(state: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
+        _ = params
+        return dict(state)
+
+    def _apply_model_handler(state: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
+        _ = state
+        model = params.get("model", {})
+        kwargs = model.get("kwargs", {}) if isinstance(model, dict) else {}
+        return {
+            "provider": model.get("provider") if isinstance(model, dict) else None,
+            "name": model.get("name") if isinstance(model, dict) else None,
+            "temperature": model.get("temperature") if isinstance(model, dict) else None,
+            "kwargs_temperature": kwargs.get("temperature") if isinstance(kwargs, dict) else None,
+        }
+
+    engine = Yagra.from_workflow(
+        workflow_path=workflow_path,
+        registry={
+            "start_handler": _start_handler,
+            "apply_model_handler": _apply_model_handler,
+        },
+        bundle_root=FIXTURES_ROOT,
+    )
+
+    result = engine.invoke({})
+    assert result["provider"] == "openai"
+    assert result["name"] == "gpt-4.1-mini"
+    assert result["temperature"] == 0.55
+    assert result["kwargs_temperature"] == 0.1

@@ -6,7 +6,10 @@ from typing import Any
 import yaml
 
 from yagra.application.use_cases.workflow_edit_session import load_workflow_edit_session
-from yagra.application.use_cases.workflow_form_model import build_workflow_form_view
+from yagra.application.use_cases.workflow_form_model import (
+    build_workflow_catalog_preview,
+    build_workflow_form_view,
+)
 
 FIXTURES_ROOT = Path(__file__).resolve().parents[2] / "fixtures"
 WORKFLOW_ROOT = FIXTURES_ROOT / "workflows"
@@ -99,3 +102,40 @@ def test_build_workflow_form_view_allows_missing_nodes_and_edges(tmp_path: Path)
     assert view.revision == session.revision
     assert view.nodes == ()
     assert view.edges == ()
+
+
+def test_build_workflow_catalog_preview_collects_keys() -> None:
+    workflow_path = WORKFLOW_ROOT / "loop-split.yaml"
+    session = load_workflow_edit_session(workflow_path=workflow_path, bundle_root=FIXTURES_ROOT)
+
+    preview = build_workflow_catalog_preview(
+        workflow=session.workflow,
+        workflow_path=workflow_path,
+        bundle_root=FIXTURES_ROOT,
+    )
+
+    assert preview.prompt_catalog_path is not None
+    assert preview.model_catalog_path is not None
+    assert "planner" in preview.prompt_catalog_keys
+    assert "default" in preview.model_catalog_keys
+    assert preview.issues == ()
+
+
+def test_build_workflow_catalog_preview_reports_missing_and_invalid_catalogs(
+    tmp_path: Path,
+) -> None:
+    payload = _base_payload()
+    payload["params"] = {
+        "prompt_catalog": "prompts/missing.yaml",
+        "model_catalog": 123,
+    }
+    workflow_path = _write_workflow(tmp_path / "catalog-preview-error.yaml", payload)
+
+    preview = build_workflow_catalog_preview(
+        workflow=payload,
+        workflow_path=workflow_path,
+    )
+
+    issue_codes = {issue.code for issue in preview.issues}
+    assert "catalog_not_found" in issue_codes
+    assert "catalog_path_type_error" in issue_codes
