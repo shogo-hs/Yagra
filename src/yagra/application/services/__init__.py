@@ -8,6 +8,10 @@ from yagra.application.services.reference_resolver import (
     WorkflowReferenceError,
     resolve_workflow_references,
 )
+from yagra.application.services.studio_service import (
+    StudioService,
+    StudioSessionConfig,
+)
 from yagra.application.services.workflow_file_store import (
     WorkflowBackupNotFoundError,
     WorkflowBackupRecord,
@@ -20,6 +24,8 @@ __all__ = [
     "WorkflowBackupRecord",
     "WorkflowFileStore",
     "WorkflowReferenceError",
+    "StudioService",
+    "StudioSessionConfig",
     "collect_edge_rule_issues",
     "resolve_workflow_references",
 ]

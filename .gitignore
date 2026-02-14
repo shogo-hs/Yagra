@@ -222,6 +222,8 @@ __marimo__/
 .env.keys
 .DS_Store
 .worktrees/
+.yagra
+workflows/
 
 # Internal planning docs
 docs/task-designs/
