@@ -71,6 +71,18 @@ def test_save_workflow_with_backup_and_rollback(tmp_path: Path) -> None:
     assert after_rollback_session.revision == before_session.revision
     assert after_rollback_session.workflow["params"] == {}
     assert after_rollback_session.ui_state == {}
+    assert rollback_result.safety_backup_id
+
+    restore_latest_result = rollback_workflow_from_backup(
+        workflow_path=workflow_path,
+        backup_id=rollback_result.safety_backup_id,
+        backup_dir=backup_root,
+    )
+    after_restore_latest_session = load_workflow_edit_session(workflow_path=workflow_path)
+    assert after_restore_latest_session.revision == restore_latest_result.restored_revision
+    assert after_restore_latest_session.revision == after_save_session.revision
+    assert after_restore_latest_session.workflow["params"]["temperature"] == 0.2
+    assert after_restore_latest_session.ui_state["positions"]["router"]["x"] == 30
 
 
 def test_save_workflow_with_backup_raises_revision_conflict(tmp_path: Path) -> None:

@@ -84,3 +84,18 @@ def test_build_workflow_form_view_handles_inline_prompt_and_model(tmp_path: Path
     assert planner.model == {"provider": "openai", "name": "gpt-4.1-mini"}
     assert view.prompt_catalog_keys == ()
     assert view.model_catalog_keys == ()
+
+
+def test_build_workflow_form_view_allows_missing_nodes_and_edges(tmp_path: Path) -> None:
+    workflow_path = _write_workflow(tmp_path / "empty.yaml", {})
+    session = load_workflow_edit_session(workflow_path=workflow_path)
+
+    view = build_workflow_form_view(
+        workflow=session.workflow,
+        ui_state=session.ui_state,
+        workflow_path=workflow_path,
+    )
+
+    assert view.revision == session.revision
+    assert view.nodes == ()
+    assert view.edges == ()

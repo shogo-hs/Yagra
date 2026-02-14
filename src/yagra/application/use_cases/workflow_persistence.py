@@ -54,6 +54,7 @@ class WorkflowRollbackResult:
 
     restored_revision: str
     backup_id: str
+    safety_backup_id: str
 
 
 def save_workflow_with_backup(
@@ -166,15 +167,39 @@ def rollback_workflow_from_backup(
         ui_state_path=ui_state_path,
     )
     store = WorkflowFileStore(backup_root=backup_dir)
-    store.restore_backup(
+    if not store.backup_exists(workflow_path=workflow_abspath, backup_id=backup_id):
+        raise WorkflowBackupNotFoundError(f"backup not found: {backup_id}")
+
+    current_workflow = store.load_workflow(workflow_abspath)
+    current_ui_state = store.load_ui_state(ui_state_abspath)
+    safety_backup_record = store.create_backup(
         workflow_path=workflow_abspath,
         ui_state_path=ui_state_abspath,
-        backup_id=backup_id,
+        workflow_payload=current_workflow,
+        ui_state_payload=current_ui_state,
     )
+    try:
+        store.restore_backup(
+            workflow_path=workflow_abspath,
+            ui_state_path=ui_state_abspath,
+            backup_id=backup_id,
+        )
+    except Exception:
+        store.restore_backup(
+            workflow_path=workflow_abspath,
+            ui_state_path=ui_state_abspath,
+            backup_id=safety_backup_record.backup_id,
+        )
+        raise
+
     restored_workflow = store.load_workflow(workflow_abspath)
     restored_ui_state = store.load_ui_state(ui_state_abspath)
     restored_revision = compute_workflow_revision(restored_workflow, restored_ui_state)
-    return WorkflowRollbackResult(restored_revision=restored_revision, backup_id=backup_id)
+    return WorkflowRollbackResult(
+        restored_revision=restored_revision,
+        backup_id=backup_id,
+        safety_backup_id=safety_backup_record.backup_id,
+    )
 
 
 __all__ = [

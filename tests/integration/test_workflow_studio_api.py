@@ -139,11 +139,26 @@ def test_workflow_studio_api_supports_diff_save_rollback(tmp_path: Path) -> None
         )
         assert status == 200
         assert rollback_response["restored_revision"] == base_revision
+        safety_backup_id = str(rollback_response["safety_backup_id"])
+        assert safety_backup_id
 
         status, after = _request_json("GET", f"{base_url}/api/workflow")
         assert status == 200
         assert after["revision"] == base_revision
         assert after["workflow"]["params"] == {}
+
+        status, restore_latest_response = _request_json(
+            "POST",
+            f"{base_url}/api/workflow/rollback",
+            {"backup_id": safety_backup_id},
+        )
+        assert status == 200
+        assert restore_latest_response["restored_revision"] == saved_revision
+
+        status, restored_latest = _request_json("GET", f"{base_url}/api/workflow")
+        assert status == 200
+        assert restored_latest["revision"] == saved_revision
+        assert restored_latest["workflow"]["params"]["temperature"] == 0.1
     finally:
         server.shutdown()
         server.server_close()
@@ -194,6 +209,71 @@ def test_workflow_studio_api_returns_conflict_for_stale_revision(tmp_path: Path)
         )
         assert status == 409
         assert response["error"] == "revision_conflict"
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+
+def test_workflow_studio_api_supports_bootstrap_save_from_empty_workflow(
+    tmp_path: Path,
+) -> None:
+    workflow_path = _write_workflow(tmp_path / "workflow.yaml", {})
+    backup_dir = tmp_path / ".yagra-backups"
+
+    server = create_workflow_studio_server(
+        workflow_path=workflow_path,
+        backup_dir=backup_dir,
+        host="127.0.0.1",
+        port=0,
+    )
+    thread = Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    base_url = _server_base_url(server)
+
+    try:
+        status, form_payload = _request_json("GET", f"{base_url}/api/workflow/form")
+        assert status == 200
+        assert form_payload["nodes"] == []
+        assert form_payload["edges"] == []
+        base_revision = str(form_payload["revision"])
+
+        candidate_workflow = {
+            "version": "1.0",
+            "start_at": "start",
+            "end_at": ["finish"],
+            "nodes": [
+                {"id": "start", "handler": "start_handler"},
+                {"id": "finish", "handler": "finish_handler"},
+            ],
+            "edges": [{"source": "start", "target": "finish"}],
+            "params": {},
+        }
+        candidate_ui_state = {
+            "positions": {
+                "start": {"x": 80, "y": 120},
+                "finish": {"x": 350, "y": 120},
+            }
+        }
+        status, save_payload = _request_json(
+            "POST",
+            f"{base_url}/api/workflow/save",
+            {
+                "workflow": candidate_workflow,
+                "ui_state": candidate_ui_state,
+                "base_revision": base_revision,
+            },
+        )
+        assert status == 200
+        assert save_payload["backup_id"]
+
+        status, after_form = _request_json("GET", f"{base_url}/api/workflow/form")
+        assert status == 200
+        assert after_form["workflow"]["version"] == "1.0"
+        assert after_form["workflow"]["start_at"] == "start"
+        assert after_form["workflow"]["end_at"] == ["finish"]
+        assert len(after_form["nodes"]) == 2
+        assert len(after_form["edges"]) == 1
     finally:
         server.shutdown()
         server.server_close()

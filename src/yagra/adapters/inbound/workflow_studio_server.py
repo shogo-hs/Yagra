@@ -406,6 +406,7 @@ def _build_handler_class(
                 {
                     "restored_revision": result.restored_revision,
                     "backup_id": result.backup_id,
+                    "safety_backup_id": result.safety_backup_id,
                 },
             )
 
@@ -658,7 +659,7 @@ def _studio_html() -> str:
       background: #fff;
       color: var(--accent);
     }
-    input[type="text"], textarea {
+    input[type="text"], select, textarea {
       border: 1px solid var(--line);
       border-radius: 9px;
       padding: 8px 10px;
@@ -734,6 +735,23 @@ def _studio_html() -> str:
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 8px;
+    }
+    .check-list {
+      display: grid;
+      gap: 6px;
+      max-height: 150px;
+      overflow: auto;
+      border: 1px solid #e0e8f4;
+      border-radius: 8px;
+      padding: 8px;
+      background: #fff;
+    }
+    .check-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: #2f4769;
     }
     .hint {
       font-size: 12px;
@@ -936,6 +954,41 @@ def _studio_html() -> str:
       </article>
 
       <aside class="panel side-panel">
+        <section class="side-section">
+          <h2>Workflow Settings</h2>
+          <div class="field">
+            <label for="workflowVersionInput">version</label>
+            <input id="workflowVersionInput" v-model="workflowMeta.version" type="text" placeholder="1.0" />
+          </div>
+          <div class="field">
+            <label for="workflowStartAtInput">start_at</label>
+            <select id="workflowStartAtInput" v-model="workflowMeta.startAt" @change="onWorkflowMetaChange">
+              <option value="">(select node)</option>
+              <option v-for="nodeId in nodeIdOptions" :key="'start-' + nodeId" :value="nodeId">
+                {{ nodeId }}
+              </option>
+            </select>
+          </div>
+          <div class="field">
+            <label>end_at</label>
+            <div v-if="nodeIdOptions.length === 0" class="hint">
+              先にノードを追加してください。
+            </div>
+            <div v-else class="check-list">
+              <label v-for="nodeId in nodeIdOptions" :key="'end-' + nodeId" class="check-item">
+                <input
+                  type="checkbox"
+                  :value="nodeId"
+                  v-model="workflowMeta.endAt"
+                  @change="onWorkflowMetaChange"
+                />
+                <span>{{ nodeId }}</span>
+              </label>
+            </div>
+          </div>
+          <div class="hint">`start_at` と `end_at` は保存時に workflow へ反映されます。</div>
+        </section>
+
         <section class="side-section">
           <h2>Add Node</h2>
           <div class="inline-row">
@@ -1748,6 +1801,11 @@ def _studio_html() -> str:
         const edges = ref([]);
         const originalWorkflow = ref({});
         const baseUiState = ref({});
+        const workflowMeta = reactive({
+          version: "1.0",
+          startAt: "",
+          endAt: [],
+        });
 
         const selectedNodeId = ref(null);
         const selectedEdgeId = ref(null);
@@ -1793,6 +1851,19 @@ def _studio_html() -> str:
         const selectedEdge = computed(() =>
           edges.value.find(edge => edge.id === selectedEdgeId.value) || null,
         );
+        const nodeIdOptions = computed(() => {
+          const ids = [];
+          const seen = new Set();
+          for (const node of nodes.value) {
+            const nodeId = normalizeText(node?.id);
+            if (!nodeId || seen.has(nodeId)) {
+              continue;
+            }
+            seen.add(nodeId);
+            ids.push(nodeId);
+          }
+          return ids;
+        });
 
         watch(
           selectedNode,
@@ -1834,6 +1905,74 @@ def _studio_html() -> str:
         function setStatus(message, isError = false) {
           status.message = message;
           status.isError = isError;
+        }
+
+        function resolveWorkflowStartAt(value) {
+          const ids = normalizeNodeIdList(value);
+          return ids.length > 0 ? ids[0] : "";
+        }
+
+        function normalizeWorkflowMeta(metaLike, nodeItems) {
+          const nodeIds = [];
+          const seen = new Set();
+          for (const node of Array.isArray(nodeItems) ? nodeItems : []) {
+            const nodeId = normalizeText(node?.id);
+            if (!nodeId || seen.has(nodeId)) {
+              continue;
+            }
+            seen.add(nodeId);
+            nodeIds.push(nodeId);
+          }
+          const nodeIdSet = new Set(nodeIds);
+          const version = normalizeText(metaLike?.version) || "1.0";
+
+          let startAt = normalizeText(metaLike?.startAt);
+          if (!nodeIdSet.has(startAt)) {
+            startAt = nodeIds[0] || "";
+          }
+
+          const endAt = [];
+          const endSeen = new Set();
+          for (const rawNodeId of normalizeNodeIdList(metaLike?.endAt)) {
+            if (!nodeIdSet.has(rawNodeId) || endSeen.has(rawNodeId)) {
+              continue;
+            }
+            endSeen.add(rawNodeId);
+            endAt.push(rawNodeId);
+          }
+          if (startAt && endAt.length === 0) {
+            endAt.push(startAt);
+          }
+
+          return { version, startAt, endAt };
+        }
+
+        function syncWorkflowMetaWithNodes(nodeItems = nodes.value) {
+          const normalized = normalizeWorkflowMeta(workflowMeta, nodeItems);
+          workflowMeta.version = normalized.version;
+          workflowMeta.startAt = normalized.startAt;
+          workflowMeta.endAt = normalized.endAt;
+        }
+
+        function syncNodeRoleFlags() {
+          const startNodeId = normalizeText(workflowMeta.startAt);
+          const endNodeIdSet = new Set(normalizeNodeIdList(workflowMeta.endAt));
+          nodes.value = nodes.value.map(node => {
+            const current = isRecord(node.data) ? node.data : {};
+            return {
+              ...node,
+              data: {
+                ...current,
+                isStart: node.id === startNodeId,
+                isEnd: endNodeIdSet.has(node.id),
+              },
+            };
+          });
+        }
+
+        function onWorkflowMetaChange() {
+          syncWorkflowMetaWithNodes(nodes.value);
+          syncNodeRoleFlags();
         }
 
         function refreshEdgeMetadata() {
@@ -2045,9 +2184,13 @@ def _studio_html() -> str:
             return rawEdge;
           });
 
+          const normalizedMeta = normalizeWorkflowMeta(workflowMeta, workflowNodes);
           const payload = isRecord(originalWorkflow.value)
             ? deepClone(originalWorkflow.value)
             : {};
+          payload.version = normalizedMeta.version;
+          payload.start_at = normalizedMeta.startAt;
+          payload.end_at = normalizedMeta.endAt;
           payload.nodes = workflowNodes;
           payload.edges = workflowEdges;
           return payload;
@@ -2178,6 +2321,13 @@ def _studio_html() -> str:
               },
             },
           ];
+          if (!normalizeText(workflowMeta.startAt)) {
+            workflowMeta.startAt = nodeId;
+          }
+          if (normalizeNodeIdList(workflowMeta.endAt).length === 0) {
+            workflowMeta.endAt = [nodeId];
+          }
+          onWorkflowMetaChange();
           selectedNodeId.value = nodeId;
           selectedEdgeId.value = null;
           newNode.id = "";
@@ -2187,6 +2337,7 @@ def _studio_html() -> str:
 
         function onNodesChange(changes) {
           nodes.value = applyNodeChanges(changes, nodes.value);
+          onWorkflowMetaChange();
         }
 
         function onEdgesChange(changes) {
@@ -2306,6 +2457,10 @@ def _studio_html() -> str:
           baseUiState.value = isRecord(data.ui_state) ? deepClone(data.ui_state) : {};
 
           nodes.value = buildNodesFromPayload(data.workflow, data.ui_state, data.nodes);
+          workflowMeta.version = normalizeText(data.workflow?.version) || "1.0";
+          workflowMeta.startAt = resolveWorkflowStartAt(data.workflow?.start_at);
+          workflowMeta.endAt = normalizeNodeIdList(data.workflow?.end_at);
+          onWorkflowMetaChange();
           edges.value = buildEdgesFromPayload(data.workflow, data.ui_state, data.edges, nodes.value);
           refreshEdgeMetadata();
           selectedNodeId.value = null;
@@ -2385,6 +2540,13 @@ def _studio_html() -> str:
             setStatus("backup_id is required", true);
             return;
           }
+          const shouldProceed = window.confirm(
+            "rollback を実行すると現在状態が復元先へ置き換わります。続行しますか？",
+          );
+          if (!shouldProceed) {
+            setStatus("rollback cancelled");
+            return;
+          }
           setStatus("rolling back...");
           const response = await fetch("/api/workflow/rollback", {
             method: "POST",
@@ -2397,7 +2559,15 @@ def _studio_html() -> str:
             return;
           }
           revision.value = data.restored_revision;
+          const safetyBackupId = normalizeText(data.safety_backup_id);
+          if (safetyBackupId) {
+            backupId.value = safetyBackupId;
+          }
           await loadWorkflow();
+          if (safetyBackupId) {
+            setStatus(`rolled back (${targetBackupId}), safety backup: ${safetyBackupId}`);
+            return;
+          }
           setStatus(`rolled back (${targetBackupId})`);
         }
 
@@ -2412,6 +2582,8 @@ def _studio_html() -> str:
           diffText,
           promptCatalogKeys,
           modelCatalogKeys,
+          workflowMeta,
+          nodeIdOptions,
           nodes,
           edges,
           selectedNode,
@@ -2426,6 +2598,7 @@ def _studio_html() -> str:
           previewDiff,
           saveWorkflow,
           rollbackWorkflow,
+          onWorkflowMetaChange,
           addNode,
           applyNodeEdit,
           applyEdgeEdit,

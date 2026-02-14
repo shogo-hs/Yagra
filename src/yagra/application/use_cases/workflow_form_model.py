@@ -69,12 +69,16 @@ def build_workflow_form_view(
     """
     workflow_mapping = _ensure_mapping(workflow, label="workflow")
     ui_state_mapping = _ensure_mapping(ui_state, label="ui_state")
-    nodes_raw = workflow_mapping.get("nodes")
-    edges_raw = workflow_mapping.get("edges")
+    nodes_raw = workflow_mapping.get("nodes", [])
+    edges_raw = workflow_mapping.get("edges", [])
+    if nodes_raw is None:
+        nodes_raw = []
+    if edges_raw is None:
+        edges_raw = []
     if not isinstance(nodes_raw, list):
-        raise ValueError("workflow.nodes must be a list")
+        raise ValueError("workflow.nodes must be a list when present")
     if not isinstance(edges_raw, list):
-        raise ValueError("workflow.edges must be a list")
+        raise ValueError("workflow.edges must be a list when present")
 
     nodes: list[WorkflowNodeFormItem] = []
     for node_raw in nodes_raw:

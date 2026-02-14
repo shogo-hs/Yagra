@@ -189,6 +189,22 @@ class WorkflowFileStore:
         self._atomic_write_text(workflow_abspath, workflow_text)
         self._atomic_write_text(ui_state_abspath, ui_state_text)
 
+    def backup_exists(self, workflow_path: str | PathLike[str], backup_id: str) -> bool:
+        """指定バックアップIDが存在するかを返す。
+
+        Args:
+            workflow_path: 対象 workflow パス。
+            backup_id: 確認対象バックアップID。
+
+        Returns:
+            workflow/UI サイドカーの両バックアップが存在する場合 `True`。
+        """
+        workflow_abspath = Path(workflow_path).expanduser().resolve()
+        backup_dir = self._backup_root / workflow_abspath.stem
+        workflow_backup_path = backup_dir / f"{backup_id}.yaml"
+        ui_state_backup_path = backup_dir / f"{backup_id}.workflow-ui.json"
+        return workflow_backup_path.exists() and ui_state_backup_path.exists()
+
     def _atomic_write_text(self, path: Path, text: str) -> None:
         """同一ファイルシステム内で atomic write を行う。
 
