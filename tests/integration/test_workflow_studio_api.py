@@ -94,7 +94,10 @@ def test_workflow_studio_api_supports_diff_save_rollback(tmp_path: Path) -> None
 
         candidate_workflow = deepcopy(current["workflow"])
         candidate_workflow["params"] = {"temperature": 0.1}
-        candidate_ui_state = {"positions": {"router": {"x": 150, "y": 200}}}
+        candidate_ui_state = {
+            "positions": {"router": {"x": 150, "y": 200}},
+            "edge_handles": {"0": {"source_handle": "bottom-out", "target_handle": "top-in"}},
+        }
 
         status, diff_response = _request_json(
             "POST",
@@ -122,6 +125,12 @@ def test_workflow_studio_api_supports_diff_save_rollback(tmp_path: Path) -> None
         assert save_response["backup_id"]
         saved_revision = str(save_response["saved_revision"])
         assert saved_revision != base_revision
+
+        status, after_save = _request_json("GET", f"{base_url}/api/workflow")
+        assert status == 200
+        assert after_save["ui_state"]["positions"]["router"]["x"] == 150
+        assert after_save["ui_state"]["edge_handles"]["0"]["source_handle"] == "bottom-out"
+        assert after_save["ui_state"]["edge_handles"]["0"]["target_handle"] == "top-in"
 
         status, rollback_response = _request_json(
             "POST",
@@ -339,7 +348,11 @@ def test_workflow_studio_form_preview_supports_dnd_like_edits(tmp_path: Path) ->
                         "planner": {"x": 320, "y": 120},
                         "review": {"x": 560, "y": 120},
                         "finish": {"x": 800, "y": 120},
-                    }
+                    },
+                    "edge_handles": {
+                        "2": {"source_handle": "bottom-out", "target_handle": "top-in"},
+                        "3": {"source_handle": "right-out", "target_handle": "left-in"},
+                    },
                 },
             },
         )
@@ -351,6 +364,7 @@ def test_workflow_studio_form_preview_supports_dnd_like_edits(tmp_path: Path) ->
         assert preview["candidate_workflow"]["edges"][-1]["source"] == "review"
         assert preview["candidate_workflow"]["edges"][-1]["target"] == "finish"
         assert preview["candidate_ui_state"]["positions"]["review"]["x"] == 560
+        assert preview["candidate_ui_state"]["edge_handles"]["2"]["source_handle"] == "bottom-out"
 
         status, save_payload = _request_json(
             "POST",
@@ -372,6 +386,8 @@ def test_workflow_studio_form_preview_supports_dnd_like_edits(tmp_path: Path) ->
             for edge in after_form["edges"]
         )
         assert after_form["ui_state"]["positions"]["review"]["x"] == 560
+        assert after_form["ui_state"]["edge_handles"]["2"]["source_handle"] == "bottom-out"
+        assert after_form["ui_state"]["edge_handles"]["2"]["target_handle"] == "top-in"
     finally:
         server.shutdown()
         server.server_close()

@@ -1653,9 +1653,32 @@ def _studio_html() -> str:
     function resolveEdgeHandles(edgeLike) {
       const defaultSource = "right-out";
       const defaultTarget = "left-in";
-      const sourceHandle = normalizeHandleId(edgeLike?.sourceHandle) || defaultSource;
-      const targetHandle = normalizeHandleId(edgeLike?.targetHandle) || defaultTarget;
+      const sourceCandidate = normalizeHandleId(edgeLike?.sourceHandle);
+      const targetCandidate = normalizeHandleId(edgeLike?.targetHandle);
+      const sourceHandle = SOURCE_HANDLE_OPTIONS.includes(sourceCandidate)
+        ? sourceCandidate
+        : defaultSource;
+      const targetHandle = TARGET_HANDLE_OPTIONS.includes(targetCandidate)
+        ? targetCandidate
+        : defaultTarget;
       return { sourceHandle, targetHandle };
+    }
+
+    function buildPersistedEdgeHandleMap(uiState) {
+      const persisted = isRecord(uiState?.edge_handles) ? uiState.edge_handles : {};
+      const map = new Map();
+      for (const [rawIndex, rawHandles] of Object.entries(persisted)) {
+        const index = Number(rawIndex);
+        if (!Number.isInteger(index) || index < 0 || !isRecord(rawHandles)) {
+          continue;
+        }
+        const handles = resolveEdgeHandles({
+          sourceHandle: rawHandles.source_handle,
+          targetHandle: rawHandles.target_handle,
+        });
+        map.set(index, handles);
+      }
+      return map;
     }
 
     function buildEdgeAppearance(index, condition, loopEdge) {
@@ -1915,8 +1938,9 @@ def _studio_html() -> str:
             });
         }
 
-        function buildEdgesFromPayload(workflow, formEdges, nodeItems) {
+        function buildEdgesFromPayload(workflow, uiState, formEdges, nodeItems) {
           const workflowEdges = Array.isArray(workflow?.edges) ? workflow.edges : [];
+          const persistedHandleMap = buildPersistedEdgeHandleMap(uiState);
           const edgeFormByIndex = new Map(
             (Array.isArray(formEdges) ? formEdges : [])
               .filter(item => isRecord(item) && Number.isInteger(item.index))
@@ -1952,7 +1976,9 @@ def _studio_html() -> str:
           return validEdges.map(item => {
             const edgeId = `edge-${item.index}-${item.edge.source}-${item.edge.target}`;
             const loopEdge = loopEdgeKeySet.has(edgeId);
-            const handles = handlePlan.get(edgeId) || resolveEdgeHandles(item.edge);
+            const handles = persistedHandleMap.get(item.index)
+              || handlePlan.get(edgeId)
+              || resolveEdgeHandles(item.edge);
             return {
               id: edgeId,
               source: item.edge.source,
@@ -2037,6 +2063,24 @@ def _studio_html() -> str:
             };
           }
           payload.positions = positions;
+
+          const edgeHandles = {};
+          for (const edge of edges.value) {
+            const currentData = isRecord(edge.data) ? edge.data : {};
+            const rawIndex = Number(currentData.index);
+            if (!Number.isInteger(rawIndex) || rawIndex < 0) {
+              continue;
+            }
+            const handles = resolveEdgeHandles({
+              sourceHandle: normalizeHandleId(edge.sourceHandle) || normalizeHandleId(currentData.sourceHandle),
+              targetHandle: normalizeHandleId(edge.targetHandle) || normalizeHandleId(currentData.targetHandle),
+            });
+            edgeHandles[String(rawIndex)] = {
+              source_handle: handles.sourceHandle,
+              target_handle: handles.targetHandle,
+            };
+          }
+          payload.edge_handles = edgeHandles;
           return payload;
         }
 
@@ -2262,7 +2306,7 @@ def _studio_html() -> str:
           baseUiState.value = isRecord(data.ui_state) ? deepClone(data.ui_state) : {};
 
           nodes.value = buildNodesFromPayload(data.workflow, data.ui_state, data.nodes);
-          edges.value = buildEdgesFromPayload(data.workflow, data.edges, nodes.value);
+          edges.value = buildEdgesFromPayload(data.workflow, data.ui_state, data.edges, nodes.value);
           refreshEdgeMetadata();
           selectedNodeId.value = null;
           selectedEdgeId.value = null;
