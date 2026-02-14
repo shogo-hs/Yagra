@@ -864,15 +864,40 @@ def _studio_html() -> str:
                 </div>
               </div>
               <div class="field">
-                <label for="nodePromptJsonInput">prompt (JSON object)</label>
-                <textarea id="nodePromptJsonInput" v-model="nodeEditor.promptJson"></textarea>
+                <label for="nodePromptSystemInput">system prompt</label>
+                <textarea
+                  id="nodePromptSystemInput"
+                  v-model="nodeEditor.promptSystem"
+                  placeholder="You are a helpful assistant..."
+                ></textarea>
               </div>
               <div class="field">
-                <label for="nodeModelJsonInput">model (JSON object)</label>
-                <textarea id="nodeModelJsonInput" v-model="nodeEditor.modelJson"></textarea>
+                <label for="nodePromptUserInput">user prompt</label>
+                <textarea
+                  id="nodePromptUserInput"
+                  v-model="nodeEditor.promptUser"
+                  placeholder="{{input}}"
+                ></textarea>
               </div>
               <div class="field">
-                <label>Model Runtime Params (LiteLLM)</label>
+                <label>Model Settings</label>
+                <div class="inline-row">
+                  <input
+                    id="nodeModelProviderInput"
+                    v-model.trim="nodeEditor.modelProvider"
+                    type="text"
+                    placeholder="provider (e.g. openai)"
+                  />
+                  <input
+                    id="nodeModelNameInput"
+                    v-model.trim="nodeEditor.modelName"
+                    type="text"
+                    placeholder="name (e.g. gpt-4.1-mini)"
+                  />
+                </div>
+              </div>
+              <div class="field">
+                <label>Model Runtime Params</label>
                 <div class="inline-row">
                   <input
                     id="nodeModelTemperatureInput"
@@ -897,7 +922,7 @@ def _studio_html() -> str:
                 </div>
               </div>
               <button type="button" class="secondary" @click="applyNodeEdit">Apply Node Edit</button>
-              <div class="hint">node id は空文字/重複不可です。空文字の prompt_ref / model_ref / JSON は削除として扱います。model_ref 利用時は model(JSON/Runtime Params) が上書き設定として扱われます。</div>
+              <div class="hint">node id は空文字/重複不可です。system/user prompt と model settings の空欄は該当キー削除として扱います。model_ref 利用時は model settings が上書き設定として扱われます。</div>
             </template>
           </section>
 
@@ -1022,21 +1047,6 @@ def _studio_html() -> str:
         }
       }
       return ids;
-    }
-
-    function parseJsonObjectOrNull(raw, label) {
-      const text = String(raw || "").trim();
-      if (!text) return null;
-      try {
-        const parsed = JSON.parse(text);
-        if (!isRecord(parsed)) {
-          throw new Error("must be object");
-        }
-        return parsed;
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        throw new Error(`${label} is invalid JSON object: ${message}`);
-      }
     }
 
     function defaultNodePosition(index) {
@@ -1684,8 +1694,10 @@ def _studio_html() -> str:
           handler: "",
           promptRef: "",
           modelRef: "",
-          promptJson: "",
-          modelJson: "",
+          promptSystem: "",
+          promptUser: "",
+          modelProvider: "",
+          modelName: "",
           temperature: "",
           topP: "",
           maxTokens: "",
@@ -1741,16 +1753,26 @@ def _studio_html() -> str:
               nodeEditor.handler = "";
               nodeEditor.promptRef = "";
               nodeEditor.modelRef = "";
-              nodeEditor.promptJson = "";
-              nodeEditor.modelJson = "";
+              nodeEditor.promptSystem = "";
+              nodeEditor.promptUser = "";
+              nodeEditor.modelProvider = "";
+              nodeEditor.modelName = "";
               nodeEditor.temperature = "";
               nodeEditor.topP = "";
               nodeEditor.maxTokens = "";
               return;
             }
             const data = isRecord(node.data) ? node.data : {};
+            const prompt = isRecord(data.prompt) ? data.prompt : null;
             const model = isRecord(data.model) ? data.model : null;
             const modelKwargs = isRecord(model?.kwargs) ? model.kwargs : null;
+            const modelNameRaw = typeof model?.name === "string"
+              ? model.name
+              : typeof model?.model === "string"
+                ? model.model
+                : typeof model?.model_name === "string"
+                  ? model.model_name
+                  : "";
             const temperatureRaw = model?.temperature ?? modelKwargs?.temperature;
             const topPRaw = model?.top_p ?? modelKwargs?.top_p;
             const maxTokensRaw = model?.max_tokens ?? modelKwargs?.max_tokens;
@@ -1758,12 +1780,16 @@ def _studio_html() -> str:
             nodeEditor.handler = normalizeText(data.handler);
             nodeEditor.promptRef = normalizeText(data.promptRef);
             nodeEditor.modelRef = normalizeText(data.modelRef);
-            nodeEditor.promptJson = isRecord(data.prompt)
-              ? JSON.stringify(data.prompt, null, 2)
+            nodeEditor.promptSystem = typeof prompt?.system === "string"
+              ? prompt.system
               : "";
-            nodeEditor.modelJson = isRecord(data.model)
-              ? JSON.stringify(data.model, null, 2)
+            nodeEditor.promptUser = typeof prompt?.user === "string"
+              ? prompt.user
               : "";
+            nodeEditor.modelProvider = typeof model?.provider === "string"
+              ? model.provider
+              : "";
+            nodeEditor.modelName = normalizeText(modelNameRaw);
             nodeEditor.temperature = Number.isFinite(Number(temperatureRaw))
               ? String(Number(temperatureRaw))
               : "";
@@ -2208,27 +2234,68 @@ def _studio_html() -> str:
               setStatus(`node already exists: ${nextNodeId}`, true);
               return;
             }
-            const promptObj = parseJsonObjectOrNull(nodeEditor.promptJson, "prompt");
-            const modelObj = parseJsonObjectOrNull(nodeEditor.modelJson, "model");
+            const selectedData = isRecord(selectedNode.value.data) ? selectedNode.value.data : {};
+            const promptObj = isRecord(selectedData.prompt)
+              ? deepClone(selectedData.prompt)
+              : {};
+            const promptSystem = normalizeText(nodeEditor.promptSystem);
+            const promptUser = normalizeText(nodeEditor.promptUser);
+            if (promptSystem) {
+              promptObj.system = promptSystem;
+            } else {
+              delete promptObj.system;
+            }
+            if (promptUser) {
+              promptObj.user = promptUser;
+            } else {
+              delete promptObj.user;
+            }
+            const finalPrompt = Object.keys(promptObj).length > 0 ? promptObj : null;
+
+            const modelObj = isRecord(selectedData.model)
+              ? deepClone(selectedData.model)
+              : {};
+            const modelProvider = normalizeText(nodeEditor.modelProvider);
+            const modelName = normalizeText(nodeEditor.modelName);
+            if (modelProvider) {
+              modelObj.provider = modelProvider;
+            } else {
+              delete modelObj.provider;
+            }
+            if (modelName) {
+              modelObj.name = modelName;
+            } else {
+              delete modelObj.name;
+              delete modelObj.model;
+              delete modelObj.model_name;
+            }
             const temperature = parseOptionalNumber(nodeEditor.temperature, "temperature");
             const topP = parseOptionalNumber(nodeEditor.topP, "top_p");
             const maxTokens = parseOptionalInteger(nodeEditor.maxTokens, "max_tokens");
-            const runtimeOverrides = {};
+            if (isRecord(modelObj.kwargs)) {
+              delete modelObj.kwargs.temperature;
+              delete modelObj.kwargs.top_p;
+              delete modelObj.kwargs.max_tokens;
+              if (Object.keys(modelObj.kwargs).length === 0) {
+                delete modelObj.kwargs;
+              }
+            }
             if (temperature !== null) {
-              runtimeOverrides.temperature = temperature;
+              modelObj.temperature = temperature;
+            } else {
+              delete modelObj.temperature;
             }
             if (topP !== null) {
-              runtimeOverrides.top_p = topP;
+              modelObj.top_p = topP;
+            } else {
+              delete modelObj.top_p;
             }
             if (maxTokens !== null) {
-              runtimeOverrides.max_tokens = maxTokens;
+              modelObj.max_tokens = maxTokens;
+            } else {
+              delete modelObj.max_tokens;
             }
-            const hasRuntimeOverrides = Object.keys(runtimeOverrides).length > 0;
-            const nextModel = isRecord(modelObj) ? deepClone(modelObj) : {};
-            if (hasRuntimeOverrides) {
-              Object.assign(nextModel, runtimeOverrides);
-            }
-            const finalModel = Object.keys(nextModel).length > 0 ? nextModel : null;
+            const finalModel = Object.keys(modelObj).length > 0 ? modelObj : null;
             const renamed = currentNodeId !== nextNodeId;
             nodes.value = nodes.value.map(node => {
               if (node.id !== currentNodeId) {
@@ -2244,7 +2311,7 @@ def _studio_html() -> str:
                   handler: normalizeText(nodeEditor.handler),
                   promptRef: normalizeText(nodeEditor.promptRef),
                   modelRef: normalizeText(nodeEditor.modelRef),
-                  prompt: promptObj,
+                  prompt: finalPrompt,
                   model: finalModel,
                 },
               };
