@@ -117,6 +117,32 @@ def validate_workflow_for_ui(
     if payload is None:
         return report
 
+    return validate_workflow_payload_for_ui(
+        payload=payload,
+        workflow_path=workflow_abspath,
+        bundle_root=bundle_root_path,
+    )
+
+
+def validate_workflow_payload_for_ui(
+    payload: dict[str, Any],
+    workflow_path: str | PathLike[str],
+    bundle_root: str | PathLike[str] | None = None,
+) -> WorkflowValidationReport:
+    """Workflow payload を UI 向けに検証して構造化レポートを返す。
+
+    Args:
+        payload: 検証対象の workflow 辞書データ。
+        workflow_path: 入口となる workflow YAML のパス。
+        bundle_root: 分割参照時の基準ディレクトリ。未指定時は workflow 親を使う。
+
+    Returns:
+        検証結果を保持する `WorkflowValidationReport`。
+    """
+    report = WorkflowValidationReport()
+    workflow_abspath = Path(workflow_path).expanduser().resolve()
+    bundle_root_path = Path(bundle_root).expanduser().resolve() if bundle_root is not None else None
+
     try:
         resolved_payload = resolve_workflow_references(
             payload=payload,

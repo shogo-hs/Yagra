@@ -11,6 +11,7 @@ from typing import Any
 
 from langgraph.graph.state import CompiledStateGraph
 
+from yagra.adapters.inbound import create_workflow_studio_server
 from yagra.adapters.outbound import InMemoryNodeRegistry
 from yagra.application.use_cases import (
     build_from_workflow_path,
@@ -91,6 +92,9 @@ def main() -> None:
     if args.command == "visualize":
         exit_code = _run_visualize_command(args)
         raise SystemExit(exit_code)
+    if args.command == "studio":
+        exit_code = _run_studio_command(args)
+        raise SystemExit(exit_code)
     raise SystemExit(2)
 
 
@@ -147,6 +151,42 @@ def _build_cli_parser() -> argparse.ArgumentParser:
         help="可視化ページのタイトル",
     )
 
+    studio = subparsers.add_parser(
+        "studio",
+        help="workflow 編集用のローカル WebUI/API を起動する",
+    )
+    studio.add_argument(
+        "--workflow",
+        required=True,
+        help="編集対象 workflow YAML のパス",
+    )
+    studio.add_argument(
+        "--bundle-root",
+        default=None,
+        help="分割参照解決の基準ディレクトリ",
+    )
+    studio.add_argument(
+        "--ui-state",
+        default=None,
+        help="UI サイドカー JSON のパス（未指定時は <workflow>.workflow-ui.json）",
+    )
+    studio.add_argument(
+        "--backup-dir",
+        default=".yagra/backups",
+        help="バックアップ格納ディレクトリ",
+    )
+    studio.add_argument(
+        "--host",
+        default="127.0.0.1",
+        help="バインドホスト",
+    )
+    studio.add_argument(
+        "--port",
+        type=int,
+        default=8787,
+        help="バインドポート",
+    )
+
     return parser
 
 
@@ -178,6 +218,35 @@ def _run_visualize_command(args: argparse.Namespace) -> int:
     output_path.write_text(html_text, encoding="utf-8")
 
     print(f"workflow visualization generated: {output_path}")
+    return 0
+
+
+def _run_studio_command(args: argparse.Namespace) -> int:
+    """`studio` サブコマンドを実行する。
+
+    Args:
+        args: 解析済みの CLI 引数。
+
+    Returns:
+        終了コード。成功時は 0。
+    """
+    server = create_workflow_studio_server(
+        workflow_path=args.workflow,
+        bundle_root=args.bundle_root,
+        ui_state_path=args.ui_state,
+        backup_dir=args.backup_dir,
+        host=args.host,
+        port=args.port,
+    )
+    base_url = f"http://{args.host}:{args.port}"
+    print(f"workflow studio started: {base_url}")
+    print("press Ctrl+C to stop")
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        server.server_close()
     return 0
 
 

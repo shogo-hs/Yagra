@@ -3,10 +3,12 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 from typing import Any
+from unittest.mock import MagicMock
 
 import pytest
 import yaml
 
+import yagra
 from yagra import main
 
 FIXTURES_ROOT = Path(__file__).resolve().parents[1] / "fixtures"
@@ -97,3 +99,35 @@ def test_main_visualize_returns_error_for_invalid_workflow(
 
     captured = capsys.readouterr()
     assert "workflow validation failed" in captured.err
+
+
+def test_main_studio_starts_and_stops_server(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    fake_server = MagicMock()
+    fake_server.serve_forever.return_value = None
+    fake_server.server_close.return_value = None
+    monkeypatch.setattr(yagra, "create_workflow_studio_server", lambda **_: fake_server)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "yagra",
+            "studio",
+            "--workflow",
+            str(WORKFLOW_ROOT / "branch-inline.yaml"),
+            "--port",
+            "8899",
+        ],
+    )
+
+    with pytest.raises(SystemExit) as exc:
+        main()
+
+    assert exc.value.code == 0
+    fake_server.serve_forever.assert_called_once()
+    fake_server.server_close.assert_called_once()
+
+    captured = capsys.readouterr()
+    assert "workflow studio started:" in captured.out

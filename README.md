@@ -179,6 +179,35 @@ yagra visualize \
 
 検証エラーがある場合は HTML は生成せず、エラー一覧を標準エラーへ出力します。
 
+### `yagra studio`（編集保存基盤）
+
+Workflow の diff 確認・保存・rollback を行うローカル WebUI/API を起動します。
+
+```bash
+yagra studio \
+  --workflow examples/workflows/loop-split.yaml \
+  --bundle-root examples \
+  --port 8787
+```
+
+起動後はブラウザで `http://127.0.0.1:8787/` を開きます。
+
+オプション:
+
+- `--workflow`: 編集対象 workflow ファイル（必須）
+- `--bundle-root`: 分割参照解決の基準ディレクトリ（任意）
+- `--ui-state`: UI サイドカー JSON の保存先（既定: `<workflow>.workflow-ui.json`）
+- `--backup-dir`: バックアップ保存先（既定: `.yagra/backups`）
+- `--host`: バインドホスト（既定: `127.0.0.1`）
+- `--port`: バインドポート（既定: `8787`）
+
+保存時は以下を実施します。
+
+- 保存前 validation（M-05 契約）
+- atomic write（中途半端な書き込み防止）
+- backup 作成（`<backup-dir>/<workflow-stem>/<backup_id>.*`）
+- 失敗時の自動復旧
+
 ## 仕様上の契約（Implicit Contracts）
 
 ### 1. 条件分岐の契約
