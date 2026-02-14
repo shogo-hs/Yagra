@@ -73,16 +73,16 @@
 
 | Item ID | やるべきこと | 状態 | 根拠 |
 | --- | --- | --- | --- |
-| G05-I01 | WebUI 可視化に必要な検証契約（エラー形式）を定義する | Todo | `docs/task-designs/20260214093140_product-docs-webui-roadmap.md` |
+| G05-I01 | WebUI 可視化に必要な検証契約（エラー形式）を定義する | Done | `src/yagra/application/use_cases/workflow_validation_reporter.py` |
 | G05-I02 | YAML からノード/エッジ/条件分岐を表示する Read Only 画面を実装する | Todo | `docs/product/milestones.md` |
 | G05-I03 | ノード詳細で `prompt` / `model` / `*_ref` を確認できるようにする | Todo | `docs/product/milestones.md` |
 | G05-I04 | 編集保存時の差分確認とロールバック方針を整備する | Todo | `docs/product/milestones.md` |
 | G05-I05 | prompt/model/条件をフォーム編集できるようにする | Todo | `docs/product/milestones.md` |
 | G05-I06 | DnD でノード追加とエッジ接続変更を行い round-trip 整合を維持する | Todo | `docs/product/milestones.md` |
 
-- 完了済み: なし
-- 未完了: G05-I01, G05-I02, G05-I03, G05-I04, G05-I05, G05-I06
-- 現在地: G-05 は新規追加。まずは M-05/M-06（検証契約と Read Only 可視化）を優先し、次段階で編集機能へ進む。
+- 完了済み: G05-I01
+- 未完了: G05-I02, G05-I03, G05-I04, G05-I05, G05-I06
+- 現在地: M-05（検証契約）は完了。次は M-06（Read Only 可視化）へ進む。
 
 ## 補足（2026-02-14）
 
