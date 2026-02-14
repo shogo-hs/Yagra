@@ -5,6 +5,11 @@
 ## [Unreleased]
 
 ### Changed
+- なし
+
+## [0.1.1] - 2026-02-14
+
+### Changed
 - パッケージ名・import 名を `graphyml` から `yagra` へ変更し、公開 API の主名称を `Yagra` に統一。
 - publish workflow にタグ名（`vX.Y.Z`）と `pyproject.toml` の `version` 一致チェックを追加。
 

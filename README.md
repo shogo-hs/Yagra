@@ -356,8 +356,8 @@ uv run sphinx-build -b html docs/sphinx/source docs/sphinx/_build/html
 リリース実行例:
 
 ```bash
-git tag v0.1.1
-git push origin v0.1.1
+git tag v0.1.2
+git push origin v0.1.2
 ```
 
 ## ライセンスと変更履歴
