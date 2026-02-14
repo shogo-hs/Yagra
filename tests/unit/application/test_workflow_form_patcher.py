@@ -100,3 +100,57 @@ def test_apply_form_edits_rejects_invalid_targets() -> None:
             node_edits=[],
             edge_edits=[{"edge_index": 9, "condition": "x"}],
         )
+
+
+def test_apply_form_edits_supports_create_and_rewire() -> None:
+    workflow = _base_payload()
+
+    patched = apply_form_edits(
+        workflow=workflow,
+        node_creates=[
+            {
+                "node_id": "review",
+                "handler": "review_handler",
+                "params": {"prompt_ref": "review.default"},
+            }
+        ],
+        edge_creates=[
+            {"source": "review", "target": "finish"},
+        ],
+        edge_rewires=[{"edge_index": 1, "target": "review"}],
+    )
+
+    review_node = next(node for node in patched["nodes"] if node["id"] == "review")
+    assert review_node["handler"] == "review_handler"
+    assert review_node["params"]["prompt_ref"] == "review.default"
+
+    rewired = patched["edges"][1]
+    assert rewired["source"] == "planner"
+    assert rewired["target"] == "review"
+
+    created = patched["edges"][-1]
+    assert created["source"] == "review"
+    assert created["target"] == "finish"
+    assert "condition" not in created
+
+
+def test_apply_form_edits_rejects_duplicate_create_and_invalid_rewire() -> None:
+    workflow = _base_payload()
+
+    with pytest.raises(ValueError, match="node already exists"):
+        apply_form_edits(
+            workflow=workflow,
+            node_creates=[{"node_id": "planner", "handler": "planner_handler"}],
+        )
+
+    with pytest.raises(ValueError, match="edge source node not found"):
+        apply_form_edits(
+            workflow=workflow,
+            edge_creates=[{"source": "unknown", "target": "finish"}],
+        )
+
+    with pytest.raises(ValueError, match="edge rewire requires at least one"):
+        apply_form_edits(
+            workflow=workflow,
+            edge_rewires=[{"edge_index": 0}],
+        )

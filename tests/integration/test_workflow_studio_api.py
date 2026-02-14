@@ -217,6 +217,7 @@ def test_workflow_studio_form_preview_and_save(tmp_path: Path) -> None:
             f"{base_url}/api/workflow/form/preview",
             {
                 "base_revision": base_revision,
+                "node_creates": [],
                 "node_edits": [
                     {
                         "node_id": "planner",
@@ -224,7 +225,10 @@ def test_workflow_studio_form_preview_and_save(tmp_path: Path) -> None:
                         "model": {"provider": "openai", "name": "gpt-4.1-nano"},
                     }
                 ],
+                "edge_creates": [],
+                "edge_rewires": [],
                 "edge_edits": [{"edge_index": 2, "condition": "done"}],
+                "ui_state": {},
             },
         )
         assert status == 200
@@ -253,6 +257,121 @@ def test_workflow_studio_form_preview_and_save(tmp_path: Path) -> None:
         planner = next(item for item in after_form["nodes"] if item["id"] == "planner")
         assert planner["prompt"]["system"] == "edited prompt"
         assert planner["model"]["name"] == "gpt-4.1-nano"
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+
+def test_workflow_studio_form_preview_rejects_missing_required_fields(
+    tmp_path: Path,
+) -> None:
+    workflow_path = _write_workflow(tmp_path / "workflow.yaml", _base_payload())
+    backup_dir = tmp_path / ".yagra-backups"
+
+    server = create_workflow_studio_server(
+        workflow_path=workflow_path,
+        backup_dir=backup_dir,
+        host="127.0.0.1",
+        port=0,
+    )
+    thread = Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    base_url = _server_base_url(server)
+
+    try:
+        status, form_payload = _request_json("GET", f"{base_url}/api/workflow/form")
+        assert status == 200
+        base_revision = str(form_payload["revision"])
+
+        status, response = _request_json(
+            "POST",
+            f"{base_url}/api/workflow/form/preview",
+            {
+                "base_revision": base_revision,
+                "node_edits": [],
+                "edge_creates": [],
+                "edge_rewires": [],
+                "edge_edits": [],
+                "ui_state": {},
+            },
+        )
+        assert status == 400
+        assert response["error"] == "node_creates must be an array"
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+
+def test_workflow_studio_form_preview_supports_dnd_like_edits(tmp_path: Path) -> None:
+    workflow_path = _write_workflow(tmp_path / "workflow.yaml", _base_payload())
+    backup_dir = tmp_path / ".yagra-backups"
+
+    server = create_workflow_studio_server(
+        workflow_path=workflow_path,
+        backup_dir=backup_dir,
+        host="127.0.0.1",
+        port=0,
+    )
+    thread = Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    base_url = _server_base_url(server)
+
+    try:
+        status, form_payload = _request_json("GET", f"{base_url}/api/workflow/form")
+        assert status == 200
+        base_revision = str(form_payload["revision"])
+
+        status, preview = _request_json(
+            "POST",
+            f"{base_url}/api/workflow/form/preview",
+            {
+                "base_revision": base_revision,
+                "node_creates": [{"node_id": "review", "handler": "review_handler"}],
+                "node_edits": [],
+                "edge_creates": [{"source": "review", "target": "finish"}],
+                "edge_rewires": [{"edge_index": 2, "target": "review"}],
+                "edge_edits": [],
+                "ui_state": {
+                    "positions": {
+                        "router": {"x": 80, "y": 120},
+                        "planner": {"x": 320, "y": 120},
+                        "review": {"x": 560, "y": 120},
+                        "finish": {"x": 800, "y": 120},
+                    }
+                },
+            },
+        )
+        assert status == 200
+        assert preview["validation_report"]["is_valid"] is True
+        node_ids = {node["id"] for node in preview["candidate_workflow"]["nodes"]}
+        assert "review" in node_ids
+        assert preview["candidate_workflow"]["edges"][2]["target"] == "review"
+        assert preview["candidate_workflow"]["edges"][-1]["source"] == "review"
+        assert preview["candidate_workflow"]["edges"][-1]["target"] == "finish"
+        assert preview["candidate_ui_state"]["positions"]["review"]["x"] == 560
+
+        status, save_payload = _request_json(
+            "POST",
+            f"{base_url}/api/workflow/save",
+            {
+                "workflow": preview["candidate_workflow"],
+                "ui_state": preview["candidate_ui_state"],
+                "base_revision": base_revision,
+            },
+        )
+        assert status == 200
+        assert save_payload["backup_id"]
+
+        status, after_form = _request_json("GET", f"{base_url}/api/workflow/form")
+        assert status == 200
+        assert any(node["id"] == "review" for node in after_form["nodes"])
+        assert any(
+            edge["source"] == "review" and edge["target"] == "finish"
+            for edge in after_form["edges"]
+        )
+        assert after_form["ui_state"]["positions"]["review"]["x"] == 560
     finally:
         server.shutdown()
         server.server_close()

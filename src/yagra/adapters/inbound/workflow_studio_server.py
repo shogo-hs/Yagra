@@ -249,23 +249,31 @@ def _build_handler_class(
         def _handle_form_preview(self, body: dict[str, Any]) -> None:
             """フォーム編集入力から差分プレビューを返す。"""
             base_revision = body.get("base_revision")
-            node_edits = body.get("node_edits", [])
-            edge_edits = body.get("edge_edits", [])
+            node_creates = body.get("node_creates")
+            node_edits = body.get("node_edits")
+            edge_creates = body.get("edge_creates")
+            edge_rewires = body.get("edge_rewires")
+            edge_edits = body.get("edge_edits")
             candidate_ui_state = body.get("ui_state")
             if not isinstance(base_revision, str):
                 self._write_json(400, {"error": "base_revision must be a string"})
                 return
+            if not isinstance(node_creates, list):
+                self._write_json(400, {"error": "node_creates must be an array"})
+                return
             if not isinstance(node_edits, list):
                 self._write_json(400, {"error": "node_edits must be an array"})
+                return
+            if not isinstance(edge_creates, list):
+                self._write_json(400, {"error": "edge_creates must be an array"})
+                return
+            if not isinstance(edge_rewires, list):
+                self._write_json(400, {"error": "edge_rewires must be an array"})
                 return
             if not isinstance(edge_edits, list):
                 self._write_json(400, {"error": "edge_edits must be an array"})
                 return
-            if candidate_ui_state is None:
-                candidate_ui_state_mapping: dict[str, Any] | None = None
-            elif isinstance(candidate_ui_state, dict):
-                candidate_ui_state_mapping = candidate_ui_state
-            else:
+            if not isinstance(candidate_ui_state, dict):
                 self._write_json(400, {"error": "ui_state must be a mapping"})
                 return
 
@@ -294,19 +302,17 @@ def _build_handler_class(
                 try:
                     candidate_workflow = apply_form_edits(
                         workflow=session.workflow,
+                        node_creates=node_creates,
                         node_edits=node_edits,
+                        edge_creates=edge_creates,
+                        edge_rewires=edge_rewires,
                         edge_edits=edge_edits,
-                    )
-                    resolved_ui_state = (
-                        candidate_ui_state_mapping
-                        if candidate_ui_state_mapping is not None
-                        else session.ui_state
                     )
                     diff_result = build_workflow_diff(
                         base_workflow=session.workflow,
                         candidate_workflow=candidate_workflow,
                         base_ui_state=session.ui_state,
-                        candidate_ui_state=resolved_ui_state,
+                        candidate_ui_state=candidate_ui_state,
                         workflow_path=self._config.workflow_path,
                         bundle_root=self._config.bundle_root,
                     )
@@ -316,7 +322,7 @@ def _build_handler_class(
 
             response_payload = _diff_result_to_dict(diff_result)
             response_payload["candidate_workflow"] = candidate_workflow
-            response_payload["candidate_ui_state"] = resolved_ui_state
+            response_payload["candidate_ui_state"] = candidate_ui_state
             self._write_json(200, response_payload)
 
         def _handle_save(self, body: dict[str, Any]) -> None:
@@ -599,6 +605,18 @@ def _studio_html() -> str:
     .stack { display: grid; gap: 14px; }
     .raw textarea { min-height: 220px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
     .hint { font-size: 12px; color: var(--muted); }
+    .graph-canvas { position: relative; width: 100%; min-height: 360px; border: 1px solid var(--line); border-radius: 10px; background: linear-gradient(180deg, #fdfefe 0%, #f3f8ff 100%); overflow: hidden; }
+    .graph-edge-layer { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+    .graph-node-layer { position: absolute; inset: 0; }
+    .graph-node { position: absolute; width: 140px; padding: 8px; border: 1px solid #8da8cb; border-radius: 10px; background: #fff; box-shadow: 0 2px 7px rgba(35, 70, 120, 0.14); cursor: grab; touch-action: none; user-select: none; }
+    .graph-node.dragging { opacity: .72; cursor: grabbing; }
+    .graph-node.selected { border-color: #0b63be; box-shadow: 0 4px 10px rgba(10, 111, 216, 0.24); }
+    .graph-node-title { font-size: 12px; font-weight: 700; }
+    .graph-node-sub { font-size: 11px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .graph-node-ports { margin-top: 8px; display: flex; justify-content: flex-end; }
+    .port-btn { border: 1px solid #0b63be; background: #fff; color: var(--accent); border-radius: 6px; padding: 2px 6px; font-size: 11px; font-weight: 700; cursor: pointer; }
+    .mode { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    .inline-row button { width: 100%; }
     @media (max-width: 1240px) { .layout { grid-template-columns: 1fr; } }
   </style>
 </head>
@@ -606,7 +624,7 @@ def _studio_html() -> str:
   <div class="page">
     <section class="header">
       <h1>Yagra Workflow Studio</h1>
-      <div class="muted">M-08: prompt / model / condition form editing</div>
+      <div class="muted">M-09: DnD node/edge editing + form editing</div>
       <div class="toolbar">
         <button id="loadBtn">Load</button>
         <button id="previewBtn" class="secondary">Preview Diff</button>
@@ -647,6 +665,31 @@ def _studio_html() -> str:
           <div class="hint">空文字は該当フィールド削除として扱います。</div>
         </div>
         <div class="split">
+          <h2>Add Node</h2>
+          <div class="inline-row">
+            <div class="field">
+              <label for="nodeCreateIdInput">node id</label>
+              <input id="nodeCreateIdInput" type="text" placeholder="review" />
+            </div>
+            <div class="field">
+              <label for="nodeCreateHandlerInput">handler</label>
+              <input id="nodeCreateHandlerInput" type="text" placeholder="review_handler" />
+            </div>
+          </div>
+          <div class="inline-row">
+            <div class="field">
+              <label for="nodeCreateXInput">x (optional)</label>
+              <input id="nodeCreateXInput" type="text" placeholder="560" />
+            </div>
+            <div class="field">
+              <label for="nodeCreateYInput">y (optional)</label>
+              <input id="nodeCreateYInput" type="text" placeholder="180" />
+            </div>
+          </div>
+          <button id="addNodeBtn" class="secondary">Add Node</button>
+          <div class="hint">追加後にキャンバス上でドラッグして配置を調整できます。</div>
+        </div>
+        <div class="split">
           <h2>Edge Form</h2>
           <div class="field">
             <label for="edgeSelect">Edge</label>
@@ -656,11 +699,23 @@ def _studio_html() -> str:
             <label for="edgeConditionInput">condition</label>
             <input id="edgeConditionInput" type="text" placeholder="retry / done" />
           </div>
-          <button id="applyEdgeBtn" class="secondary">Apply Edge Edit</button>
-          <div class="hint">空文字で condition を解除します。</div>
+          <div class="inline-row">
+            <button id="applyEdgeBtn" class="secondary" type="button">Apply Edge Edit</button>
+            <button id="startRewireBtn" class="secondary" type="button">Start Rewire Mode</button>
+          </div>
+          <button id="clearRewireBtn" class="secondary" type="button">Clear Rewire Mode</button>
+          <div class="hint">ノードの Connect ボタンをドラッグして接続追加。Rewire Mode では選択エッジの再接続を実行します。</div>
         </div>
       </article>
       <article class="panel stack">
+        <div>
+          <h2>Graph Canvas</h2>
+          <div id="connectionModeLabel" class="mode">connection mode: idle</div>
+          <div id="graphCanvas" class="graph-canvas">
+            <svg id="graphEdgeLayer" class="graph-edge-layer"></svg>
+            <div id="graphNodeLayer" class="graph-node-layer"></div>
+          </div>
+        </div>
         <div>
           <h2>Validation</h2>
           <pre id="validationView"></pre>
@@ -695,11 +750,18 @@ def _studio_html() -> str:
       uiState: {},
       formNodes: [],
       formEdges: [],
+      pendingNodeCreates: [],
       pendingNodeEdits: [],
+      pendingEdgeCreates: [],
+      pendingEdgeRewires: [],
       pendingEdgeEdits: [],
       promptCatalogKeys: [],
       modelCatalogKeys: [],
+      activeRewireEdgeIndex: null,
+      dragNode: null,
+      dragConnection: null,
     };
+
     const workflowEditor = document.getElementById("workflowEditor");
     const uiStateEditor = document.getElementById("uiStateEditor");
     const validationView = document.getElementById("validationView");
@@ -714,13 +776,35 @@ def _studio_html() -> str:
     const nodeModelRefInput = document.getElementById("nodeModelRefInput");
     const nodePromptJsonInput = document.getElementById("nodePromptJsonInput");
     const nodeModelJsonInput = document.getElementById("nodeModelJsonInput");
+    const nodeCreateIdInput = document.getElementById("nodeCreateIdInput");
+    const nodeCreateHandlerInput = document.getElementById("nodeCreateHandlerInput");
+    const nodeCreateXInput = document.getElementById("nodeCreateXInput");
+    const nodeCreateYInput = document.getElementById("nodeCreateYInput");
     const edgeConditionInput = document.getElementById("edgeConditionInput");
     const promptRefOptions = document.getElementById("promptRefOptions");
     const modelRefOptions = document.getElementById("modelRefOptions");
+    const graphCanvas = document.getElementById("graphCanvas");
+    const graphEdgeLayer = document.getElementById("graphEdgeLayer");
+    const graphNodeLayer = document.getElementById("graphNodeLayer");
+    const connectionModeLabel = document.getElementById("connectionModeLabel");
 
     function setStatus(message, isError = false) {
       statusLabel.textContent = `status: ${message}`;
       statusLabel.className = isError ? "danger" : "ok";
+    }
+
+    function errorMessage(err) {
+      if (err instanceof Error) return err.message;
+      return String(err);
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
     }
 
     function parseJsonObject(raw, label) {
@@ -733,12 +817,121 @@ def _studio_html() -> str:
         }
         return parsed;
       } catch (err) {
-        throw new Error(`${label} is invalid JSON object: ${err.message}`);
+        throw new Error(`${label} is invalid JSON object: ${errorMessage(err)}`);
       }
+    }
+
+    function parseOptionalNumber(raw, label) {
+      const value = String(raw || "").trim();
+      if (!value) return null;
+      const parsed = Number(value);
+      if (!Number.isFinite(parsed)) {
+        throw new Error(`${label} must be a valid number`);
+      }
+      return parsed;
     }
 
     function deepClone(value) {
       return JSON.parse(JSON.stringify(value));
+    }
+
+    function clamp(value, min, max) {
+      return Math.min(max, Math.max(min, value));
+    }
+
+    function defaultNodePosition(index) {
+      const col = index % 4;
+      const row = Math.floor(index / 4);
+      return { x: 32 + col * 180, y: 28 + row * 120 };
+    }
+
+    function ensurePositionsContainer() {
+      if (!state.uiState || typeof state.uiState !== "object" || Array.isArray(state.uiState)) {
+        state.uiState = {};
+      }
+      if (
+        !state.uiState.positions ||
+        typeof state.uiState.positions !== "object" ||
+        Array.isArray(state.uiState.positions)
+      ) {
+        state.uiState.positions = {};
+      }
+      return state.uiState.positions;
+    }
+
+    function ensureUiStatePositions() {
+      const positions = ensurePositionsContainer();
+      for (const [index, node] of state.formNodes.entries()) {
+        const raw = positions[node.id];
+        if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+          positions[node.id] = defaultNodePosition(index);
+          continue;
+        }
+        const x = Number(raw.x);
+        const y = Number(raw.y);
+        if (!Number.isFinite(x) || !Number.isFinite(y)) {
+          positions[node.id] = defaultNodePosition(index);
+          continue;
+        }
+        positions[node.id] = { x: clamp(x, 0, 3000), y: clamp(y, 0, 3000) };
+      }
+    }
+
+    function getNodePosition(nodeId) {
+      ensureUiStatePositions();
+      const positions = ensurePositionsContainer();
+      const index = state.formNodes.findIndex(node => node.id === nodeId);
+      const fallback = defaultNodePosition(index >= 0 ? index : 0);
+      const raw = positions[nodeId];
+      if (!raw || typeof raw !== "object") {
+        return fallback;
+      }
+      return {
+        x: Number.isFinite(Number(raw.x)) ? Number(raw.x) : fallback.x,
+        y: Number.isFinite(Number(raw.y)) ? Number(raw.y) : fallback.y,
+      };
+    }
+
+    function nodeCenter(nodeId) {
+      const pos = getNodePosition(nodeId);
+      return { x: pos.x + 70, y: pos.y + 30 };
+    }
+
+    function toCanvasPoint(clientX, clientY) {
+      const rect = graphCanvas.getBoundingClientRect();
+      return { x: clientX - rect.left, y: clientY - rect.top };
+    }
+
+    function resolveDropNodeId(target) {
+      if (!(target instanceof Element)) return null;
+      const nodeEl = target.closest(".graph-node");
+      if (!(nodeEl instanceof HTMLElement)) return null;
+      return nodeEl.dataset.nodeId || null;
+    }
+
+    function updateConnectionModeLabel() {
+      if (state.activeRewireEdgeIndex === null) {
+        connectionModeLabel.textContent = "connection mode: create edge (drag Connect)";
+        return;
+      }
+      connectionModeLabel.textContent = `connection mode: rewire edge[${state.activeRewireEdgeIndex}]`;
+    }
+
+    function clearPendingEdits() {
+      state.pendingNodeCreates = [];
+      state.pendingNodeEdits = [];
+      state.pendingEdgeCreates = [];
+      state.pendingEdgeRewires = [];
+      state.pendingEdgeEdits = [];
+    }
+
+    function upsertNodeCreate(edit) {
+      const idx = state.pendingNodeCreates.findIndex(item => item.node_id === edit.node_id);
+      if (idx >= 0) {
+        state.pendingNodeCreates[idx] = { ...state.pendingNodeCreates[idx], ...edit };
+      } else {
+        state.pendingNodeCreates.push(edit);
+      }
     }
 
     function upsertNodeEdit(edit) {
@@ -747,6 +940,19 @@ def _studio_html() -> str:
         state.pendingNodeEdits[idx] = { ...state.pendingNodeEdits[idx], ...edit };
       } else {
         state.pendingNodeEdits.push(edit);
+      }
+    }
+
+    function appendEdgeCreate(edit) {
+      state.pendingEdgeCreates.push(edit);
+    }
+
+    function upsertEdgeRewire(edit) {
+      const idx = state.pendingEdgeRewires.findIndex(item => item.edge_index === edit.edge_index);
+      if (idx >= 0) {
+        state.pendingEdgeRewires[idx] = { ...state.pendingEdgeRewires[idx], ...edit };
+      } else {
+        state.pendingEdgeRewires.push(edit);
       }
     }
 
@@ -761,7 +967,10 @@ def _studio_html() -> str:
 
     function renderPending() {
       const payload = {
+        node_creates: state.pendingNodeCreates,
         node_edits: state.pendingNodeEdits,
+        edge_creates: state.pendingEdgeCreates,
+        edge_rewires: state.pendingEdgeRewires,
         edge_edits: state.pendingEdgeEdits,
       };
       pendingView.textContent = JSON.stringify(payload, null, 2);
@@ -816,6 +1025,8 @@ def _studio_html() -> str:
           };
         })
         .filter(Boolean);
+
+      ensureUiStatePositions();
     }
 
     function renderNodeOptions() {
@@ -834,7 +1045,9 @@ def _studio_html() -> str:
         nodeModelJsonInput.value = "";
         return;
       }
-      const target = state.formNodes.some(node => node.id === current) ? current : state.formNodes[0].id;
+      const target = state.formNodes.some(node => node.id === current)
+        ? current
+        : state.formNodes[0].id;
       nodeSelect.value = target;
       renderNodeForm(target);
     }
@@ -850,6 +1063,8 @@ def _studio_html() -> str:
       }
       if (!state.formEdges.length) {
         edgeConditionInput.value = "";
+        state.activeRewireEdgeIndex = null;
+        updateConnectionModeLabel();
         return;
       }
       const target = state.formEdges.some(edge => String(edge.index) === current)
@@ -901,9 +1116,52 @@ def _studio_html() -> str:
       diffView.textContent = lines.join("\\n");
     }
 
+    function ensureWorkflowArrays() {
+      if (!Array.isArray(state.workflow.nodes)) state.workflow.nodes = [];
+      if (!Array.isArray(state.workflow.edges)) state.workflow.edges = [];
+    }
+
+    function collectKnownNodeIds() {
+      ensureWorkflowArrays();
+      const ids = new Set();
+      for (const node of state.workflow.nodes) {
+        if (node && typeof node === "object" && typeof node.id === "string") {
+          ids.add(node.id);
+        }
+      }
+      return ids;
+    }
+
+    function normalizeCondition(value) {
+      if (value === null || value === undefined) return null;
+      const text = String(value).trim();
+      return text ? text : null;
+    }
+
+    function applyNodeCreateToWorkflow(create) {
+      ensureWorkflowArrays();
+      const knownNodeIds = collectKnownNodeIds();
+      if (knownNodeIds.has(create.node_id)) {
+        throw new Error(`node already exists: ${create.node_id}`);
+      }
+
+      const nodePayload = {
+        id: create.node_id,
+        handler: create.handler,
+      };
+      state.workflow.nodes.push(nodePayload);
+
+      const index = state.workflow.nodes.length - 1;
+      const fallback = defaultNodePosition(index);
+      const positions = ensurePositionsContainer();
+      positions[create.node_id] = create.position
+        ? { x: create.position.x, y: create.position.y }
+        : fallback;
+    }
+
     function applyNodeEditToWorkflow(edit) {
-      const nodes = Array.isArray(state.workflow.nodes) ? state.workflow.nodes : [];
-      const targetNode = nodes.find(node => node && node.id === edit.node_id);
+      ensureWorkflowArrays();
+      const targetNode = state.workflow.nodes.find(node => node && node.id === edit.node_id);
       if (!targetNode) {
         throw new Error(`node not found: ${edit.node_id}`);
       }
@@ -928,14 +1186,147 @@ def _studio_html() -> str:
       }
     }
 
-    function applyEdgeEditToWorkflow(edit) {
-      const edges = Array.isArray(state.workflow.edges) ? state.workflow.edges : [];
-      const edge = edges[edit.edge_index];
+    function applyEdgeCreateToWorkflow(create) {
+      ensureWorkflowArrays();
+      const knownNodeIds = collectKnownNodeIds();
+      if (!knownNodeIds.has(create.source)) {
+        throw new Error(`edge source node not found: ${create.source}`);
+      }
+      if (!knownNodeIds.has(create.target)) {
+        throw new Error(`edge target node not found: ${create.target}`);
+      }
+      const edgePayload = {
+        source: create.source,
+        target: create.target,
+      };
+      const condition = normalizeCondition(create.condition);
+      if (condition !== null) {
+        edgePayload.condition = condition;
+      }
+      state.workflow.edges.push(edgePayload);
+    }
+
+    function applyEdgeRewireToWorkflow(edit) {
+      ensureWorkflowArrays();
+      const knownNodeIds = collectKnownNodeIds();
+      const edge = state.workflow.edges[edit.edge_index];
       if (!edge || typeof edge !== "object") {
         throw new Error(`edge not found: ${edit.edge_index}`);
       }
-      if (!edit.condition) delete edge.condition;
-      else edge.condition = edit.condition;
+      if ("source" in edit) {
+        if (!knownNodeIds.has(edit.source)) {
+          throw new Error(`edge source node not found: ${edit.source}`);
+        }
+        edge.source = edit.source;
+      }
+      if ("target" in edit) {
+        if (!knownNodeIds.has(edit.target)) {
+          throw new Error(`edge target node not found: ${edit.target}`);
+        }
+        edge.target = edit.target;
+      }
+      if ("condition" in edit) {
+        const condition = normalizeCondition(edit.condition);
+        if (condition === null) {
+          delete edge.condition;
+        } else {
+          edge.condition = condition;
+        }
+      }
+    }
+
+    function applyEdgeEditToWorkflow(edit) {
+      ensureWorkflowArrays();
+      const edge = state.workflow.edges[edit.edge_index];
+      if (!edge || typeof edge !== "object") {
+        throw new Error(`edge not found: ${edit.edge_index}`);
+      }
+      const condition = normalizeCondition(edit.condition);
+      if (condition === null) delete edge.condition;
+      else edge.condition = condition;
+    }
+
+    function renderGraph() {
+      ensureUiStatePositions();
+      const canvasRect = graphCanvas.getBoundingClientRect();
+      const width = Math.max(320, Math.floor(canvasRect.width || graphCanvas.clientWidth || 320));
+      const height = Math.max(360, Math.floor(canvasRect.height || graphCanvas.clientHeight || 360));
+
+      graphEdgeLayer.setAttribute("viewBox", `0 0 ${width} ${height}`);
+      graphEdgeLayer.setAttribute("width", String(width));
+      graphEdgeLayer.setAttribute("height", String(height));
+      graphEdgeLayer.replaceChildren();
+      graphNodeLayer.replaceChildren();
+
+      const activeEdgeIndex = Number(edgeSelect.value);
+      for (const edge of state.formEdges) {
+        const source = nodeCenter(edge.source);
+        const target = nodeCenter(edge.target);
+        const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        line.setAttribute("x1", String(source.x));
+        line.setAttribute("y1", String(source.y));
+        line.setAttribute("x2", String(target.x));
+        line.setAttribute("y2", String(target.y));
+        const isHighlighted =
+          edge.index === state.activeRewireEdgeIndex || edge.index === activeEdgeIndex;
+        line.setAttribute("stroke", isHighlighted ? "#0a6fd8" : "#8ea4c6");
+        line.setAttribute("stroke-width", isHighlighted ? "2.4" : "1.4");
+        graphEdgeLayer.appendChild(line);
+
+        const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        text.setAttribute("x", String((source.x + target.x) / 2));
+        text.setAttribute("y", String((source.y + target.y) / 2 - 6));
+        text.setAttribute("fill", "#446189");
+        text.setAttribute("font-size", "10");
+        text.setAttribute("text-anchor", "middle");
+        text.textContent = edge.condition ? `[${edge.index}] ${edge.condition}` : `[${edge.index}]`;
+        graphEdgeLayer.appendChild(text);
+      }
+
+      if (state.dragConnection) {
+        const source = nodeCenter(state.dragConnection.sourceNodeId);
+        const ghost = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        ghost.setAttribute("x1", String(source.x));
+        ghost.setAttribute("y1", String(source.y));
+        ghost.setAttribute("x2", String(state.dragConnection.pointerX));
+        ghost.setAttribute("y2", String(state.dragConnection.pointerY));
+        ghost.setAttribute("stroke", "#0a6fd8");
+        ghost.setAttribute("stroke-width", "2");
+        ghost.setAttribute("stroke-dasharray", "5 4");
+        graphEdgeLayer.appendChild(ghost);
+      }
+
+      for (const node of state.formNodes) {
+        const pos = getNodePosition(node.id);
+        const nodeEl = document.createElement("div");
+        nodeEl.className = "graph-node";
+        if (node.id === nodeSelect.value) nodeEl.classList.add("selected");
+        if (state.dragNode && state.dragNode.nodeId === node.id) nodeEl.classList.add("dragging");
+        nodeEl.dataset.nodeId = node.id;
+        nodeEl.style.left = `${Math.round(pos.x)}px`;
+        nodeEl.style.top = `${Math.round(pos.y)}px`;
+        nodeEl.innerHTML = `
+          <div class="graph-node-title">${escapeHtml(node.id)}</div>
+          <div class="graph-node-sub">${escapeHtml(node.handler)}</div>
+          <div class="graph-node-ports">
+            <button type="button" class="port-btn" data-connect="true">Connect</button>
+          </div>
+        `;
+
+        nodeEl.addEventListener("pointerdown", event => startNodeDrag(event, node.id));
+        const connectBtn = nodeEl.querySelector("[data-connect]");
+        if (connectBtn instanceof HTMLElement) {
+          connectBtn.addEventListener("pointerdown", event => startConnectionDrag(event, node.id));
+        }
+        nodeEl.addEventListener("click", event => {
+          if (event.target instanceof Element && event.target.closest("[data-connect]")) return;
+          nodeSelect.value = node.id;
+          renderNodeForm(node.id);
+          renderGraph();
+        });
+
+        graphNodeLayer.appendChild(nodeEl);
+      }
     }
 
     async function loadWorkflow() {
@@ -953,8 +1344,10 @@ def _studio_html() -> str:
       state.formEdges = data.edges || [];
       state.promptCatalogKeys = data.prompt_catalog_keys || [];
       state.modelCatalogKeys = data.model_catalog_keys || [];
-      state.pendingNodeEdits = [];
-      state.pendingEdgeEdits = [];
+      clearPendingEdits();
+      state.activeRewireEdgeIndex = null;
+      state.dragNode = null;
+      state.dragConnection = null;
       state.revision = data.revision;
 
       renderCatalogOptions();
@@ -963,10 +1356,29 @@ def _studio_html() -> str:
       renderEdgeOptions();
       renderEditors();
       renderPending();
+      renderGraph();
+      updateConnectionModeLabel();
       revisionLabel.textContent = `revision: ${state.revision}`;
       renderValidation(data.validation_report);
       diffView.textContent = "";
       setStatus("loaded");
+    }
+
+    function collectNodeCreateFromForm() {
+      const nodeId = nodeCreateIdInput.value.trim();
+      const handler = nodeCreateHandlerInput.value.trim();
+      if (!nodeId) throw new Error("node id is required");
+      if (!handler) throw new Error("handler is required");
+      const x = parseOptionalNumber(nodeCreateXInput.value, "x");
+      const y = parseOptionalNumber(nodeCreateYInput.value, "y");
+      if ((x === null) !== (y === null)) {
+        throw new Error("x and y must be set together");
+      }
+      return {
+        node_id: nodeId,
+        handler,
+        position: x === null || y === null ? null : { x, y },
+      };
     }
 
     function collectNodeEditFromForm() {
@@ -994,6 +1406,31 @@ def _studio_html() -> str:
       };
     }
 
+    async function applyNodeCreate() {
+      if (!state.revision) {
+        setStatus("load first", true);
+        return;
+      }
+      try {
+        const create = collectNodeCreateFromForm();
+        upsertNodeCreate(create);
+        applyNodeCreateToWorkflow(create);
+        rebuildFormStateFromWorkflow();
+        renderNodeOptions();
+        renderEdgeOptions();
+        renderEditors();
+        renderPending();
+        renderGraph();
+        nodeCreateIdInput.value = "";
+        nodeCreateHandlerInput.value = "";
+        nodeCreateXInput.value = "";
+        nodeCreateYInput.value = "";
+        setStatus(`node created: ${create.node_id}`);
+      } catch (err) {
+        setStatus(errorMessage(err), true);
+      }
+    }
+
     async function applyNodeEdit() {
       if (!state.revision) {
         setStatus("load first", true);
@@ -1008,9 +1445,10 @@ def _studio_html() -> str:
         renderNodeOptions();
         renderEditors();
         renderPending();
+        renderGraph();
         setStatus(`node edit applied: ${edit.node_id}`);
       } catch (err) {
-        setStatus(err.message, true);
+        setStatus(errorMessage(err), true);
       }
     }
 
@@ -1028,9 +1466,168 @@ def _studio_html() -> str:
         renderEdgeOptions();
         renderEditors();
         renderPending();
+        renderGraph();
         setStatus(`edge edit applied: [${edit.edge_index}]`);
       } catch (err) {
-        setStatus(err.message, true);
+        setStatus(errorMessage(err), true);
+      }
+    }
+
+    function startRewireMode() {
+      if (!edgeSelect.value) {
+        setStatus("edge is not selected", true);
+        return;
+      }
+      state.activeRewireEdgeIndex = Number(edgeSelect.value);
+      updateConnectionModeLabel();
+      renderGraph();
+      setStatus(`rewire mode started: edge[${state.activeRewireEdgeIndex}]`);
+    }
+
+    function clearRewireMode() {
+      state.activeRewireEdgeIndex = null;
+      updateConnectionModeLabel();
+      renderGraph();
+      setStatus("rewire mode cleared");
+    }
+
+    function startConnectionDrag(event, sourceNodeId) {
+      if (!state.revision) return;
+      if (event.button !== 0) return;
+
+      if (state.activeRewireEdgeIndex !== null) {
+        const edge = state.formEdges.find(item => item.index === state.activeRewireEdgeIndex);
+        if (!edge) {
+          setStatus("selected edge not found", true);
+          state.activeRewireEdgeIndex = null;
+          updateConnectionModeLabel();
+          return;
+        }
+        if (edge.source !== sourceNodeId) {
+          setStatus(`rewire source must be ${edge.source}`, true);
+          return;
+        }
+      }
+
+      const point = toCanvasPoint(event.clientX, event.clientY);
+      state.dragConnection = {
+        sourceNodeId,
+        rewireEdgeIndex: state.activeRewireEdgeIndex,
+        pointerX: point.x,
+        pointerY: point.y,
+      };
+      const modeText =
+        state.activeRewireEdgeIndex === null
+          ? `create edge from ${sourceNodeId}`
+          : `rewire edge[${state.activeRewireEdgeIndex}] from ${sourceNodeId}`;
+      setStatus(`${modeText}: drop on target node`);
+      renderGraph();
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
+    function startNodeDrag(event, nodeId) {
+      if (!state.revision) return;
+      if (event.button !== 0) return;
+      if (event.target instanceof Element && event.target.closest("[data-connect]")) {
+        return;
+      }
+
+      const current = getNodePosition(nodeId);
+      const point = toCanvasPoint(event.clientX, event.clientY);
+      state.dragNode = {
+        nodeId,
+        offsetX: point.x - current.x,
+        offsetY: point.y - current.y,
+      };
+      event.preventDefault();
+    }
+
+    function applyConnectionResult(connection, targetNodeId) {
+      if (connection.rewireEdgeIndex !== null) {
+        const edit = {
+          edge_index: connection.rewireEdgeIndex,
+          target: targetNodeId,
+        };
+        upsertEdgeRewire(edit);
+        applyEdgeRewireToWorkflow(edit);
+        state.activeRewireEdgeIndex = null;
+        rebuildFormStateFromWorkflow();
+        renderNodeOptions();
+        renderEdgeOptions();
+        edgeSelect.value = String(edit.edge_index);
+        renderEdgeForm(edit.edge_index);
+        renderEditors();
+        renderPending();
+        updateConnectionModeLabel();
+        setStatus(`edge rewired: [${edit.edge_index}] -> ${targetNodeId}`);
+        return;
+      }
+
+      if (connection.sourceNodeId === targetNodeId) {
+        throw new Error("source and target must be different");
+      }
+      const create = {
+        source: connection.sourceNodeId,
+        target: targetNodeId,
+      };
+      appendEdgeCreate(create);
+      applyEdgeCreateToWorkflow(create);
+      rebuildFormStateFromWorkflow();
+      renderNodeOptions();
+      renderEdgeOptions();
+      renderEditors();
+      renderPending();
+      setStatus(`edge created: ${create.source} -> ${create.target}`);
+    }
+
+    function handleGlobalPointerMove(event) {
+      if (state.dragNode) {
+        const point = toCanvasPoint(event.clientX, event.clientY);
+        const canvasRect = graphCanvas.getBoundingClientRect();
+        const maxX = Math.max(10, canvasRect.width - 150);
+        const maxY = Math.max(10, canvasRect.height - 72);
+        const x = clamp(point.x - state.dragNode.offsetX, 10, maxX);
+        const y = clamp(point.y - state.dragNode.offsetY, 10, maxY);
+        const positions = ensurePositionsContainer();
+        positions[state.dragNode.nodeId] = { x, y };
+        renderGraph();
+        return;
+      }
+
+      if (state.dragConnection) {
+        const point = toCanvasPoint(event.clientX, event.clientY);
+        state.dragConnection.pointerX = point.x;
+        state.dragConnection.pointerY = point.y;
+        renderGraph();
+      }
+    }
+
+    function handleGlobalPointerUp(event) {
+      if (state.dragNode) {
+        const nodeId = state.dragNode.nodeId;
+        state.dragNode = null;
+        renderGraph();
+        renderEditors();
+        setStatus(`node moved: ${nodeId}`);
+        return;
+      }
+
+      if (state.dragConnection) {
+        const connection = state.dragConnection;
+        state.dragConnection = null;
+        const targetNodeId = resolveDropNodeId(event.target);
+        if (!targetNodeId) {
+          setStatus("connection canceled");
+          renderGraph();
+          return;
+        }
+        try {
+          applyConnectionResult(connection, targetNodeId);
+        } catch (err) {
+          setStatus(errorMessage(err), true);
+        }
+        renderGraph();
       }
     }
 
@@ -1045,7 +1642,10 @@ def _studio_html() -> str:
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           base_revision: state.revision,
+          node_creates: state.pendingNodeCreates,
           node_edits: state.pendingNodeEdits,
+          edge_creates: state.pendingEdgeCreates,
+          edge_rewires: state.pendingEdgeRewires,
           edge_edits: state.pendingEdgeEdits,
           ui_state: state.uiState,
         }),
@@ -1062,13 +1662,15 @@ def _studio_html() -> str:
       }
       state.workflow = data.candidate_workflow || state.workflow;
       state.uiState = data.candidate_ui_state || state.uiState;
-      state.pendingNodeEdits = [];
-      state.pendingEdgeEdits = [];
+      clearPendingEdits();
+      state.activeRewireEdgeIndex = null;
       rebuildFormStateFromWorkflow();
       renderNodeOptions();
       renderEdgeOptions();
       renderEditors();
       renderPending();
+      renderGraph();
+      updateConnectionModeLabel();
       renderValidation(data.validation_report);
       renderDiff(data);
       setStatus("diff ready");
@@ -1105,8 +1707,8 @@ def _studio_html() -> str:
         return;
       }
       state.revision = data.saved_revision;
-      state.pendingNodeEdits = [];
-      state.pendingEdgeEdits = [];
+      clearPendingEdits();
+      state.activeRewireEdgeIndex = null;
       revisionLabel.textContent = `revision: ${state.revision}`;
       backupIdInput.value = data.backup_id || "";
       setStatus(`saved (backup: ${data.backup_id})`);
@@ -1140,10 +1742,23 @@ def _studio_html() -> str:
     document.getElementById("previewBtn").addEventListener("click", previewDiff);
     document.getElementById("saveBtn").addEventListener("click", saveWorkflow);
     document.getElementById("rollbackBtn").addEventListener("click", rollbackWorkflow);
+    document.getElementById("addNodeBtn").addEventListener("click", applyNodeCreate);
     document.getElementById("applyNodeBtn").addEventListener("click", applyNodeEdit);
     document.getElementById("applyEdgeBtn").addEventListener("click", applyEdgeEdit);
-    nodeSelect.addEventListener("change", () => renderNodeForm(nodeSelect.value));
-    edgeSelect.addEventListener("change", () => renderEdgeForm(Number(edgeSelect.value)));
+    document.getElementById("startRewireBtn").addEventListener("click", startRewireMode);
+    document.getElementById("clearRewireBtn").addEventListener("click", clearRewireMode);
+    nodeSelect.addEventListener("change", () => {
+      renderNodeForm(nodeSelect.value);
+      renderGraph();
+    });
+    edgeSelect.addEventListener("change", () => {
+      renderEdgeForm(Number(edgeSelect.value));
+      renderGraph();
+    });
+    window.addEventListener("pointermove", handleGlobalPointerMove);
+    window.addEventListener("pointerup", handleGlobalPointerUp);
+    window.addEventListener("resize", renderGraph);
+    updateConnectionModeLabel();
     loadWorkflow();
   </script>
 </body>

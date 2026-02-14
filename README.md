@@ -179,9 +179,9 @@ yagra visualize \
 
 検証エラーがある場合は HTML は生成せず、エラー一覧を標準エラーへ出力します。
 
-### `yagra studio`（フォーム編集 + 保存）
+### `yagra studio`（フォーム + DnD 編集 + 保存）
 
-Workflow の `prompt` / `model` / `condition` をフォーム編集し、diff 確認・保存・rollback を行うローカル WebUI/API を起動します。
+Workflow の `prompt` / `model` / `condition` 編集に加え、DnD でノード追加・接続変更を行い、diff 確認・保存・rollback を実行するローカル WebUI/API を起動します。
 
 ```bash
 yagra studio \
@@ -194,10 +194,12 @@ yagra studio \
 
 主な編集フロー:
 
-1. Node/Edge フォームで値を編集して `Apply ... Edit`
-2. `Preview Diff` で変更差分と validation を確認
-3. `Save` で workflow を保存（backup 作成）
-4. 必要なら `Rollback` で `backup_id` から復元
+1. 必要に応じて `Add Node` でノードを追加し、Node/Edge フォームで値を編集して `Apply ...`
+2. Graph Canvas 上でノードをドラッグして位置調整し、`Connect` をドラッグしてエッジ追加
+3. 再接続時はエッジを選択して `Start Rewire Mode` を押し、`Connect` をドラッグして新ターゲットへ接続
+4. `Preview Diff` で変更差分と validation を確認
+5. `Save` で workflow を保存（backup 作成）
+6. 必要なら `Rollback` で `backup_id` から復元
 
 オプション:
 
@@ -219,6 +221,10 @@ yagra studio \
 
 - `GET /api/workflow/form`
 - `POST /api/workflow/form/preview`
+  - 非互換（後方互換なし）: 下記フィールドはすべて必須
+  - `base_revision`, `ui_state`
+  - `node_creates[]` / `node_edits[]`
+  - `edge_creates[]` / `edge_rewires[]` / `edge_edits[]`
 
 ## 仕様上の契約（Implicit Contracts）
 
