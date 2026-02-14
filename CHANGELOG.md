@@ -7,6 +7,18 @@
 ### Changed
 - なし
 
+## [0.1.3] - 2026-02-14
+
+### Added
+- Studio の `POST /api/studio/file/read` に `prompt_entries` を追加し、Node Properties で prompt 内容を直接反映できるようにした。
+- Node Properties に `prompt key` 入力を追加し、`prompt_ref=<path>#<key>` を UI から作成できるようにした。
+
+### Changed
+- `model_ref` を完全廃止し、モデル設定を `nodes[].params.model` のインライン定義へ統一。
+- Studio の prompt 導線を Node Properties に一本化し、`Workflow Settings.prompt_catalog` と `Prompt File` セクションを廃止。
+- `prompt_ref` 解決仕様を path ベース（`<path>` / `<path>#<key>`）へ統一。
+- prompt YAML 自動生成先を workspace 直下から、編集中 workflow YAML と同階層の `prompts/` 配下へ変更。
+
 ## [0.1.2] - 2026-02-14
 
 ### Added
