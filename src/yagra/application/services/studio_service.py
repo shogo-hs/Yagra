@@ -137,6 +137,29 @@ def _collect_yaml_key_paths(payload: Any, prefix: str = "") -> list[str]:
     return key_paths
 
 
+def _collect_prompt_entries(payload: Any, prefix: str = "") -> list[dict[str, str]]:
+    """YAML マッピングから prompt エントリ一覧を抽出する。"""
+    if not isinstance(payload, dict):
+        return []
+    entries: list[dict[str, str]] = []
+    system = payload.get("system")
+    user = payload.get("user")
+    if isinstance(system, str) or isinstance(user, str):
+        entries.append(
+            {
+                "key_path": prefix,
+                "system": system if isinstance(system, str) else "",
+                "user": user if isinstance(user, str) else "",
+            }
+        )
+    for key, value in payload.items():
+        if not isinstance(key, str) or not key:
+            continue
+        current = f"{prefix}.{key}" if prefix else key
+        entries.extend(_collect_prompt_entries(value, prefix=current))
+    return entries
+
+
 def _build_initial_workflow_payload() -> dict[str, Any]:
     """新規作成時に使う最小 workflow payload を返す。"""
     return {
@@ -224,10 +247,15 @@ class StudioService(StudioPort):
 
         parse_error: str | None = None
         key_paths: list[str] = []
+        prompt_entries: list[dict[str, str]] = []
         try:
             loaded = yaml.safe_load(content)
             if isinstance(loaded, dict):
                 key_paths = sorted(set(_collect_yaml_key_paths(loaded)))
+                prompt_entries = sorted(
+                    _collect_prompt_entries(loaded),
+                    key=lambda item: item.get("key_path", ""),
+                )
             elif loaded is not None:
                 parse_error = "yaml root must be a mapping to extract prompt keys"
         except yaml.YAMLError as exc:
@@ -237,6 +265,7 @@ class StudioService(StudioPort):
             "path": _to_workspace_relative_path(yaml_path, workspace_root),
             "content": content,
             "key_paths": key_paths,
+            "prompt_entries": prompt_entries,
             "parse_error": parse_error,
         }
 

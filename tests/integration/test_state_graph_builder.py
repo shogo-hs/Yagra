@@ -200,7 +200,7 @@ def test_graphyml_from_workflow_normalizes_runtime_params_and_hides_ref_keys(
                         "id": "inspect",
                         "handler": "inspect_handler",
                         "params": {
-                            "prompt_ref": "planner",
+                            "prompt_ref": "prompts/support_prompts.yaml#planner",
                             "prompt": {"system": "Override planner system prompt."},
                             "model": {
                                 "provider": "openai",
@@ -212,9 +212,7 @@ def test_graphyml_from_workflow_normalizes_runtime_params_and_hides_ref_keys(
                     },
                 ],
                 "edges": [{"source": "start", "target": "inspect"}],
-                "params": {
-                    "prompt_catalog": "prompts/support_prompts.yaml",
-                },
+                "params": {},
             },
             sort_keys=False,
             allow_unicode=True,

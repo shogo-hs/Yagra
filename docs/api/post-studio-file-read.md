@@ -54,6 +54,7 @@ curl -X POST 'http://127.0.0.1:8787/api/studio/file/read' \
 | path | string | No | 読込対象（workspace相対） |
 | content | string | No | ファイル本文 |
 | key_paths | string[] | No | ルートがmappingの場合の `a.b.c` キー候補 |
+| prompt_entries | object[] | No | `system/user` を持つ prompt エントリ一覧（`key_path`,`system`,`user`） |
 | parse_error | string | Yes | YAMLパース失敗またはmapping以外の場合の説明 |
 
 ### 3.3 成功レスポンス例
@@ -63,6 +64,9 @@ curl -X POST 'http://127.0.0.1:8787/api/studio/file/read' \
   "path": "prompts/new_task.yaml",
   "content": "intent:\n  system: classify\n",
   "key_paths": ["intent", "intent.system"],
+  "prompt_entries": [
+    {"key_path": "intent", "system": "classify", "user": "{{input}}"}
+  ],
   "parse_error": null
 }
 ```
@@ -77,7 +81,7 @@ curl -X POST 'http://127.0.0.1:8787/api/studio/file/read' \
 
 ## 5. 備考
 
-- `key_paths` は `prompt_ref` 入力補助用途。
+- `prompt_entries` は Node Properties の `prompt yaml` 選択時に `system/user prompt` を自動反映する用途。
 
 ## 6. 実装同期メモ
 

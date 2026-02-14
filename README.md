@@ -200,11 +200,11 @@ yagra studio \
 
 1. 必要に応じて `Add Node` でノードを追加し、Node/Edge フォームで値を編集して `Apply ...`
    - `Add Node` は選択中ノードの近傍（未選択時は自動レイアウト位置）へ自動配置されます。
-2. `Workflow Settings` で `prompt_catalog` を設定し、必要なら `Reload Catalog Keys` で候補キーを更新
-3. Graph Canvas 上でノードをドラッグして位置調整し、右側ポート（output）から左側ポート（input）へドラッグしてエッジ追加（戻りループは下側 output → 上側 input で接続）
-4. 再接続時はエッジ端点をドラッグして接続先を変更（ドラッグ起点が新 source、ドロップ先が新 target）
-5. `Prompt File` セクションで YAML ファイルを作成/編集し、`Use In prompt_ref` でノードへ自動入力
-6. Node Properties で `node id`（リネーム）, `prompt_ref`, `system prompt` / `user prompt`, `Model Settings`（`provider` / `name` / `temperature` など）を設定
+2. Node Properties の `prompt yaml` で参照先 YAML を選択すると、`system prompt` / `user prompt` が自動で読み込まれます。
+3. `prompt yaml` 未選択のまま `Apply Node Edit` した場合、`prompts/<node-id>.yaml`（重複時は連番）が自動作成され、`prompt_ref` が自動設定されます。
+4. Graph Canvas 上でノードをドラッグして位置調整し、右側ポート（output）から左側ポート（input）へドラッグしてエッジ追加（戻りループは下側 output → 上側 input で接続）
+5. 再接続時はエッジ端点をドラッグして接続先を変更（ドラッグ起点が新 source、ドロップ先が新 target）
+6. Node Properties で `node id`（リネーム）, `prompt_ref`, `Model Settings`（`provider` / `name` / `temperature` など）を設定
    - `node id` を変更して `Apply Node Edit` すると、関連する `edges[].source/target` と `start_at/end_at` も自動で同期されます。
 7. `Preview Diff` で変更差分と validation を確認
 8. `Save` で workflow を保存（backup 作成）
@@ -257,20 +257,17 @@ yagra studio \
 - 実行時に handler へ渡る `params` からは `prompt_ref` は除去されます（`prompt`/`model` を利用）。
 - `model_ref` は廃止です。モデル設定は `nodes[].params.model` にインライン定義します。
 - `prompt_ref` の参照形式:
-  - `<key>`（`workflow.params.prompt_catalog` を使用）
-  - `<path>#<key.path>`（明示参照）
+  - `<path>`（YAML ルートが prompt mapping の場合）
+  - `<path>#<key.path>`（YAML 内キーを指定）
 
 例:
 
 ```yaml
-params:
-  prompt_catalog: "../prompts/support_prompts.yaml"
-
 nodes:
   - id: planner
     handler: planner_loop_handler
     params:
-      prompt_ref: planner
+      prompt_ref: "../prompts/support_prompts.yaml#planner"
       model:
         provider: openai
         name: gpt-4.1-mini

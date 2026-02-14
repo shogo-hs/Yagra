@@ -48,10 +48,10 @@ curl -X GET 'http://127.0.0.1:8787/api/workflow/form'
 | revision | string | No | 現在リビジョン |
 | nodes | object[] | No | ノード編集項目（`id`,`handler`,`prompt_ref`,`prompt`,`model`） |
 | edges | object[] | No | エッジ編集項目（`index`,`source`,`target`,`condition`） |
-| prompt_catalog_keys | string[] | No | prompt catalog候補キー |
+| prompt_catalog_keys | string[] | No | （Deprecated）prompt catalog候補キー |
 | workflow | object | No | workflow 生データ |
 | ui_state | object | No | ui_state 生データ |
-| catalog_preview | object | No | `prompt_catalog_path`,`prompt_catalog_keys`,`issues[]` |
+| catalog_preview | object | No | （Deprecated）`prompt_catalog_path`,`prompt_catalog_keys`,`issues[]` |
 | validation_report | object | No | `is_valid`,`issues[]` |
 
 ### 3.3 成功レスポンス例
@@ -63,18 +63,18 @@ curl -X GET 'http://127.0.0.1:8787/api/workflow/form'
     {
       "id": "planner",
       "handler": "planner_handler",
-      "prompt_ref": "planning.special",
+      "prompt_ref": "prompts/new_task.yaml#intent",
       "prompt": null,
       "model": {"provider": "openai", "name": "gpt-4.1-mini", "temperature": 0.2}
     }
   ],
   "edges": [],
-  "prompt_catalog_keys": ["planning", "planning.special"],
+  "prompt_catalog_keys": [],
   "workflow": {},
   "ui_state": {},
   "catalog_preview": {
-    "prompt_catalog_path": "/tmp/prompts.yaml",
-    "prompt_catalog_keys": ["planning.special"],
+    "prompt_catalog_path": null,
+    "prompt_catalog_keys": [],
     "issues": []
   },
   "validation_report": {"is_valid": true, "issues": []}
@@ -91,6 +91,7 @@ curl -X GET 'http://127.0.0.1:8787/api/workflow/form'
 ## 5. 備考
 
 - UIでは通常このAPIをロード起点として利用する。
+- Studio の現行運用では `prompt_catalog_keys` / `catalog_preview` は利用しない（後方互換のため返却）。
 - `model_ref` は廃止。モデル設定は `nodes[].params.model` のインライン定義を使用する。
 
 ## 6. 実装同期メモ

@@ -45,7 +45,7 @@ def _write_workflow(path: Path, payload: dict[str, Any]) -> Path:
     return path
 
 
-def test_build_workflow_form_view_includes_catalog_keys_and_refs() -> None:
+def test_build_workflow_form_view_includes_path_based_prompt_ref() -> None:
     workflow_path = WORKFLOW_ROOT / "loop-split.yaml"
     session = load_workflow_edit_session(workflow_path=workflow_path, bundle_root=FIXTURES_ROOT)
 
@@ -59,8 +59,8 @@ def test_build_workflow_form_view_includes_catalog_keys_and_refs() -> None:
     assert view.revision == session.revision
     assert len(view.nodes) == 3
     planner = next(item for item in view.nodes if item.id == "planner")
-    assert planner.prompt_ref == "planner"
-    assert "planner" in view.prompt_catalog_keys
+    assert planner.prompt_ref == "prompts/support_prompts.yaml#planner"
+    assert view.prompt_catalog_keys == ()
 
     assert len(view.edges) == 3
     retry_edge = next(item for item in view.edges if item.condition == "retry")
@@ -100,17 +100,19 @@ def test_build_workflow_form_view_allows_missing_nodes_and_edges(tmp_path: Path)
     assert view.edges == ()
 
 
-def test_build_workflow_catalog_preview_collects_keys() -> None:
-    workflow_path = WORKFLOW_ROOT / "loop-split.yaml"
-    session = load_workflow_edit_session(workflow_path=workflow_path, bundle_root=FIXTURES_ROOT)
+def test_build_workflow_catalog_preview_collects_keys(tmp_path: Path) -> None:
+    catalog_path = (FIXTURES_ROOT / "prompts" / "support_prompts.yaml").resolve()
+    payload = _base_payload()
+    payload["params"] = {"prompt_catalog": str(catalog_path)}
+    workflow_path = _write_workflow(tmp_path / "catalog-preview.yaml", payload)
 
     preview = build_workflow_catalog_preview(
-        workflow=session.workflow,
+        workflow=payload,
         workflow_path=workflow_path,
         bundle_root=FIXTURES_ROOT,
     )
 
-    assert preview.prompt_catalog_path is not None
+    assert preview.prompt_catalog_path == str(catalog_path)
     assert "planner" in preview.prompt_catalog_keys
     assert preview.issues == ()
 

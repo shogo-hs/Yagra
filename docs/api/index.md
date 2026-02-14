@@ -58,14 +58,16 @@
 - [GET /api/workflow/form](./get-workflow-form.md) - フォーム編集向け workflow ビューを取得
 - [POST /api/workflow/diff](./post-workflow-diff.md) - 候補 workflow の差分を取得
 - [POST /api/workflow/form/preview](./post-workflow-form-preview.md) - フォーム入力から候補 workflow を生成して差分取得
-- [POST /api/workflow/catalogs/preview](./post-workflow-catalogs-preview.md) - prompt catalog 参照設定と候補キーを確認
+- [POST /api/workflow/catalogs/preview](./post-workflow-catalogs-preview.md) - （Legacy）prompt catalog 参照設定と候補キーを確認
 - [POST /api/workflow/save](./post-workflow-save.md) - 候補 workflow を保存（backup作成）
 - [POST /api/workflow/rollback](./post-workflow-rollback.md) - backup 指定で復元
 
 ## 4. 非推奨 / 廃止
 
 - `model_ref` は廃止。`workflow.nodes[].params.model` をインライン指定する。
+- `prompt_catalog` は Studio 現行UIでは非推奨（Node Properties の `prompt yaml` 運用を使用）。
 
 ## 5. 変更履歴
 
 - `2026-02-14`: `model_ref` 廃止、prompt file read/save API 追加、一覧を実装準拠へ更新。
+- `2026-02-14`: `/api/studio/file/read` に `prompt_entries` を追加。Studio UI は `prompt yaml` 選択 + 未選択時自動生成フローへ更新。

@@ -172,11 +172,10 @@ def test_load_validated_graph_spec_accepts_inline_model_mapping(tmp_path: Path) 
 
 def test_load_validated_graph_spec_merges_prompt_ref_with_prompt_overrides(tmp_path: Path) -> None:
     payload = _base_payload()
-    payload["params"] = {
-        "prompt_catalog": str((FIXTURES_ROOT / "prompts" / "support_prompts.yaml").resolve()),
-    }
+    prompt_file = str((FIXTURES_ROOT / "prompts" / "support_prompts.yaml").resolve())
+    payload["params"] = {}
     payload["nodes"][1]["params"] = {
-        "prompt_ref": "planner",
+        "prompt_ref": f"{prompt_file}#planner",
         "prompt": {
             "system": "You are planner (overridden).",
         },
@@ -212,11 +211,10 @@ def test_validate_workflow_for_ui_reports_error_when_prompt_override_is_not_mapp
     tmp_path: Path,
 ) -> None:
     payload = _base_payload()
-    payload["params"] = {
-        "prompt_catalog": str((FIXTURES_ROOT / "prompts" / "support_prompts.yaml").resolve()),
-    }
+    prompt_file = str((FIXTURES_ROOT / "prompts" / "support_prompts.yaml").resolve())
+    payload["params"] = {}
     payload["nodes"][1]["params"] = {
-        "prompt_ref": "planner",
+        "prompt_ref": f"{prompt_file}#planner",
         "prompt": "invalid",
     }
     workflow_path = _write_workflow(tmp_path / "prompt-override-invalid.yaml", payload)

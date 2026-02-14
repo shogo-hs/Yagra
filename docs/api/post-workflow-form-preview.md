@@ -45,7 +45,7 @@ curl -X POST 'http://127.0.0.1:8787/api/workflow/form/preview' \
   -d '{
     "base_revision": "9e9b...",
     "node_creates": [],
-    "node_edits": [{"node_id":"planner","prompt_ref":"planning.special"}],
+    "node_edits": [{"node_id":"planner","prompt_ref":"prompts/new_task.yaml#intent"}],
     "edge_creates": [],
     "edge_rewires": [],
     "edge_edits": [],

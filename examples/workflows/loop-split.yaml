@@ -3,14 +3,11 @@ start_at: "planner"
 end_at:
   - "finish"
 
-params:
-  prompt_catalog: "../prompts/support_prompts.yaml"
-
 nodes:
   - id: "planner"
     handler: "planner_loop_handler"
     params:
-      prompt_ref: "planner"
+      prompt_ref: "../prompts/support_prompts.yaml#planner"
       model:
         provider: "openai"
         name: "gpt-4.1-mini"
@@ -20,7 +17,7 @@ nodes:
   - id: "evaluator"
     handler: "evaluator_loop_handler"
     params:
-      prompt_ref: "evaluator"
+      prompt_ref: "../prompts/support_prompts.yaml#evaluator"
       model:
         provider: "openai"
         name: "gpt-4.1-mini"
@@ -30,7 +27,7 @@ nodes:
   - id: "finish"
     handler: "finish_handler"
     params:
-      prompt_ref: "finish"
+      prompt_ref: "../prompts/support_prompts.yaml#finish"
       model:
         provider: "openai"
         name: "gpt-4.1-mini"

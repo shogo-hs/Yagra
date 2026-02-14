@@ -5,6 +5,7 @@
 
 ## 1. 概要
 
+- 状態: Legacy（現行 Studio UI では使用しない）。
 - 目的: 候補workflowに対する `prompt_catalog` の解決結果とキー候補を返す。
 - 利用者/権限: ローカル Studio 利用者。
 - 副作用: なし。
@@ -76,6 +77,7 @@ curl -X POST 'http://127.0.0.1:8787/api/workflow/catalogs/preview' \
 ## 5. 備考
 
 - `issues` は200で返る（catalog不在などは業務エラー扱い）。
+- `prompt_catalog` 運用は非推奨。Node Properties の `prompt yaml` + `prompt_ref=<path>[#key]` を推奨。
 - `model_ref` は廃止済みのため、model catalog のプレビューは提供しない。
 
 ## 6. 実装同期メモ

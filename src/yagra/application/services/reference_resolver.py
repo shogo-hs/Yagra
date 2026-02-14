@@ -52,11 +52,6 @@ def resolve_workflow_references(
         raise WorkflowReferenceError("workflow.params must be a mapping", location=("params",))
     resolved["params"] = params
 
-    prompt_catalog = _as_optional_string(
-        params.get("prompt_catalog"),
-        location=("params", "prompt_catalog"),
-    )
-
     nodes = resolved.get("nodes")
     if not isinstance(nodes, list):
         return resolved
@@ -85,7 +80,6 @@ def resolve_workflow_references(
         if prompt_ref is not None:
             resolved_prompt = _resolve_reference(
                 reference=prompt_ref,
-                default_catalog=prompt_catalog,
                 workflow_path=workflow_path,
                 bundle_root=bundle_root,
                 ref_label="prompt_ref",
@@ -119,7 +113,6 @@ def resolve_workflow_references(
 
 def _resolve_reference(
     reference: str,
-    default_catalog: str | None,
     workflow_path: Path,
     bundle_root: Path | None,
     ref_label: str,
@@ -129,7 +122,6 @@ def _resolve_reference(
 
     Args:
         reference: 解決対象の参照文字列。
-        default_catalog: 既定カタログパス。
         workflow_path: 入口 workflow の絶対パス。
         bundle_root: 参照解決基準ディレクトリ。
         ref_label: エラー文言向けの参照ラベル。
@@ -141,29 +133,28 @@ def _resolve_reference(
     Raises:
         WorkflowReferenceError: 参照文字列や参照先が不正な場合。
     """
+    key_path: str | None = None
     if "#" in reference:
-        raw_path, key_path = reference.split("#", 1)
+        raw_path, raw_key_path = reference.split("#", 1)
         catalog_path = raw_path.strip()
         if not catalog_path:
             raise WorkflowReferenceError(
                 f"{ref_label} path is empty: {reference}",
                 location=location,
             )
-    else:
-        if default_catalog is None:
+        key_path = raw_key_path.strip()
+        if not key_path:
             raise WorkflowReferenceError(
-                f"{ref_label} requires '<path>#<key>' format or workflow.params catalog",
+                f"{ref_label} key is empty: {reference}",
                 location=location,
             )
-        catalog_path = default_catalog
-        key_path = reference
-
-    key_path = key_path.strip()
-    if not key_path:
-        raise WorkflowReferenceError(
-            f"{ref_label} key is empty: {reference}",
-            location=location,
-        )
+    else:
+        catalog_path = reference.strip()
+        if not catalog_path:
+            raise WorkflowReferenceError(
+                f"{ref_label} path is empty: {reference}",
+                location=location,
+            )
 
     target_path = _resolve_catalog_path(
         catalog_path=catalog_path,
@@ -171,6 +162,8 @@ def _resolve_reference(
         bundle_root=bundle_root,
     )
     catalog_data = _load_yaml_file(target_path, location=location)
+    if key_path is None:
+        return deepcopy(catalog_data)
     return _lookup_key_path(
         catalog_data,
         key_path,
