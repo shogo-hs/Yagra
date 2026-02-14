@@ -173,6 +173,27 @@ def test_load_validated_graph_spec_merges_model_ref_with_model_overrides(tmp_pat
     assert model["kwargs"]["temperature"] == 0.1
 
 
+def test_load_validated_graph_spec_merges_prompt_ref_with_prompt_overrides(tmp_path: Path) -> None:
+    payload = _base_payload()
+    payload["params"] = {
+        "prompt_catalog": str((FIXTURES_ROOT / "prompts" / "support_prompts.yaml").resolve()),
+    }
+    payload["nodes"][1]["params"] = {
+        "prompt_ref": "planner",
+        "prompt": {
+            "system": "You are planner (overridden).",
+        },
+    }
+    workflow_path = _write_workflow(tmp_path / "prompt-merge.yaml", payload)
+
+    spec = load_validated_graph_spec(workflow_path)
+
+    planner_node = next(node for node in spec.nodes if node.id == "planner")
+    prompt = planner_node.params["prompt"]
+    assert prompt["system"] == "You are planner (overridden)."
+    assert prompt["user"] == "Create a concise plan."
+
+
 def test_validate_workflow_for_ui_reports_error_when_model_override_is_not_mapping(
     tmp_path: Path,
 ) -> None:
@@ -192,3 +213,24 @@ def test_validate_workflow_for_ui_reports_error_when_model_override_is_not_mappi
     issue = report.issues[0]
     assert issue.code == "reference_error"
     assert issue.location == ("nodes", 1, "params", "model")
+
+
+def test_validate_workflow_for_ui_reports_error_when_prompt_override_is_not_mapping(
+    tmp_path: Path,
+) -> None:
+    payload = _base_payload()
+    payload["params"] = {
+        "prompt_catalog": str((FIXTURES_ROOT / "prompts" / "support_prompts.yaml").resolve()),
+    }
+    payload["nodes"][1]["params"] = {
+        "prompt_ref": "planner",
+        "prompt": "invalid",
+    }
+    workflow_path = _write_workflow(tmp_path / "prompt-override-invalid.yaml", payload)
+
+    report = validate_workflow_for_ui(workflow_path)
+
+    assert report.is_valid is False
+    issue = report.issues[0]
+    assert issue.code == "reference_error"
+    assert issue.location == ("nodes", 1, "params", "prompt")

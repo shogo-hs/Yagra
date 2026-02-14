@@ -252,8 +252,10 @@ yagra studio \
 - handler が受け取る `params` には解決済み値が入ります。
   - `params["prompt"]`
   - `params["model"]`
+- `prompt_ref` と `prompt` を同時指定した場合、`prompt_ref` 解決結果に `prompt` が上書きマージされます（ノード側優先）。
 - `model_ref` と `model` を同時指定した場合、`model_ref` 解決結果に `model` が上書きマージされます（ノード側優先）。
   - 例: catalog で provider/name を共通化しつつ、ノードごとに `temperature` だけ上書き可能。
+- 実行時に handler へ渡る `params` からは `prompt_ref`/`model_ref` は除去されます（`prompt`/`model` を利用）。
 - 参照形式:
   - `<key>`（`workflow.params.prompt_catalog` / `model_catalog` を使用）
   - `<path>#<key.path>`（明示参照）

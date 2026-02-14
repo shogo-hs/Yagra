@@ -87,7 +87,7 @@ def resolve_workflow_references(
             location=("nodes", index, "params", "prompt_ref"),
         )
         if prompt_ref is not None:
-            node_params["prompt"] = _resolve_reference(
+            resolved_prompt = _resolve_reference(
                 reference=prompt_ref,
                 default_catalog=prompt_catalog,
                 workflow_path=workflow_path,
@@ -95,6 +95,22 @@ def resolve_workflow_references(
                 ref_label="prompt_ref",
                 location=("nodes", index, "params", "prompt_ref"),
             )
+            prompt_override = _as_optional_mapping(
+                node_params.get("prompt"),
+                location=("nodes", index, "params", "prompt"),
+            )
+            if prompt_override is None:
+                node_params["prompt"] = resolved_prompt
+            else:
+                if not isinstance(resolved_prompt, Mapping):
+                    raise WorkflowReferenceError(
+                        "prompt_ref must resolve to a mapping when prompt override is provided",
+                        location=("nodes", index, "params", "prompt_ref"),
+                    )
+                node_params["prompt"] = _merge_mapping(
+                    base=deepcopy(dict(resolved_prompt)),
+                    override=prompt_override,
+                )
 
         model_ref = _as_optional_string(
             node_params.get("model_ref"),

@@ -189,3 +189,76 @@ def test_graphyml_from_workflow_merges_model_ref_with_inline_overrides(tmp_path:
     assert result["name"] == "gpt-4.1-mini"
     assert result["temperature"] == 0.55
     assert result["kwargs_temperature"] == 0.1
+
+
+def test_graphyml_from_workflow_normalizes_runtime_params_and_hides_ref_keys(
+    tmp_path: Path,
+) -> None:
+    workflow_path = tmp_path / "runtime-params-normalized.yaml"
+    workflow_path.write_text(
+        yaml.safe_dump(
+            {
+                "version": "1.0",
+                "start_at": "start",
+                "end_at": ["inspect"],
+                "nodes": [
+                    {"id": "start", "handler": "start_handler"},
+                    {
+                        "id": "inspect",
+                        "handler": "inspect_handler",
+                        "params": {
+                            "prompt_ref": "planner",
+                            "prompt": {"system": "Override planner system prompt."},
+                            "model_ref": "default",
+                            "model": {"temperature": 0.42},
+                        },
+                    },
+                ],
+                "edges": [{"source": "start", "target": "inspect"}],
+                "params": {
+                    "prompt_catalog": "prompts/support_prompts.yaml",
+                    "model_catalog": "models/openai_models.yaml",
+                },
+            },
+            sort_keys=False,
+            allow_unicode=True,
+        ),
+        encoding="utf-8",
+    )
+
+    def _start_handler(state: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
+        _ = params
+        return dict(state)
+
+    def _inspect_handler(state: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
+        _ = state
+        prompt = params.get("prompt", {})
+        model = params.get("model", {})
+        kwargs = model.get("kwargs", {}) if isinstance(model, dict) else {}
+        return {
+            "prompt_system": prompt.get("system") if isinstance(prompt, dict) else None,
+            "prompt_user": prompt.get("user") if isinstance(prompt, dict) else None,
+            "model_name": model.get("name") if isinstance(model, dict) else None,
+            "model_temperature": model.get("temperature") if isinstance(model, dict) else None,
+            "kwargs_temperature": kwargs.get("temperature") if isinstance(kwargs, dict) else None,
+            "has_prompt_ref": "prompt_ref" in params,
+            "has_model_ref": "model_ref" in params,
+        }
+
+    engine = Yagra.from_workflow(
+        workflow_path=workflow_path,
+        registry={
+            "start_handler": _start_handler,
+            "inspect_handler": _inspect_handler,
+        },
+        bundle_root=FIXTURES_ROOT,
+    )
+
+    result = engine.invoke({})
+    assert result["prompt_system"] == "Override planner system prompt."
+    assert result["prompt_user"] == "Create a concise plan."
+    assert result["model_name"] == "gpt-4.1-mini"
+    assert result["model_temperature"] == 0.42
+    assert result["kwargs_temperature"] == 0.1
+    assert result["has_prompt_ref"] is False
+    assert result["has_model_ref"] is False

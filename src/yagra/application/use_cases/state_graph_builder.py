@@ -121,7 +121,7 @@ def _validate_edge_source_conflicts(
 
 def _build_node_runner(handler: NodeHandler, node_params: Mapping[str, Any]) -> NodeHandler:
     """ノード実行用のラッパー callable を返す。"""
-    frozen_params = deepcopy(dict(node_params))
+    frozen_params = _normalize_runtime_params(node_params)
 
     def _run(state: Mapping[str, Any]) -> dict[str, Any]:
         result = _invoke_handler(handler=handler, state=state, node_params=frozen_params)
@@ -132,6 +132,14 @@ def _build_node_runner(handler: NodeHandler, node_params: Mapping[str, Any]) -> 
         return merged_state
 
     return _run
+
+
+def _normalize_runtime_params(node_params: Mapping[str, Any]) -> dict[str, Any]:
+    """実行時に handler へ渡す node params を正規化する。"""
+    normalized = deepcopy(dict(node_params))
+    normalized.pop("prompt_ref", None)
+    normalized.pop("model_ref", None)
+    return normalized
 
 
 def _invoke_handler(
