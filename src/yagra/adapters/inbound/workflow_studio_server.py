@@ -11,7 +11,10 @@ from threading import Lock
 from typing import Any
 from urllib.parse import urlparse
 
-from yagra.application.services.workflow_file_store import WorkflowBackupNotFoundError
+from yagra.application.services.workflow_file_store import (
+    WorkflowBackupNotFoundError,
+    WorkflowFileStore,
+)
 from yagra.application.use_cases.workflow_edit_session import (
     WorkflowChange,
     WorkflowDiffResult,
@@ -40,17 +43,20 @@ from yagra.application.use_cases.workflow_validation_reporter import (
 class WorkflowStudioServerConfig:
     """Workflow Studio サーバー構成を保持する。"""
 
-    workflow_path: Path
+    workflow_path: Path | None
     bundle_root: Path | None
-    ui_state_path: Path
+    ui_state_path: Path | None
+    ui_state_override: Path | None
+    workspace_root: Path
     backup_dir: Path
     lock: Lock = field(default_factory=Lock)
 
 
 def create_workflow_studio_server(
-    workflow_path: str | PathLike[str],
+    workflow_path: str | PathLike[str] | None = None,
     bundle_root: str | PathLike[str] | None = None,
     ui_state_path: str | PathLike[str] | None = None,
+    workspace_root: str | PathLike[str] | None = None,
     backup_dir: str | PathLike[str] = ".yagra/backups",
     host: str = "127.0.0.1",
     port: int = 8787,
@@ -58,9 +64,10 @@ def create_workflow_studio_server(
     """Workflow Studio ローカルサーバーを生成する。
 
     Args:
-        workflow_path: 編集対象 workflow パス。
+        workflow_path: 編集対象 workflow パス。未指定時は UI ランチャーから選択/作成する。
         bundle_root: 分割参照解決の基準ディレクトリ。
         ui_state_path: UI サイドカーパス。
+        workspace_root: workflow 探索/作成を許可するワークスペースルート。
         backup_dir: バックアップ格納ディレクトリ。
         host: バインドホスト。
         port: バインドポート。
@@ -68,12 +75,26 @@ def create_workflow_studio_server(
     Returns:
         設定済み `ThreadingHTTPServer`。
     """
-    workflow_abspath = Path(workflow_path).expanduser().resolve()
+    workflow_abspath = (
+        Path(workflow_path).expanduser().resolve() if workflow_path is not None else None
+    )
     bundle_root_path = Path(bundle_root).expanduser().resolve() if bundle_root is not None else None
+    ui_state_override = (
+        Path(ui_state_path).expanduser().resolve() if ui_state_path is not None else None
+    )
     ui_state_abspath = (
-        Path(ui_state_path).expanduser().resolve()
-        if ui_state_path is not None
+        ui_state_override
+        if workflow_abspath is not None and ui_state_override is not None
         else workflow_abspath.with_suffix(".workflow-ui.json")
+        if workflow_abspath is not None
+        else None
+    )
+    workspace_root_path = (
+        Path(workspace_root).expanduser().resolve()
+        if workspace_root is not None
+        else workflow_abspath.parent
+        if workflow_abspath is not None
+        else Path.cwd().resolve()
     )
     backup_dir_path = Path(backup_dir).expanduser().resolve()
 
@@ -81,10 +102,77 @@ def create_workflow_studio_server(
         workflow_path=workflow_abspath,
         bundle_root=bundle_root_path,
         ui_state_path=ui_state_abspath,
+        ui_state_override=ui_state_override,
+        workspace_root=workspace_root_path,
         backup_dir=backup_dir_path,
     )
     handler_class = _build_handler_class(config)
     return ThreadingHTTPServer((host, port), handler_class)
+
+
+_WORKFLOW_EXTENSIONS = {".yaml", ".yml"}
+
+
+def _resolve_workflow_path_in_workspace(raw_path: str, workspace_root: Path) -> Path:
+    """ワークスペース内の workflow パスを絶対パスへ解決する。
+
+    Args:
+        raw_path: 入力された workflow パス文字列。
+        workspace_root: 許可するワークスペースルート。
+
+    Returns:
+        ワークスペース内に正規化された workflow 絶対パス。
+
+    Raises:
+        ValueError: 空パス、ワークスペース外、拡張子不正の場合。
+    """
+    text = raw_path.strip()
+    if not text:
+        raise ValueError("workflow_path must be a non-empty string")
+    source = Path(text).expanduser()
+    candidate = source.resolve() if source.is_absolute() else (workspace_root / source).resolve()
+    try:
+        candidate.relative_to(workspace_root)
+    except ValueError as exc:
+        raise ValueError("workflow_path must be inside workspace_root") from exc
+
+    if candidate.suffix.lower() not in _WORKFLOW_EXTENSIONS:
+        raise ValueError("workflow_path must end with .yaml or .yml")
+    return candidate
+
+
+def _resolve_ui_state_for_target(workflow_path: Path, ui_state_override: Path | None) -> Path:
+    """対象 workflow に対応する UI サイドカーパスを返す。"""
+    if ui_state_override is not None:
+        return ui_state_override
+    return workflow_path.with_suffix(".workflow-ui.json")
+
+
+def _list_workflow_candidates(workspace_root: Path) -> list[str]:
+    """ワークスペース配下の workflow 候補一覧を返す。"""
+    candidates: list[str] = []
+    for path in sorted(workspace_root.rglob("*")):
+        if not path.is_file():
+            continue
+        if path.suffix.lower() not in _WORKFLOW_EXTENSIONS:
+            continue
+        candidates.append(path.relative_to(workspace_root).as_posix())
+    return candidates
+
+
+def _build_initial_workflow_payload() -> dict[str, Any]:
+    """新規作成時に使う最小 workflow payload を返す。"""
+    return {
+        "version": "1.0",
+        "start_at": "start",
+        "end_at": ["end"],
+        "nodes": [
+            {"id": "start", "handler": "start_handler"},
+            {"id": "end", "handler": "end_handler"},
+        ],
+        "edges": [{"source": "start", "target": "end"}],
+        "params": {},
+    }
 
 
 def _build_handler_class(
@@ -108,11 +196,39 @@ def _build_handler_class(
             """標準出力ログを抑制する。"""
             _ = (format, args)
 
+        def _active_target_paths(self) -> tuple[Path, Path] | None:
+            """現在選択中の workflow/ui_state パスを返す。未選択時は `None`。"""
+            workflow_path = self._config.workflow_path
+            ui_state_path = self._config.ui_state_path
+            if workflow_path is None or ui_state_path is None:
+                return None
+            return workflow_path, ui_state_path
+
+        def _require_active_target_paths(self) -> tuple[Path, Path] | None:
+            """現在選択中ターゲットを必須取得する。未選択時はエラー応答を書き込む。"""
+            target_paths = self._active_target_paths()
+            if target_paths is not None:
+                return target_paths
+            self._write_json(
+                409,
+                {
+                    "error": "studio_target_required",
+                    "message": "workflow target is not selected",
+                },
+            )
+            return None
+
         def do_GET(self) -> None:  # noqa: N802
             """GET リクエストを処理する。"""
             path = urlparse(self.path).path
             if path == "/":
                 self._write_html(_studio_html())
+                return
+            if path == "/api/studio/target":
+                self._handle_get_studio_target()
+                return
+            if path == "/api/studio/files":
+                self._handle_get_studio_files()
                 return
             if path == "/api/workflow/form":
                 self._handle_get_form()
@@ -143,17 +259,160 @@ def _build_handler_class(
             if path == "/api/workflow/rollback":
                 self._handle_rollback(body)
                 return
+            if path == "/api/studio/open":
+                self._handle_open_studio_target(body)
+                return
+            if path == "/api/studio/create":
+                self._handle_create_studio_target(body)
+                return
 
             self._write_json(404, {"error": "not_found"})
+
+        def _handle_get_studio_target(self) -> None:
+            """Studio の現在ターゲット情報を返す。"""
+            with self._config.lock:
+                target_paths = self._active_target_paths()
+                workflow_path = str(target_paths[0]) if target_paths is not None else None
+                ui_state_path = str(target_paths[1]) if target_paths is not None else None
+                workspace_root = str(self._config.workspace_root)
+            self._write_json(
+                200,
+                {
+                    "has_target": target_paths is not None,
+                    "workflow_path": workflow_path,
+                    "ui_state_path": ui_state_path,
+                    "workspace_root": workspace_root,
+                },
+            )
+
+        def _handle_get_studio_files(self) -> None:
+            """ワークスペース配下の workflow 候補一覧を返す。"""
+            with self._config.lock:
+                workspace_root = self._config.workspace_root
+                workflows = _list_workflow_candidates(workspace_root)
+            self._write_json(
+                200,
+                {
+                    "workspace_root": str(workspace_root),
+                    "workflows": workflows,
+                },
+            )
+
+        def _handle_open_studio_target(self, body: dict[str, Any]) -> None:
+            """既存 workflow を Studio 編集対象として開く。"""
+            workflow_path_raw = body.get("workflow_path")
+            if not isinstance(workflow_path_raw, str):
+                self._write_json(400, {"error": "workflow_path must be a string"})
+                return
+
+            with self._config.lock:
+                try:
+                    workflow_path = _resolve_workflow_path_in_workspace(
+                        raw_path=workflow_path_raw,
+                        workspace_root=self._config.workspace_root,
+                    )
+                except ValueError as exc:
+                    self._write_json(400, {"error": "invalid_workflow_path", "message": str(exc)})
+                    return
+
+                if not workflow_path.exists() or not workflow_path.is_file():
+                    self._write_json(
+                        404,
+                        {
+                            "error": "workflow_not_found",
+                            "message": f"workflow not found: {workflow_path}",
+                        },
+                    )
+                    return
+
+                ui_state_path = _resolve_ui_state_for_target(
+                    workflow_path=workflow_path,
+                    ui_state_override=self._config.ui_state_override,
+                )
+                self._config.workflow_path = workflow_path
+                self._config.ui_state_path = ui_state_path
+
+            self._write_json(
+                200,
+                {
+                    "workflow_path": str(workflow_path),
+                    "ui_state_path": str(ui_state_path),
+                },
+            )
+
+        def _handle_create_studio_target(self, body: dict[str, Any]) -> None:
+            """新規 workflow を作成して Studio 編集対象として開く。"""
+            workflow_path_raw = body.get("workflow_path")
+            overwrite = body.get("overwrite", False)
+            if not isinstance(workflow_path_raw, str):
+                self._write_json(400, {"error": "workflow_path must be a string"})
+                return
+            if not isinstance(overwrite, bool):
+                self._write_json(400, {"error": "overwrite must be a boolean"})
+                return
+
+            with self._config.lock:
+                try:
+                    workflow_path = _resolve_workflow_path_in_workspace(
+                        raw_path=workflow_path_raw,
+                        workspace_root=self._config.workspace_root,
+                    )
+                except ValueError as exc:
+                    self._write_json(400, {"error": "invalid_workflow_path", "message": str(exc)})
+                    return
+
+                if workflow_path.exists() and not overwrite:
+                    self._write_json(
+                        409,
+                        {
+                            "error": "workflow_exists",
+                            "message": f"workflow already exists: {workflow_path}",
+                        },
+                    )
+                    return
+                if workflow_path.exists() and not workflow_path.is_file():
+                    self._write_json(
+                        400,
+                        {
+                            "error": "invalid_workflow_path",
+                            "message": f"workflow_path is not a file: {workflow_path}",
+                        },
+                    )
+                    return
+
+                ui_state_path = _resolve_ui_state_for_target(
+                    workflow_path=workflow_path,
+                    ui_state_override=self._config.ui_state_override,
+                )
+                store = WorkflowFileStore(backup_root=self._config.backup_dir)
+                store.write_workflow_atomic(
+                    workflow_path=workflow_path,
+                    payload=_build_initial_workflow_payload(),
+                )
+                store.write_ui_state_atomic(ui_state_path=ui_state_path, payload={})
+                self._config.workflow_path = workflow_path
+                self._config.ui_state_path = ui_state_path
+
+            self._write_json(
+                200,
+                {
+                    "workflow_path": str(workflow_path),
+                    "ui_state_path": str(ui_state_path),
+                },
+            )
 
         def _handle_get_workflow(self) -> None:
             """現在の workflow を返す。"""
             with self._config.lock:
+                target_paths = self._require_active_target_paths()
+                if target_paths is None:
+                    return
+                workflow_path, ui_state_path = target_paths
                 try:
                     session = load_workflow_edit_session(
-                        workflow_path=self._config.workflow_path,
+                        workflow_path=workflow_path,
                         bundle_root=self._config.bundle_root,
-                        ui_state_path=self._config.ui_state_path,
+                        ui_state_path=ui_state_path,
                     )
                 except ValueError as exc:
                     self._write_json(422, {"error": "load_failed", "message": str(exc)})
@@ -172,16 +431,20 @@ def _build_handler_class(
         def _handle_get_form(self) -> None:
             """フォーム編集向けの workflow 表示情報を返す。"""
             with self._config.lock:
+                target_paths = self._require_active_target_paths()
+                if target_paths is None:
+                    return
+                workflow_path, ui_state_path = target_paths
                 try:
                     session = load_workflow_edit_session(
-                        workflow_path=self._config.workflow_path,
+                        workflow_path=workflow_path,
                         bundle_root=self._config.bundle_root,
-                        ui_state_path=self._config.ui_state_path,
+                        ui_state_path=ui_state_path,
                     )
                     form_view = build_workflow_form_view(
                         workflow=session.workflow,
                         ui_state=session.ui_state,
-                        workflow_path=self._config.workflow_path,
+                        workflow_path=workflow_path,
                         bundle_root=self._config.bundle_root,
                     )
                 except ValueError as exc:
@@ -210,11 +473,15 @@ def _build_handler_class(
                 return
 
             with self._config.lock:
+                target_paths = self._require_active_target_paths()
+                if target_paths is None:
+                    return
+                workflow_path, ui_state_path = target_paths
                 try:
                     session = load_workflow_edit_session(
-                        workflow_path=self._config.workflow_path,
+                        workflow_path=workflow_path,
                         bundle_root=self._config.bundle_root,
-                        ui_state_path=self._config.ui_state_path,
+                        ui_state_path=ui_state_path,
                     )
                 except ValueError as exc:
                     self._write_json(422, {"error": "load_failed", "message": str(exc)})
@@ -237,7 +504,7 @@ def _build_handler_class(
                         candidate_workflow=candidate_workflow,
                         base_ui_state=session.ui_state,
                         candidate_ui_state=candidate_ui_state,
-                        workflow_path=self._config.workflow_path,
+                        workflow_path=workflow_path,
                         bundle_root=self._config.bundle_root,
                     )
                 except ValueError as exc:
@@ -278,11 +545,15 @@ def _build_handler_class(
                 return
 
             with self._config.lock:
+                target_paths = self._require_active_target_paths()
+                if target_paths is None:
+                    return
+                workflow_path, ui_state_path = target_paths
                 try:
                     session = load_workflow_edit_session(
-                        workflow_path=self._config.workflow_path,
+                        workflow_path=workflow_path,
                         bundle_root=self._config.bundle_root,
-                        ui_state_path=self._config.ui_state_path,
+                        ui_state_path=ui_state_path,
                     )
                 except ValueError as exc:
                     self._write_json(422, {"error": "load_failed", "message": str(exc)})
@@ -313,7 +584,7 @@ def _build_handler_class(
                         candidate_workflow=candidate_workflow,
                         base_ui_state=session.ui_state,
                         candidate_ui_state=candidate_ui_state,
-                        workflow_path=self._config.workflow_path,
+                        workflow_path=workflow_path,
                         bundle_root=self._config.bundle_root,
                     )
                 except ValueError as exc:
@@ -341,14 +612,18 @@ def _build_handler_class(
                 return
 
             with self._config.lock:
+                target_paths = self._require_active_target_paths()
+                if target_paths is None:
+                    return
+                workflow_path, ui_state_path = target_paths
                 try:
                     result = save_workflow_with_backup(
-                        workflow_path=self._config.workflow_path,
+                        workflow_path=workflow_path,
                         candidate_workflow=candidate_workflow,
                         candidate_ui_state=candidate_ui_state,
                         base_revision=base_revision,
                         bundle_root=self._config.bundle_root,
-                        ui_state_path=self._config.ui_state_path,
+                        ui_state_path=ui_state_path,
                         backup_dir=self._config.backup_dir,
                     )
                 except WorkflowRevisionConflictError as exc:
@@ -390,10 +665,14 @@ def _build_handler_class(
                 return
 
             with self._config.lock:
+                target_paths = self._require_active_target_paths()
+                if target_paths is None:
+                    return
+                workflow_path, ui_state_path = target_paths
                 try:
                     result = rollback_workflow_from_backup(
-                        workflow_path=self._config.workflow_path,
-                        ui_state_path=self._config.ui_state_path,
+                        workflow_path=workflow_path,
+                        ui_state_path=ui_state_path,
                         backup_dir=self._config.backup_dir,
                         backup_id=backup_id,
                     )
@@ -870,6 +1149,23 @@ def _studio_html() -> str:
     .page.is-connecting .node-handle {
       opacity: 1;
     }
+    .launcher-panel {
+      display: grid;
+      gap: 12px;
+    }
+    .launcher-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .launcher-box {
+      display: grid;
+      gap: 8px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px;
+      background: #fbfdff;
+    }
     @media (max-width: 1320px) {
       .main {
         grid-template-columns: 1fr;
@@ -881,6 +1177,9 @@ def _studio_html() -> str:
       .lower {
         grid-template-columns: 1fr;
       }
+      .launcher-grid {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
@@ -890,204 +1189,258 @@ def _studio_html() -> str:
       <h1>Yagra Workflow Studio</h1>
       <div class="muted">Vue 3 + Vue Flow (CDN / ES Modules / no-build)</div>
       <div class="toolbar">
-        <button type="button" @click="loadWorkflow">Load</button>
-        <button type="button" class="secondary" @click="previewDiff">Preview Diff</button>
-        <button type="button" @click="saveWorkflow">Save</button>
-        <input
-          v-model.trim="backupId"
-          type="text"
-          placeholder="rollback backup_id"
-          style="max-width: 360px;"
-        />
-        <button type="button" class="secondary" @click="rollbackWorkflow">Rollback</button>
+        <template v-if="hasTarget">
+          <button type="button" @click="loadWorkflow">Load</button>
+          <button type="button" class="secondary" @click="previewDiff">Preview Diff</button>
+          <button type="button" @click="saveWorkflow">Save</button>
+          <input
+            v-model.trim="backupId"
+            type="text"
+            placeholder="rollback backup_id"
+            style="max-width: 360px;"
+          />
+          <button type="button" class="secondary" @click="rollbackWorkflow">Rollback</button>
+          <button type="button" class="secondary" @click="openLauncher">Change Target</button>
+        </template>
+        <template v-else>
+          <button type="button" @click="refreshStudioFiles">Refresh Files</button>
+        </template>
       </div>
       <div class="meta-line">
+        <span class="muted">target: {{ studioTargetPath || "-" }}</span>
         <span class="muted">revision: {{ revision || "-" }}</span>
         <span :class="statusClass">status: {{ status.message }}</span>
       </div>
     </section>
 
-    <section class="main">
-      <article class="panel canvas-panel">
-        <div class="section-head">
-          <h2>Graph Canvas</h2>
-          <div class="hint">
-            ノードをクリックすると右サイドバーに編集フォームが表示されます。通常は右→左、戻りループは下→上ハンドルで接続できます。
-          </div>
-        </div>
-        <div class="flow-shell">
-          <vue-flow
-            v-model:nodes="nodes"
-            v-model:edges="edges"
-            class="workflow-flow"
-            :node-types="nodeTypes"
-            :default-edge-options="defaultEdgeOptions"
-            :nodes-draggable="true"
-            :nodes-connectable="true"
-            :elements-selectable="true"
-            :pan-on-drag="true"
-            :pan-on-scroll="true"
-            :zoom-on-scroll="true"
-            :fit-view-on-init="true"
-            :min-zoom="0.2"
-            :max-zoom="2.2"
-            :edges-updatable="true"
-            :apply-default="false"
-            @nodes-change="onNodesChange"
-            @edges-change="onEdgesChange"
-            @connect="onConnect"
-            @connect-start="onConnectStart"
-            @connect-end="onConnectEnd"
-            @node-click="onNodeClick"
-            @edge-click="onEdgeClick"
-            @edge-update="onEdgeUpdate"
-            @pane-click="onPaneClick"
-          >
-            <template #node-workflow="nodeProps">
-              <workflow-node v-bind="nodeProps"></workflow-node>
-            </template>
-            <mini-map></mini-map>
-            <flow-controls></flow-controls>
-            <flow-background pattern-color="#d5e1f0" :gap="18" :size="1"></flow-background>
-          </vue-flow>
-        </div>
-      </article>
-
-      <aside class="panel side-panel">
-        <section class="side-section">
-          <h2>Workflow Settings</h2>
+    <section v-if="showLauncher || !hasTarget" class="panel launcher-panel">
+      <div class="launcher-grid">
+        <article class="launcher-box">
+          <h2>Open Existing Workflow</h2>
+          <div class="hint">workspace_root: <span class="mono">{{ studioWorkspaceRoot || "-" }}</span></div>
           <div class="field">
-            <label for="workflowVersionInput">version</label>
-            <input id="workflowVersionInput" v-model="workflowMeta.version" type="text" placeholder="1.0" />
-          </div>
-          <div class="field">
-            <label for="workflowStartAtInput">start_at</label>
-            <select id="workflowStartAtInput" v-model="workflowMeta.startAt" @change="onWorkflowMetaChange">
-              <option value="">(select node)</option>
-              <option v-for="nodeId in nodeIdOptions" :key="'start-' + nodeId" :value="nodeId">
-                {{ nodeId }}
+            <label for="openWorkflowSelect">workflow</label>
+            <select id="openWorkflowSelect" v-model="launcher.openWorkflowPath">
+              <option value="">(select workflow)</option>
+              <option v-for="path in workflowCandidates" :key="'wf-' + path" :value="path">
+                {{ path }}
               </option>
             </select>
           </div>
+          <div class="toolbar">
+            <button type="button" @click="openStudioTarget">Open</button>
+            <button type="button" class="secondary" @click="refreshStudioFiles">Refresh List</button>
+          </div>
+        </article>
+
+        <article class="launcher-box">
+          <h2>Create Workflow</h2>
           <div class="field">
-            <label>end_at</label>
-            <div v-if="nodeIdOptions.length === 0" class="hint">
-              先にノードを追加してください。
-            </div>
-            <div v-else class="check-list">
-              <label v-for="nodeId in nodeIdOptions" :key="'end-' + nodeId" class="check-item">
-                <input
-                  type="checkbox"
-                  :value="nodeId"
-                  v-model="workflowMeta.endAt"
-                  @change="onWorkflowMetaChange"
-                />
-                <span>{{ nodeId }}</span>
-              </label>
-            </div>
+            <label for="createWorkflowPathInput">workflow path (workspace relative)</label>
+            <input
+              id="createWorkflowPathInput"
+              v-model.trim="launcher.createWorkflowPath"
+              type="text"
+              placeholder="workflows/new-workflow.yaml"
+            />
           </div>
-          <div class="hint">`start_at` と `end_at` は保存時に workflow へ反映されます。</div>
-        </section>
+          <label class="check-item">
+            <input v-model="launcher.overwrite" type="checkbox" />
+            <span>既存 workflow を上書きする（overwrite）</span>
+          </label>
+          <div class="toolbar">
+            <button type="button" @click="createStudioTarget">Create And Open</button>
+          </div>
+        </article>
+      </div>
+      <div v-if="hasTarget && showLauncher" class="toolbar">
+        <button type="button" class="secondary" @click="closeLauncher">Cancel</button>
+      </div>
+    </section>
 
-        <section class="side-section">
-          <h2>Add Node</h2>
-          <div class="inline-row">
-            <div class="field">
-              <label for="newNodeId">node id</label>
-              <input id="newNodeId" v-model.trim="newNode.id" type="text" placeholder="review" />
-            </div>
-            <div class="field">
-              <label for="newNodeHandler">handler</label>
-              <input id="newNodeHandler" v-model.trim="newNode.handler" type="text" placeholder="review_handler" />
+    <template v-if="hasTarget && !showLauncher">
+      <section class="main">
+        <article class="panel canvas-panel">
+          <div class="section-head">
+            <h2>Graph Canvas</h2>
+            <div class="hint">
+              ノードをクリックすると右サイドバーに編集フォームが表示されます。通常は右→左、戻りループは下→上ハンドルで接続できます。
             </div>
           </div>
-          <button type="button" class="secondary" @click="addNode">Add Node</button>
-          <div class="hint">追加後の位置は自動配置されます。必要に応じてキャンバス上でドラッグしてください。</div>
-        </section>
+          <div class="flow-shell">
+            <vue-flow
+              v-model:nodes="nodes"
+              v-model:edges="edges"
+              class="workflow-flow"
+              :node-types="nodeTypes"
+              :default-edge-options="defaultEdgeOptions"
+              :nodes-draggable="true"
+              :nodes-connectable="true"
+              :elements-selectable="true"
+              :pan-on-drag="true"
+              :pan-on-scroll="true"
+              :zoom-on-scroll="true"
+              :fit-view-on-init="true"
+              :min-zoom="0.2"
+              :max-zoom="2.2"
+              :edges-updatable="true"
+              :apply-default="false"
+              @nodes-change="onNodesChange"
+              @edges-change="onEdgesChange"
+              @connect="onConnect"
+              @connect-start="onConnectStart"
+              @connect-end="onConnectEnd"
+              @node-click="onNodeClick"
+              @edge-click="onEdgeClick"
+              @edge-update="onEdgeUpdate"
+              @pane-click="onPaneClick"
+            >
+              <template #node-workflow="nodeProps">
+                <workflow-node v-bind="nodeProps"></workflow-node>
+              </template>
+              <mini-map></mini-map>
+              <flow-controls></flow-controls>
+              <flow-background pattern-color="#d5e1f0" :gap="18" :size="1"></flow-background>
+            </vue-flow>
+          </div>
+        </article>
 
-        <section class="side-section">
-          <h2>Node Properties</h2>
-          <div v-if="!selectedNode" class="hint">
-            ノードを選択してください。
-          </div>
-          <template v-else>
-            <div class="mono">selected: {{ selectedNode.id }}</div>
+        <aside class="panel side-panel">
+          <section class="side-section">
+            <h2>Workflow Settings</h2>
             <div class="field">
-              <label for="nodeHandlerInput">handler</label>
-              <input id="nodeHandlerInput" v-model="nodeEditor.handler" type="text" />
+              <label for="workflowVersionInput">version</label>
+              <input id="workflowVersionInput" v-model="workflowMeta.version" type="text" placeholder="1.0" />
             </div>
+            <div class="field">
+              <label for="workflowStartAtInput">start_at</label>
+              <select id="workflowStartAtInput" v-model="workflowMeta.startAt" @change="onWorkflowMetaChange">
+                <option value="">(select node)</option>
+                <option v-for="nodeId in nodeIdOptions" :key="'start-' + nodeId" :value="nodeId">
+                  {{ nodeId }}
+                </option>
+              </select>
+            </div>
+            <div class="field">
+              <label>end_at</label>
+              <div v-if="nodeIdOptions.length === 0" class="hint">
+                先にノードを追加してください。
+              </div>
+              <div v-else class="check-list">
+                <label v-for="nodeId in nodeIdOptions" :key="'end-' + nodeId" class="check-item">
+                  <input
+                    type="checkbox"
+                    :value="nodeId"
+                    v-model="workflowMeta.endAt"
+                    @change="onWorkflowMetaChange"
+                  />
+                  <span>{{ nodeId }}</span>
+                </label>
+              </div>
+            </div>
+            <div class="hint">`start_at` と `end_at` は保存時に workflow へ反映されます。</div>
+          </section>
+
+          <section class="side-section">
+            <h2>Add Node</h2>
             <div class="inline-row">
               <div class="field">
-                <label for="nodePromptRefInput">prompt_ref</label>
-                <input
-                  id="nodePromptRefInput"
-                  v-model="nodeEditor.promptRef"
-                  type="text"
-                  list="promptRefOptions"
-                  placeholder="planner"
-                />
+                <label for="newNodeId">node id</label>
+                <input id="newNodeId" v-model.trim="newNode.id" type="text" placeholder="review" />
               </div>
               <div class="field">
-                <label for="nodeModelRefInput">model_ref</label>
-                <input
-                  id="nodeModelRefInput"
-                  v-model="nodeEditor.modelRef"
-                  type="text"
-                  list="modelRefOptions"
-                  placeholder="default"
-                />
+                <label for="newNodeHandler">handler</label>
+                <input id="newNodeHandler" v-model.trim="newNode.handler" type="text" placeholder="review_handler" />
               </div>
             </div>
-            <div class="field">
-              <label for="nodePromptJsonInput">prompt (JSON object)</label>
-              <textarea id="nodePromptJsonInput" v-model="nodeEditor.promptJson"></textarea>
-            </div>
-            <div class="field">
-              <label for="nodeModelJsonInput">model (JSON object)</label>
-              <textarea id="nodeModelJsonInput" v-model="nodeEditor.modelJson"></textarea>
-            </div>
-            <button type="button" class="secondary" @click="applyNodeEdit">Apply Node Edit</button>
-            <div class="hint">空文字の prompt_ref / model_ref / JSON は削除として扱います。</div>
-          </template>
-        </section>
+            <button type="button" class="secondary" @click="addNode">Add Node</button>
+            <div class="hint">追加後の位置は自動配置されます。必要に応じてキャンバス上でドラッグしてください。</div>
+          </section>
 
-        <section class="side-section">
-          <h2>Edge Properties</h2>
-          <div v-if="!selectedEdge" class="hint">
-            エッジを選択すると condition を編集できます。エッジ端点をドラッグすると再接続できます。
-          </div>
-          <template v-else>
-            <div class="mono">
-              edge[{{ selectedEdge.data.index }}] {{ selectedEdge.source }} -> {{ selectedEdge.target }}
-              <span v-if="selectedEdge.data.isLoopEdge"> (loop)</span>
+          <section class="side-section">
+            <h2>Node Properties</h2>
+            <div v-if="!selectedNode" class="hint">
+              ノードを選択してください。
             </div>
-            <div class="field">
-              <label for="edgeConditionInput">condition</label>
-              <input id="edgeConditionInput" v-model="edgeEditor.condition" type="text" placeholder="retry / done" />
+            <template v-else>
+              <div class="mono">selected: {{ selectedNode.id }}</div>
+              <div class="field">
+                <label for="nodeHandlerInput">handler</label>
+                <input id="nodeHandlerInput" v-model="nodeEditor.handler" type="text" />
+              </div>
+              <div class="inline-row">
+                <div class="field">
+                  <label for="nodePromptRefInput">prompt_ref</label>
+                  <input
+                    id="nodePromptRefInput"
+                    v-model="nodeEditor.promptRef"
+                    type="text"
+                    list="promptRefOptions"
+                    placeholder="planner"
+                  />
+                </div>
+                <div class="field">
+                  <label for="nodeModelRefInput">model_ref</label>
+                  <input
+                    id="nodeModelRefInput"
+                    v-model="nodeEditor.modelRef"
+                    type="text"
+                    list="modelRefOptions"
+                    placeholder="default"
+                  />
+                </div>
+              </div>
+              <div class="field">
+                <label for="nodePromptJsonInput">prompt (JSON object)</label>
+                <textarea id="nodePromptJsonInput" v-model="nodeEditor.promptJson"></textarea>
+              </div>
+              <div class="field">
+                <label for="nodeModelJsonInput">model (JSON object)</label>
+                <textarea id="nodeModelJsonInput" v-model="nodeEditor.modelJson"></textarea>
+              </div>
+              <button type="button" class="secondary" @click="applyNodeEdit">Apply Node Edit</button>
+              <div class="hint">空文字の prompt_ref / model_ref / JSON は削除として扱います。</div>
+            </template>
+          </section>
+
+          <section class="side-section">
+            <h2>Edge Properties</h2>
+            <div v-if="!selectedEdge" class="hint">
+              エッジを選択すると condition を編集できます。エッジ端点をドラッグすると再接続できます。
             </div>
-            <button type="button" class="secondary" @click="applyEdgeEdit">Apply Edge Edit</button>
-          </template>
-        </section>
+            <template v-else>
+              <div class="mono">
+                edge[{{ selectedEdge.data.index }}] {{ selectedEdge.source }} -> {{ selectedEdge.target }}
+                <span v-if="selectedEdge.data.isLoopEdge"> (loop)</span>
+              </div>
+              <div class="field">
+                <label for="edgeConditionInput">condition</label>
+                <input id="edgeConditionInput" v-model="edgeEditor.condition" type="text" placeholder="retry / done" />
+              </div>
+              <button type="button" class="secondary" @click="applyEdgeEdit">Apply Edge Edit</button>
+            </template>
+          </section>
 
-        <datalist id="promptRefOptions">
-          <option v-for="key in promptCatalogKeys" :key="'prompt-' + key" :value="key"></option>
-        </datalist>
-        <datalist id="modelRefOptions">
-          <option v-for="key in modelCatalogKeys" :key="'model-' + key" :value="key"></option>
-        </datalist>
-      </aside>
-    </section>
+          <datalist id="promptRefOptions">
+            <option v-for="key in promptCatalogKeys" :key="'prompt-' + key" :value="key"></option>
+          </datalist>
+          <datalist id="modelRefOptions">
+            <option v-for="key in modelCatalogKeys" :key="'model-' + key" :value="key"></option>
+          </datalist>
+        </aside>
+      </section>
 
-    <section class="lower">
-      <article class="panel">
-        <h2>Validation</h2>
-        <pre>{{ validationText }}</pre>
-      </article>
-      <article class="panel">
-        <h2>Diff</h2>
-        <pre>{{ diffText }}</pre>
-      </article>
-    </section>
+      <section class="lower">
+        <article class="panel">
+          <h2>Validation</h2>
+          <pre>{{ validationText }}</pre>
+        </article>
+        <article class="panel">
+          <h2>Diff</h2>
+          <pre>{{ diffText }}</pre>
+        </article>
+      </section>
+    </template>
   </div>
 
   <script type="importmap">
@@ -1794,6 +2147,16 @@ def _studio_html() -> str:
         const status = reactive({ message: "idle", isError: false });
         const validationText = ref("-");
         const diffText = ref("");
+        const hasTarget = ref(false);
+        const showLauncher = ref(false);
+        const studioTargetPath = ref("");
+        const studioWorkspaceRoot = ref("");
+        const workflowCandidates = ref([]);
+        const launcher = reactive({
+          openWorkflowPath: "",
+          createWorkflowPath: "",
+          overwrite: false,
+        });
 
         const promptCatalogKeys = ref([]);
         const modelCatalogKeys = ref([]);
@@ -1905,6 +2268,24 @@ def _studio_html() -> str:
         function setStatus(message, isError = false) {
           status.message = message;
           status.isError = isError;
+        }
+
+        function resetEditorState() {
+          revision.value = null;
+          backupId.value = "";
+          promptCatalogKeys.value = [];
+          modelCatalogKeys.value = [];
+          nodes.value = [];
+          edges.value = [];
+          originalWorkflow.value = {};
+          baseUiState.value = {};
+          workflowMeta.version = "1.0";
+          workflowMeta.startAt = "";
+          workflowMeta.endAt = [];
+          selectedNodeId.value = null;
+          selectedEdgeId.value = null;
+          validationText.value = "-";
+          diffText.value = "";
         }
 
         function resolveWorkflowStartAt(value) {
@@ -2441,14 +2822,137 @@ def _studio_html() -> str:
           selectedEdgeId.value = null;
         }
 
+        async function requestJson(url, options = {}) {
+          const response = await fetch(url, options);
+          let data = {};
+          try {
+            data = await response.json();
+          } catch (_error) {
+            data = {};
+          }
+          return { response, data };
+        }
+
+        async function loadStudioTarget() {
+          const { response, data } = await requestJson("/api/studio/target");
+          if (!response.ok) {
+            setStatus(data.message || data.error || "failed to load studio target", true);
+            return false;
+          }
+          hasTarget.value = Boolean(data.has_target);
+          studioTargetPath.value = normalizeText(data.workflow_path);
+          studioWorkspaceRoot.value = normalizeText(data.workspace_root);
+          return true;
+        }
+
+        async function loadStudioFiles() {
+          const { response, data } = await requestJson("/api/studio/files");
+          if (!response.ok) {
+            setStatus(data.message || data.error || "failed to load studio files", true);
+            return false;
+          }
+          workflowCandidates.value = Array.isArray(data.workflows)
+            ? data.workflows.filter(item => typeof item === "string")
+            : [];
+          const selected = normalizeText(launcher.openWorkflowPath);
+          if (!selected || !workflowCandidates.value.includes(selected)) {
+            launcher.openWorkflowPath = workflowCandidates.value[0] || "";
+          }
+          const workspaceRoot = normalizeText(data.workspace_root);
+          if (workspaceRoot) {
+            studioWorkspaceRoot.value = workspaceRoot;
+          }
+          return true;
+        }
+
+        async function refreshStudioFiles() {
+          setStatus("loading workflow list...");
+          const loaded = await loadStudioFiles();
+          if (!loaded) {
+            return;
+          }
+          setStatus("workflow list updated");
+        }
+
+        function openLauncher() {
+          showLauncher.value = true;
+          void loadStudioFiles();
+        }
+
+        function closeLauncher() {
+          if (!hasTarget.value) {
+            return;
+          }
+          showLauncher.value = false;
+        }
+
+        async function openStudioTarget() {
+          const workflowPath = normalizeText(launcher.openWorkflowPath);
+          if (!workflowPath) {
+            setStatus("open target is required", true);
+            return;
+          }
+          setStatus(`opening: ${workflowPath} ...`);
+          const { response, data } = await requestJson("/api/studio/open", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ workflow_path: workflowPath }),
+          });
+          if (!response.ok) {
+            setStatus(data.message || data.error || "open failed", true);
+            return;
+          }
+          await loadStudioTarget();
+          showLauncher.value = false;
+          await loadWorkflow();
+          setStatus(`opened: ${workflowPath}`);
+        }
+
+        async function createStudioTarget() {
+          const workflowPath = normalizeText(launcher.createWorkflowPath);
+          if (!workflowPath) {
+            setStatus("create target path is required", true);
+            return;
+          }
+          setStatus(`creating: ${workflowPath} ...`);
+          const { response, data } = await requestJson("/api/studio/create", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              workflow_path: workflowPath,
+              overwrite: Boolean(launcher.overwrite),
+            }),
+          });
+          if (!response.ok) {
+            setStatus(data.message || data.error || "create failed", true);
+            return;
+          }
+          launcher.openWorkflowPath = workflowPath;
+          await loadStudioFiles();
+          await loadStudioTarget();
+          showLauncher.value = false;
+          await loadWorkflow();
+          setStatus(`created: ${workflowPath}`);
+        }
+
         async function loadWorkflow() {
           setStatus("loading...");
-          const response = await fetch("/api/workflow/form");
-          const data = await response.json();
+          const { response, data } = await requestJson("/api/workflow/form");
+          if (response.status === 409 && data.error === "studio_target_required") {
+            resetEditorState();
+            hasTarget.value = false;
+            showLauncher.value = true;
+            await loadStudioTarget();
+            await loadStudioFiles();
+            setStatus("workflow target を選択してください");
+            return;
+          }
           if (!response.ok) {
             setStatus(data.message || data.error || "load failed", true);
             return;
           }
+          hasTarget.value = true;
+          showLauncher.value = false;
 
           revision.value = typeof data.revision === "string" ? data.revision : null;
           promptCatalogKeys.value = Array.isArray(data.prompt_catalog_keys) ? data.prompt_catalog_keys : [];
@@ -2487,6 +2991,15 @@ def _studio_html() -> str:
           });
           const data = await response.json();
           if (response.status === 409) {
+            if (data.error === "studio_target_required") {
+              resetEditorState();
+              hasTarget.value = false;
+              showLauncher.value = true;
+              await loadStudioTarget();
+              await loadStudioFiles();
+              setStatus("workflow target を選択してください");
+              return;
+            }
             setStatus("revision conflict. reload required", true);
             return;
           }
@@ -2516,6 +3029,15 @@ def _studio_html() -> str:
           });
           const data = await response.json();
           if (response.status === 409) {
+            if (data.error === "studio_target_required") {
+              resetEditorState();
+              hasTarget.value = false;
+              showLauncher.value = true;
+              await loadStudioTarget();
+              await loadStudioFiles();
+              setStatus("workflow target を選択してください");
+              return;
+            }
             setStatus("revision conflict. reload required", true);
             return;
           }
@@ -2554,6 +3076,15 @@ def _studio_html() -> str:
             body: JSON.stringify({ backup_id: targetBackupId }),
           });
           const data = await response.json();
+          if (response.status === 409 && data.error === "studio_target_required") {
+            resetEditorState();
+            hasTarget.value = false;
+            showLauncher.value = true;
+            await loadStudioTarget();
+            await loadStudioFiles();
+            setStatus("workflow target を選択してください");
+            return;
+          }
           if (!response.ok) {
             setStatus(data.message || data.error || "rollback failed", true);
             return;
@@ -2571,7 +3102,21 @@ def _studio_html() -> str:
           setStatus(`rolled back (${targetBackupId})`);
         }
 
-        onMounted(loadWorkflow);
+        onMounted(async () => {
+          setStatus("initializing...");
+          const targetLoaded = await loadStudioTarget();
+          if (!targetLoaded) {
+            return;
+          }
+          await loadStudioFiles();
+          if (hasTarget.value) {
+            await loadWorkflow();
+            return;
+          }
+          resetEditorState();
+          showLauncher.value = true;
+          setStatus("workflow target を選択してください");
+        });
 
         return {
           revision,
@@ -2580,6 +3125,12 @@ def _studio_html() -> str:
           statusClass,
           validationText,
           diffText,
+          hasTarget,
+          showLauncher,
+          studioTargetPath,
+          studioWorkspaceRoot,
+          workflowCandidates,
+          launcher,
           promptCatalogKeys,
           modelCatalogKeys,
           workflowMeta,
@@ -2595,6 +3146,11 @@ def _studio_html() -> str:
           nodeTypes,
           defaultEdgeOptions,
           loadWorkflow,
+          refreshStudioFiles,
+          openLauncher,
+          closeLauncher,
+          openStudioTarget,
+          createStudioTarget,
           previewDiff,
           saveWorkflow,
           rollbackWorkflow,

@@ -184,6 +184,10 @@ yagra visualize \
 Workflow の `prompt` / `model` / `condition` 編集に加え、DnD でノード追加・接続変更を行い、diff 確認・保存・rollback を実行するローカル WebUI/API を起動します。
 
 ```bash
+# ランチャー起動（UI で workflow を選択/新規作成）
+yagra studio --port 8787
+
+# 従来どおり直接指定で起動
 yagra studio \
   --workflow examples/workflows/loop-split.yaml \
   --bundle-root examples \
@@ -207,9 +211,10 @@ yagra studio \
 
 オプション:
 
-- `--workflow`: 編集対象 workflow ファイル（必須）
+- `--workflow`: 編集対象 workflow ファイル（任意、未指定時はランチャーで選択/作成）
 - `--bundle-root`: 分割参照解決の基準ディレクトリ（任意）
 - `--ui-state`: UI サイドカー JSON の保存先（既定: `<workflow>.workflow-ui.json`）
+- `--workspace-root`: ランチャーが探索/作成可能なワークスペースルート（既定: `<workflow> の親` またはカレント）
 - `--backup-dir`: バックアップ保存先（既定: `.yagra/backups`）
 - `--host`: バインドホスト（既定: `127.0.0.1`）
 - `--port`: バインドポート（既定: `8787`）

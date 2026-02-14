@@ -32,6 +32,7 @@ def _base_payload() -> dict[str, Any]:
 
 
 def _write_workflow(path: Path, payload: dict[str, Any]) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(yaml.safe_dump(payload, sort_keys=False, allow_unicode=True), encoding="utf-8")
     return path
 
@@ -70,6 +71,71 @@ def _server_base_url(server: Any) -> str:
     host = raw_host.decode("utf-8") if isinstance(raw_host, bytes) else str(raw_host)
     port = int(address[1])
     return f"http://{host}:{port}"
+
+
+def test_workflow_studio_api_launcher_open_and_create(tmp_path: Path) -> None:
+    workspace_root = tmp_path / "workspace"
+    existing_workflow = _write_workflow(
+        workspace_root / "workflows" / "existing.yaml",
+        _base_payload(),
+    )
+
+    server = create_workflow_studio_server(
+        workspace_root=workspace_root,
+        backup_dir=tmp_path / ".yagra-backups",
+        host="127.0.0.1",
+        port=0,
+    )
+    thread = Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    base_url = _server_base_url(server)
+
+    try:
+        status, target_payload = _request_json("GET", f"{base_url}/api/studio/target")
+        assert status == 200
+        assert target_payload["has_target"] is False
+        assert target_payload["workflow_path"] is None
+        assert target_payload["workspace_root"] == str(workspace_root.resolve())
+
+        status, files_payload = _request_json("GET", f"{base_url}/api/studio/files")
+        assert status == 200
+        assert "workflows/existing.yaml" in files_payload["workflows"]
+
+        status, form_payload = _request_json("GET", f"{base_url}/api/workflow/form")
+        assert status == 409
+        assert form_payload["error"] == "studio_target_required"
+
+        status, create_payload = _request_json(
+            "POST",
+            f"{base_url}/api/studio/create",
+            {"workflow_path": "workflows/new.yaml"},
+        )
+        assert status == 200
+        created_workflow = workspace_root / "workflows" / "new.yaml"
+        assert created_workflow.exists()
+        assert created_workflow.with_suffix(".workflow-ui.json").exists()
+        assert create_payload["workflow_path"] == str(created_workflow.resolve())
+
+        status, created_form_payload = _request_json("GET", f"{base_url}/api/workflow/form")
+        assert status == 200
+        assert created_form_payload["workflow"]["start_at"] == "start"
+        assert created_form_payload["workflow"]["end_at"] == ["end"]
+
+        status, open_payload = _request_json(
+            "POST",
+            f"{base_url}/api/studio/open",
+            {"workflow_path": "workflows/existing.yaml"},
+        )
+        assert status == 200
+        assert open_payload["workflow_path"] == str(existing_workflow.resolve())
+
+        status, opened_form_payload = _request_json("GET", f"{base_url}/api/workflow/form")
+        assert status == 200
+        assert opened_form_payload["workflow"]["start_at"] == "router"
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
 
 
 def test_workflow_studio_api_supports_diff_save_rollback(tmp_path: Path) -> None:

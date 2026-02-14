@@ -131,3 +131,71 @@ def test_main_studio_starts_and_stops_server(
 
     captured = capsys.readouterr()
     assert "workflow studio started:" in captured.out
+
+
+def test_main_studio_starts_without_workflow(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    fake_server = MagicMock()
+    fake_server.serve_forever.return_value = None
+    fake_server.server_close.return_value = None
+    captured_args: dict[str, Any] = {}
+
+    def _fake_create_server(**kwargs: Any) -> Any:
+        captured_args.update(kwargs)
+        return fake_server
+
+    monkeypatch.setattr(yagra, "create_workflow_studio_server", _fake_create_server)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "yagra",
+            "studio",
+            "--port",
+            "8899",
+        ],
+    )
+
+    with pytest.raises(SystemExit) as exc:
+        main()
+
+    assert exc.value.code == 0
+    fake_server.serve_forever.assert_called_once()
+    fake_server.server_close.assert_called_once()
+    assert captured_args["workflow_path"] is None
+
+    captured = capsys.readouterr()
+    assert "workflow studio started:" in captured.out
+
+
+def test_main_studio_rejects_ui_state_without_workflow(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    called = False
+
+    def _fake_create_server(**_: Any) -> None:
+        nonlocal called
+        called = True
+
+    monkeypatch.setattr(yagra, "create_workflow_studio_server", _fake_create_server)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "yagra",
+            "studio",
+            "--ui-state",
+            "/tmp/workflow.workflow-ui.json",
+        ],
+    )
+
+    with pytest.raises(SystemExit) as exc:
+        main()
+
+    assert exc.value.code == 2
+    assert called is False
+    captured = capsys.readouterr()
+    assert "--ui-state は --workflow 指定時のみ利用できます。" in captured.err

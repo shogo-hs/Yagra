@@ -157,8 +157,8 @@ def _build_cli_parser() -> argparse.ArgumentParser:
     )
     studio.add_argument(
         "--workflow",
-        required=True,
-        help="編集対象 workflow YAML のパス",
+        default=None,
+        help="編集対象 workflow YAML のパス（未指定時は起動後にUIで選択/作成）",
     )
     studio.add_argument(
         "--bundle-root",
@@ -169,6 +169,11 @@ def _build_cli_parser() -> argparse.ArgumentParser:
         "--ui-state",
         default=None,
         help="UI サイドカー JSON のパス（未指定時は <workflow>.workflow-ui.json）",
+    )
+    studio.add_argument(
+        "--workspace-root",
+        default=None,
+        help="Studio が workflow を探索/作成するワークスペースルート（未指定時は workflow 親 or 現在ディレクトリ）",
     )
     studio.add_argument(
         "--backup-dir",
@@ -230,10 +235,18 @@ def _run_studio_command(args: argparse.Namespace) -> int:
     Returns:
         終了コード。成功時は 0。
     """
+    if args.workflow is None and args.ui_state is not None:
+        print(
+            "--ui-state は --workflow 指定時のみ利用できます。",
+            file=sys.stderr,
+        )
+        return 2
+
     server = create_workflow_studio_server(
         workflow_path=args.workflow,
         bundle_root=args.bundle_root,
         ui_state_path=args.ui_state,
+        workspace_root=args.workspace_root,
         backup_dir=args.backup_dir,
         host=args.host,
         port=args.port,
