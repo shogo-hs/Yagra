@@ -118,7 +118,7 @@ def test_save_workflow_with_backup_raises_validation_error(tmp_path: Path) -> No
     before_session = load_workflow_edit_session(workflow_path=workflow_path)
 
     invalid_candidate = deepcopy(before_session.workflow)
-    invalid_candidate["edges"] = []
+    del invalid_candidate["edges"]
     with pytest.raises(WorkflowValidationFailedError):
         save_workflow_with_backup(
             workflow_path=workflow_path,

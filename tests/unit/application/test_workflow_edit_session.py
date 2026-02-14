@@ -77,7 +77,7 @@ def test_build_workflow_diff_returns_validation_errors_for_invalid_candidate(
 ) -> None:
     base_workflow = _base_payload()
     invalid_candidate = _base_payload()
-    invalid_candidate["edges"] = []
+    del invalid_candidate["edges"]
     workflow_path = _write_workflow(tmp_path / "workflow.yaml", base_workflow)
 
     result = build_workflow_diff(

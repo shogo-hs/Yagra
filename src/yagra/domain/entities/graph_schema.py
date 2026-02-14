@@ -36,5 +36,5 @@ class GraphSpec(BaseModel):
     start_at: str = Field(min_length=1)
     end_at: list[str] = Field(min_length=1)
     nodes: list[NodeSpec] = Field(min_length=1)
-    edges: list[EdgeSpec] = Field(min_length=1)
+    edges: list[EdgeSpec] = Field(min_length=0)
     params: dict[str, Any] = Field(default_factory=dict)

@@ -3,9 +3,6 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any
 
-import pytest
-from pydantic import ValidationError
-
 from yagra.domain.entities import GraphSpec
 from yagra.domain.services.schema_validator import collect_graph_structure_issues
 
@@ -75,9 +72,9 @@ def test_collect_graph_structure_issues_detects_unknown_edge_target() -> None:
     assert any(issue.location == ("edges", 4, "target") for issue in issues)
 
 
-def test_graph_spec_model_validate_rejects_empty_edges() -> None:
+def test_graph_spec_model_validate_accepts_empty_edges() -> None:
     payload = deepcopy(_base_payload())
     payload["edges"] = []
 
-    with pytest.raises(ValidationError, match="edges"):
-        GraphSpec.model_validate(payload)
+    spec = GraphSpec.model_validate(payload)
+    assert spec.edges == []

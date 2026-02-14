@@ -76,7 +76,7 @@ def test_main_visualize_returns_error_for_invalid_workflow(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     payload = _base_payload()
-    payload["edges"] = []
+    del payload["edges"]
     invalid_path = _write_workflow(tmp_path / "invalid.yaml", payload)
 
     monkeypatch.setattr(

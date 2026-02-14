@@ -309,6 +309,9 @@ Yagra は次の順で呼び出しを試みます。
 - `target: str`
 - `condition: str | null`（任意）
 
+補足:
+- `edges` は 0 件でも有効です（例: `start_at` と `end_at` が同一の単一ノード workflow）。
+
 ## 同梱サンプル
 
 - `examples/workflows/branch-inline.yaml`

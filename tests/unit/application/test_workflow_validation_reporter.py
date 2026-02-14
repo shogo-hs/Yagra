@@ -62,7 +62,7 @@ def test_validate_workflow_for_ui_reports_reference_error_with_location(tmp_path
 
 def test_validate_workflow_for_ui_reports_schema_error_with_location(tmp_path: Path) -> None:
     payload = _base_payload()
-    payload["edges"] = []
+    del payload["edges"]
     workflow_path = _write_workflow(tmp_path / "schema-error.yaml", payload)
 
     report = validate_workflow_for_ui(workflow_path)
@@ -70,6 +70,25 @@ def test_validate_workflow_for_ui_reports_schema_error_with_location(tmp_path: P
     assert report.is_valid is False
     assert any(issue.code == "schema_error" for issue in report.issues)
     assert any(issue.location == ("edges",) for issue in report.issues)
+
+
+def test_validate_workflow_for_ui_accepts_single_node_without_edges(tmp_path: Path) -> None:
+    payload = {
+        "version": "1.0",
+        "start_at": "only",
+        "end_at": ["only"],
+        "nodes": [
+            {"id": "only", "handler": "only_handler"},
+        ],
+        "edges": [],
+        "params": {},
+    }
+    workflow_path = _write_workflow(tmp_path / "single-node.yaml", payload)
+
+    report = validate_workflow_for_ui(workflow_path)
+
+    assert report.is_valid is True
+    assert report.issues == []
 
 
 def test_validate_workflow_for_ui_reports_structure_error_with_location(tmp_path: Path) -> None:
@@ -117,7 +136,7 @@ def test_load_validated_graph_spec_raises_workflow_validation_failed_error(
     tmp_path: Path,
 ) -> None:
     payload = _base_payload()
-    payload["edges"] = []
+    del payload["edges"]
     workflow_path = _write_workflow(tmp_path / "invalid.yaml", payload)
 
     with pytest.raises(WorkflowValidationFailedError) as exc:

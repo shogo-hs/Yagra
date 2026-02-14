@@ -67,7 +67,7 @@ def test_render_workflow_visualization_html_contains_graph_and_node_details() ->
 
 def test_render_workflow_visualization_html_raises_on_invalid_workflow(tmp_path: Path) -> None:
     payload = _base_payload()
-    payload["edges"] = []
+    del payload["edges"]
     workflow_path = _write_workflow(tmp_path / "invalid.yaml", payload)
 
     with pytest.raises(ValueError, match="workflow validation failed"):
