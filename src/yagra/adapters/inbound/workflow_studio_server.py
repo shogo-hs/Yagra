@@ -606,9 +606,10 @@ def _studio_html() -> str:
     .raw textarea { min-height: 220px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
     .hint { font-size: 12px; color: var(--muted); }
     .graph-canvas { position: relative; width: 100%; min-height: 360px; border: 1px solid var(--line); border-radius: 10px; background: linear-gradient(180deg, #fdfefe 0%, #f3f8ff 100%); overflow: hidden; }
-    .graph-edge-layer { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-    .graph-node-layer { position: absolute; inset: 0; }
+    .graph-edge-layer { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: auto; }
+    .graph-node-layer { position: absolute; inset: 0; pointer-events: none; }
     .graph-node { position: absolute; width: 140px; padding: 8px; border: 1px solid #8da8cb; border-radius: 10px; background: #fff; box-shadow: 0 2px 7px rgba(35, 70, 120, 0.14); cursor: grab; touch-action: none; user-select: none; }
+    .graph-node { pointer-events: auto; }
     .graph-node.dragging { opacity: .72; cursor: grabbing; }
     .graph-node.selected { border-color: #0b63be; box-shadow: 0 4px 10px rgba(10, 111, 216, 0.24); }
     .graph-node-title { font-size: 12px; font-weight: 700; }
@@ -618,6 +619,8 @@ def _studio_html() -> str:
     .mode { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
     .guide { margin-bottom: 8px; padding: 8px 10px; border: 1px dashed var(--line); border-radius: 8px; background: #f8fbff; font-size: 12px; color: #2a4365; }
     .guide strong { display: block; margin-bottom: 4px; }
+    .selection-summary { margin-bottom: 8px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: #fff; font-size: 12px; color: #344968; line-height: 1.5; }
+    .selection-summary b { color: #1d2735; }
     .inline-row button { width: 100%; }
     @media (max-width: 1240px) { .layout { grid-template-columns: 1fr; } }
   </style>
@@ -693,10 +696,9 @@ def _studio_html() -> str:
           </div>
           <div class="inline-row">
             <button id="applyEdgeBtn" class="secondary" type="button">Apply Edge Edit</button>
-            <button id="startRewireBtn" class="secondary" type="button">Start Rewire Mode</button>
+            <button id="toggleRewireBtn" class="secondary" type="button">Enable Rewire Mode</button>
           </div>
-          <button id="clearRewireBtn" class="secondary" type="button">Clear Rewire Mode</button>
-          <div class="hint">ノードの Connect ボタンをドラッグして接続追加。Rewire Mode では選択エッジの再接続を実行します。</div>
+          <div class="hint">ノードの Connect ボタンをドラッグして接続追加。Rewire Mode では選択エッジを、ドラッグ起点ノード→ドロップ先ノードへ再接続します。</div>
         </div>
       </article>
       <article class="panel stack">
@@ -706,9 +708,10 @@ def _studio_html() -> str:
             <strong>Quick Guide</strong>
             1) Add Node で追加<br />
             2) ノードの Connect をドラッグして接続追加<br />
-            3) Edge を選んで Start Rewire Mode 後に Connect をドラッグして再接続<br />
+            3) エッジ線をクリックして選択し、Enable Rewire Mode 後に Connect をドラッグして再接続<br />
             4) Preview Diff を確認して Save
           </div>
+          <div id="selectionSummary" class="selection-summary"></div>
           <div id="connectionModeLabel" class="mode">connection mode: idle</div>
           <div id="graphCanvas" class="graph-canvas">
             <svg id="graphEdgeLayer" class="graph-edge-layer"></svg>
@@ -784,6 +787,8 @@ def _studio_html() -> str:
     const graphEdgeLayer = document.getElementById("graphEdgeLayer");
     const graphNodeLayer = document.getElementById("graphNodeLayer");
     const connectionModeLabel = document.getElementById("connectionModeLabel");
+    const selectionSummary = document.getElementById("selectionSummary");
+    const toggleRewireBtn = document.getElementById("toggleRewireBtn");
 
     function setStatus(message, isError = false) {
       statusLabel.textContent = `status: ${message}`;
@@ -918,10 +923,61 @@ def _studio_html() -> str:
 
     function updateConnectionModeLabel() {
       if (state.activeRewireEdgeIndex === null) {
-        connectionModeLabel.textContent = "connection mode: create edge (drag Connect)";
+        connectionModeLabel.textContent = "connection mode: create edge (drag Connect from source to target)";
         return;
       }
-      connectionModeLabel.textContent = `connection mode: rewire edge[${state.activeRewireEdgeIndex}]`;
+      connectionModeLabel.textContent = `connection mode: rewire edge[${state.activeRewireEdgeIndex}] (drag Connect for new source/target)`;
+    }
+
+    function updateRewireButton() {
+      if (state.activeRewireEdgeIndex === null) {
+        toggleRewireBtn.textContent = "Enable Rewire Mode";
+        toggleRewireBtn.classList.add("secondary");
+        return;
+      }
+      toggleRewireBtn.textContent = `Disable Rewire Mode (edge[${state.activeRewireEdgeIndex}])`;
+      toggleRewireBtn.classList.remove("secondary");
+    }
+
+    function renderSelectionSummary() {
+      const selectedNodeId = nodeSelect.value || "-";
+      const selectedEdgeIndex = Number(edgeSelect.value);
+      const selectedEdge = state.formEdges.find(item => item.index === selectedEdgeIndex);
+      const selectedEdgeText = selectedEdge
+        ? `[${selectedEdge.index}] ${selectedEdge.source} -> ${selectedEdge.target}`
+        : "-";
+      const pendingTotal =
+        state.pendingNodeCreates.length +
+        state.pendingNodeEdits.length +
+        state.pendingEdgeCreates.length +
+        state.pendingEdgeRewires.length +
+        state.pendingEdgeEdits.length;
+      const rewireText =
+        state.activeRewireEdgeIndex === null
+          ? "OFF"
+          : `ON (edge[${state.activeRewireEdgeIndex}])`;
+      selectionSummary.innerHTML =
+        `<b>Selected Node:</b> ${escapeHtml(selectedNodeId)}<br />` +
+        `<b>Selected Edge:</b> ${escapeHtml(selectedEdgeText)}<br />` +
+        `<b>Rewire Mode:</b> ${escapeHtml(rewireText)}<br />` +
+        `<b>Pending Edits:</b> ${pendingTotal}`;
+    }
+
+    function selectEdge(edgeIndex, announce = false) {
+      const edge = state.formEdges.find(item => item.index === edgeIndex);
+      if (!edge) return;
+      edgeSelect.value = String(edgeIndex);
+      renderEdgeForm(edgeIndex);
+      if (state.activeRewireEdgeIndex !== null) {
+        state.activeRewireEdgeIndex = edgeIndex;
+      }
+      updateConnectionModeLabel();
+      updateRewireButton();
+      renderSelectionSummary();
+      renderGraph();
+      if (announce) {
+        setStatus(`edge selected: [${edge.index}] ${edge.source} -> ${edge.target}`);
+      }
     }
 
     function clearPendingEdits() {
@@ -981,6 +1037,7 @@ def _studio_html() -> str:
         edge_edits: state.pendingEdgeEdits,
       };
       pendingView.textContent = JSON.stringify(payload, null, 2);
+      renderSelectionSummary();
     }
 
     function renderEditors() {
@@ -1072,6 +1129,8 @@ def _studio_html() -> str:
         edgeConditionInput.value = "";
         state.activeRewireEdgeIndex = null;
         updateConnectionModeLabel();
+        updateRewireButton();
+        renderSelectionSummary();
         return;
       }
       const target = state.formEdges.some(edge => String(edge.index) === current)
@@ -1079,6 +1138,12 @@ def _studio_html() -> str:
         : String(state.formEdges[0].index);
       edgeSelect.value = target;
       renderEdgeForm(Number(target));
+      if (state.activeRewireEdgeIndex !== null) {
+        state.activeRewireEdgeIndex = Number(target);
+      }
+      updateConnectionModeLabel();
+      updateRewireButton();
+      renderSelectionSummary();
     }
 
     function renderNodeForm(nodeId) {
@@ -1301,6 +1366,12 @@ def _studio_html() -> str:
           edge.index === state.activeRewireEdgeIndex || edge.index === activeEdgeIndex;
         line.setAttribute("stroke", isHighlighted ? "#0a6fd8" : "#8ea4c6");
         line.setAttribute("stroke-width", isHighlighted ? "2.4" : "1.4");
+        line.setAttribute("pointer-events", "stroke");
+        line.style.cursor = "pointer";
+        line.addEventListener("click", event => {
+          event.stopPropagation();
+          selectEdge(edge.index, true);
+        });
         graphEdgeLayer.appendChild(line);
 
         const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
@@ -1309,7 +1380,12 @@ def _studio_html() -> str:
         text.setAttribute("fill", "#446189");
         text.setAttribute("font-size", "10");
         text.setAttribute("text-anchor", "middle");
+        text.style.cursor = "pointer";
         text.textContent = edge.condition ? `[${edge.index}] ${edge.condition}` : `[${edge.index}]`;
+        text.addEventListener("click", event => {
+          event.stopPropagation();
+          selectEdge(edge.index, true);
+        });
         graphEdgeLayer.appendChild(text);
       }
 
@@ -1352,6 +1428,7 @@ def _studio_html() -> str:
           if (event.target instanceof Element && event.target.closest("[data-connect]")) return;
           nodeSelect.value = node.id;
           renderNodeForm(node.id);
+          renderSelectionSummary();
           renderGraph();
         });
 
@@ -1388,6 +1465,8 @@ def _studio_html() -> str:
       renderPending();
       renderGraph();
       updateConnectionModeLabel();
+      updateRewireButton();
+      renderSelectionSummary();
       revisionLabel.textContent = `revision: ${state.revision}`;
       renderValidation(data.validation_report);
       diffView.textContent = "";
@@ -1498,22 +1577,27 @@ def _studio_html() -> str:
       }
     }
 
-    function startRewireMode() {
+    function toggleRewireMode() {
       if (!edgeSelect.value) {
         setStatus("edge is not selected", true);
         return;
       }
-      state.activeRewireEdgeIndex = Number(edgeSelect.value);
+      const selectedEdgeIndex = Number(edgeSelect.value);
+      if (state.activeRewireEdgeIndex === selectedEdgeIndex) {
+        state.activeRewireEdgeIndex = null;
+        updateConnectionModeLabel();
+        updateRewireButton();
+        renderSelectionSummary();
+        renderGraph();
+        setStatus("rewire mode disabled");
+        return;
+      }
+      state.activeRewireEdgeIndex = selectedEdgeIndex;
       updateConnectionModeLabel();
+      updateRewireButton();
+      renderSelectionSummary();
       renderGraph();
-      setStatus(`rewire mode started: edge[${state.activeRewireEdgeIndex}]`);
-    }
-
-    function clearRewireMode() {
-      state.activeRewireEdgeIndex = null;
-      updateConnectionModeLabel();
-      renderGraph();
-      setStatus("rewire mode cleared");
+      setStatus(`rewire mode enabled: edge[${state.activeRewireEdgeIndex}]`);
     }
 
     function startConnectionDrag(event, sourceNodeId) {
@@ -1526,10 +1610,8 @@ def _studio_html() -> str:
           setStatus("selected edge not found", true);
           state.activeRewireEdgeIndex = null;
           updateConnectionModeLabel();
-          return;
-        }
-        if (edge.source !== sourceNodeId) {
-          setStatus(`rewire source must be ${edge.source}`, true);
+          updateRewireButton();
+          renderSelectionSummary();
           return;
         }
       }
@@ -1544,7 +1626,7 @@ def _studio_html() -> str:
       const modeText =
         state.activeRewireEdgeIndex === null
           ? `create edge from ${sourceNodeId}`
-          : `rewire edge[${state.activeRewireEdgeIndex}] from ${sourceNodeId}`;
+          : `rewire edge[${state.activeRewireEdgeIndex}] with source ${sourceNodeId}`;
       setStatus(`${modeText}: drop on target node`);
       renderGraph();
       event.preventDefault();
@@ -1569,9 +1651,14 @@ def _studio_html() -> str:
     }
 
     function applyConnectionResult(connection, targetNodeId) {
+      if (connection.sourceNodeId === targetNodeId) {
+        throw new Error("source and target must be different");
+      }
+
       if (connection.rewireEdgeIndex !== null) {
         const edit = {
           edge_index: connection.rewireEdgeIndex,
+          source: connection.sourceNodeId,
           target: targetNodeId,
         };
         upsertEdgeRewire(edit);
@@ -1585,12 +1672,10 @@ def _studio_html() -> str:
         renderEditors();
         renderPending();
         updateConnectionModeLabel();
-        setStatus(`edge rewired: [${edit.edge_index}] -> ${targetNodeId}`);
+        updateRewireButton();
+        renderSelectionSummary();
+        setStatus(`edge rewired: [${edit.edge_index}] ${edit.source} -> ${edit.target}`);
         return;
-      }
-
-      if (connection.sourceNodeId === targetNodeId) {
-        throw new Error("source and target must be different");
       }
       const create = {
         source: connection.sourceNodeId,
@@ -1603,6 +1688,7 @@ def _studio_html() -> str:
       renderEdgeOptions();
       renderEditors();
       renderPending();
+      renderSelectionSummary();
       setStatus(`edge created: ${create.source} -> ${create.target}`);
     }
 
@@ -1696,6 +1782,8 @@ def _studio_html() -> str:
       renderPending();
       renderGraph();
       updateConnectionModeLabel();
+      updateRewireButton();
+      renderSelectionSummary();
       renderValidation(data.validation_report);
       renderDiff(data);
       setStatus("diff ready");
@@ -1770,20 +1858,29 @@ def _studio_html() -> str:
     document.getElementById("addNodeBtn").addEventListener("click", applyNodeCreate);
     document.getElementById("applyNodeBtn").addEventListener("click", applyNodeEdit);
     document.getElementById("applyEdgeBtn").addEventListener("click", applyEdgeEdit);
-    document.getElementById("startRewireBtn").addEventListener("click", startRewireMode);
-    document.getElementById("clearRewireBtn").addEventListener("click", clearRewireMode);
+    toggleRewireBtn.addEventListener("click", toggleRewireMode);
     nodeSelect.addEventListener("change", () => {
       renderNodeForm(nodeSelect.value);
+      renderSelectionSummary();
       renderGraph();
     });
     edgeSelect.addEventListener("change", () => {
-      renderEdgeForm(Number(edgeSelect.value));
+      const edgeIndex = Number(edgeSelect.value);
+      renderEdgeForm(edgeIndex);
+      if (state.activeRewireEdgeIndex !== null) {
+        state.activeRewireEdgeIndex = edgeIndex;
+      }
+      updateConnectionModeLabel();
+      updateRewireButton();
+      renderSelectionSummary();
       renderGraph();
     });
     window.addEventListener("pointermove", handleGlobalPointerMove);
     window.addEventListener("pointerup", handleGlobalPointerUp);
     window.addEventListener("resize", renderGraph);
     updateConnectionModeLabel();
+    updateRewireButton();
+    renderSelectionSummary();
     loadWorkflow();
   </script>
 </body>
