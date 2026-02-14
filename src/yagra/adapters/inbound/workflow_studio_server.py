@@ -845,6 +845,17 @@ def _studio_html() -> str:
                   </option>
                 </select>
               </div>
+              <div class="field">
+                <label for="nodePromptKeyInput">prompt key (optional)</label>
+                <input
+                  id="nodePromptKeyInput"
+                  v-model.trim="nodeEditor.promptKey"
+                  type="text"
+                  list="nodePromptKeyOptions"
+                  placeholder="intent"
+                  @change="onNodePromptKeyChange"
+                />
+              </div>
               <div class="inline-row">
                 <div class="field">
                   <label for="nodePromptRefInput">prompt_ref</label>
@@ -853,6 +864,7 @@ def _studio_html() -> str:
                     v-model="nodeEditor.promptRef"
                     type="text"
                     placeholder="prompts/review.yaml#intent"
+                    @change="onPromptRefChange"
                   />
                 </div>
               </div>
@@ -918,7 +930,7 @@ def _studio_html() -> str:
                 </div>
               </div>
               <button type="button" class="secondary" @click="applyNodeEdit">Apply Node Edit</button>
-              <div class="hint">node id は空文字/重複不可です。prompt yaml 未選択で Apply すると `prompts/` 配下へ自動作成されます。</div>
+              <div class="hint">node id は空文字/重複不可です。prompt yaml 未選択で Apply すると workflow YAML と同階層の `prompts/` 配下へ自動作成されます。prompt key を指定すると `path#key` で保存されます。</div>
             </template>
           </section>
 
@@ -954,6 +966,9 @@ def _studio_html() -> str:
         </article>
       </section>
     </template>
+    <datalist id="nodePromptKeyOptions">
+      <option v-for="keyPath in nodeEditor.promptKeyOptions" :key="'prompt-key-' + keyPath" :value="keyPath"></option>
+    </datalist>
   </div>
 
   <script type="importmap">
@@ -1680,6 +1695,8 @@ def _studio_html() -> str:
           handler: "",
           promptFilePath: "",
           promptFileParseError: "",
+          promptKey: "",
+          promptKeyOptions: [],
           promptRef: "",
           promptSystem: "",
           promptUser: "",
@@ -1740,6 +1757,8 @@ def _studio_html() -> str:
               nodeEditor.handler = "";
               nodeEditor.promptFilePath = "";
               nodeEditor.promptFileParseError = "";
+              nodeEditor.promptKey = "";
+              nodeEditor.promptKeyOptions = [];
               nodeEditor.promptRef = "";
               nodeEditor.promptSystem = "";
               nodeEditor.promptUser = "";
@@ -1767,6 +1786,7 @@ def _studio_html() -> str:
             nodeEditor.id = normalizeText(node.id);
             nodeEditor.handler = normalizeText(data.handler);
             nodeEditor.promptRef = normalizeText(data.promptRef);
+            nodeEditor.promptKeyOptions = [];
             nodeEditor.promptSystem = typeof prompt?.system === "string"
               ? prompt.system
               : "";
@@ -1788,6 +1808,7 @@ def _studio_html() -> str:
               : "";
             const refParts = splitPromptReference(nodeEditor.promptRef);
             nodeEditor.promptFilePath = refParts.path;
+            nodeEditor.promptKey = refParts.keyPath;
             nodeEditor.promptFileParseError = "";
             if (refParts.path) {
               void loadPromptFromYaml(refParts.path, {
@@ -1855,6 +1876,18 @@ def _studio_html() -> str:
           };
         }
 
+        function normalizePromptKeyPath(rawKeyPath) {
+          const text = normalizeText(rawKeyPath);
+          if (!text) {
+            return "";
+          }
+          const segments = text.split(".").map(segment => segment.trim());
+          if (segments.some(segment => !segment)) {
+            throw new Error("prompt key must not contain empty segments");
+          }
+          return segments.join(".");
+        }
+
         function buildPromptReference(path, keyPath = "") {
           const normalizedPath = normalizeText(path);
           const normalizedKeyPath = normalizeText(keyPath);
@@ -1882,6 +1915,21 @@ def _studio_html() -> str:
           return entries[0];
         }
 
+        function collectPromptKeyOptions(entries) {
+          if (!Array.isArray(entries)) {
+            return [];
+          }
+          const keys = new Set();
+          for (const entry of entries) {
+            const keyPath = normalizeText(entry?.key_path);
+            if (!keyPath) {
+              continue;
+            }
+            keys.add(keyPath);
+          }
+          return Array.from(keys).sort();
+        }
+
         function sanitizePromptFileStem(rawNodeId) {
           const text = normalizeText(rawNodeId).toLowerCase();
           const stem = text
@@ -1891,12 +1939,57 @@ def _studio_html() -> str:
           return stem || "node-prompt";
         }
 
-        function buildPromptYamlContent(systemPrompt, userPrompt) {
+        function resolveDefaultPromptDirectory() {
+          const workflowPath = normalizeText(studioTargetPath.value);
+          const workspaceRoot = normalizeText(studioWorkspaceRoot.value);
+          if (!workflowPath || !workspaceRoot) {
+            return "prompts";
+          }
+          const rootPrefix = workspaceRoot.endsWith("/") ? workspaceRoot : `${workspaceRoot}/`;
+          if (!workflowPath.startsWith(rootPrefix)) {
+            return "prompts";
+          }
+          const workflowRelativePath = workflowPath.slice(rootPrefix.length);
+          const slashIndex = workflowRelativePath.lastIndexOf("/");
+          if (slashIndex < 0) {
+            return "prompts";
+          }
+          const workflowDir = workflowRelativePath.slice(0, slashIndex);
+          return workflowDir ? `${workflowDir}/prompts` : "prompts";
+        }
+
+        function buildPromptYamlContent(systemPrompt, userPrompt, keyPath = "") {
           const system = typeof systemPrompt === "string" ? systemPrompt : "";
           const user = typeof userPrompt === "string" ? userPrompt : "";
+          const normalizedKeyPath = normalizeText(keyPath);
+          if (!normalizedKeyPath) {
+            return [
+              `system: ${JSON.stringify(system)}`,
+              `user: ${JSON.stringify(user)}`,
+              "",
+            ].join("\\n");
+          }
+          const keySegments = normalizedKeyPath
+            .split(".")
+            .map(segment => segment.trim())
+            .filter(Boolean);
+          if (keySegments.length === 0) {
+            return [
+              `system: ${JSON.stringify(system)}`,
+              `user: ${JSON.stringify(user)}`,
+              "",
+            ].join("\\n");
+          }
+          const lines = [];
+          for (let index = 0; index < keySegments.length; index += 1) {
+            const indent = "  ".repeat(index);
+            lines.push(`${indent}${JSON.stringify(keySegments[index])}:`);
+          }
+          const promptIndent = "  ".repeat(keySegments.length);
           return [
-            `system: ${JSON.stringify(system)}`,
-            `user: ${JSON.stringify(user)}`,
+            ...lines,
+            `${promptIndent}system: ${JSON.stringify(system)}`,
+            `${promptIndent}user: ${JSON.stringify(user)}`,
             "",
           ].join("\\n");
         }
@@ -1916,6 +2009,8 @@ def _studio_html() -> str:
           nodeEditor.handler = "";
           nodeEditor.promptFilePath = "";
           nodeEditor.promptFileParseError = "";
+          nodeEditor.promptKey = "";
+          nodeEditor.promptKeyOptions = [];
           nodeEditor.promptRef = "";
           nodeEditor.promptSystem = "";
           nodeEditor.promptUser = "";
@@ -2284,21 +2379,25 @@ def _studio_html() -> str:
               delete promptObj.user;
             }
             const finalPrompt = Object.keys(promptObj).length > 0 ? promptObj : null;
+            const promptKey = normalizePromptKeyPath(nodeEditor.promptKey);
+            nodeEditor.promptKey = promptKey;
             let promptFilePath = normalizeText(nodeEditor.promptFilePath);
             let promptRef = normalizeText(nodeEditor.promptRef);
             if (!promptFilePath) {
-              const createdPath = await createPromptFileForNode(nextNodeId, promptSystem, promptUser);
+              const createdPath = await createPromptFileForNode(
+                nextNodeId,
+                promptSystem,
+                promptUser,
+                promptKey,
+              );
               promptFilePath = createdPath;
               nodeEditor.promptFilePath = createdPath;
               nodeEditor.promptFileParseError = "";
-              promptRef = createdPath;
-              nodeEditor.promptRef = createdPath;
+              promptRef = buildPromptReference(createdPath, promptKey);
+              nodeEditor.promptRef = promptRef;
             } else {
-              const refParts = splitPromptReference(promptRef);
-              if (!promptRef || refParts.path !== promptFilePath) {
-                promptRef = promptFilePath;
-                nodeEditor.promptRef = promptRef;
-              }
+              promptRef = buildPromptReference(promptFilePath, promptKey);
+              nodeEditor.promptRef = promptRef;
             }
 
             const modelObj = isRecord(selectedData.model)
@@ -2629,6 +2728,8 @@ def _studio_html() -> str:
           if (currentYamlPath && !yamlFiles.value.includes(currentYamlPath)) {
             nodeEditor.promptFilePath = "";
             nodeEditor.promptFileParseError = "";
+            nodeEditor.promptKey = "";
+            nodeEditor.promptKeyOptions = [];
           }
           const workspaceRoot = normalizeText(data.workspace_root);
           if (workspaceRoot) {
@@ -2687,10 +2788,13 @@ def _studio_html() -> str:
                 user: typeof item.user === "string" ? item.user : "",
               }))
             : [];
+          nodeEditor.promptKeyOptions = collectPromptKeyOptions(promptEntries);
           const selectedEntry = selectPromptEntry(promptEntries, preferredKeyPath);
           if (!selectedEntry) {
+            const fallbackKey = normalizeText(preferredKeyPath);
+            nodeEditor.promptKey = fallbackKey;
             if (updatePromptRef) {
-              nodeEditor.promptRef = resolvedPath;
+              nodeEditor.promptRef = buildPromptReference(resolvedPath, fallbackKey);
             }
             if (!quiet) {
               if (nodeEditor.promptFileParseError) {
@@ -2699,8 +2803,9 @@ def _studio_html() -> str:
                 setStatus(`yaml loaded: ${resolvedPath}`);
               }
             }
-            return { path: resolvedPath, keyPath: "", system: "", user: "" };
+            return { path: resolvedPath, keyPath: fallbackKey, system: "", user: "" };
           }
+          nodeEditor.promptKey = selectedEntry.key_path;
           nodeEditor.promptSystem = selectedEntry.system;
           nodeEditor.promptUser = selectedEntry.user;
           if (updatePromptRef) {
@@ -2726,26 +2831,97 @@ def _studio_html() -> str:
           const path = normalizeText(nodeEditor.promptFilePath);
           if (!path) {
             nodeEditor.promptFileParseError = "";
+            nodeEditor.promptKeyOptions = [];
             nodeEditor.promptRef = "";
             setStatus("prompt yaml is not selected (auto create on Apply)");
             return;
           }
           const currentRef = splitPromptReference(nodeEditor.promptRef);
-          const preferredKeyPath = currentRef.path === path ? currentRef.keyPath : "";
-          await loadPromptFromYaml(path, {
-            preferredKeyPath,
-            updatePromptRef: true,
-            quiet: false,
-          });
+          const preferredKeyPath = currentRef.path === path
+            ? currentRef.keyPath
+            : normalizeText(nodeEditor.promptKey);
+          try {
+            const normalizedPreferredKey = normalizePromptKeyPath(preferredKeyPath);
+            nodeEditor.promptKey = normalizedPreferredKey;
+            await loadPromptFromYaml(path, {
+              preferredKeyPath: normalizedPreferredKey,
+              updatePromptRef: true,
+              quiet: false,
+            });
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            setStatus(message, true);
+          }
         }
 
-        async function createPromptFileForNode(nodeId, systemPrompt, userPrompt) {
+        async function onNodePromptKeyChange() {
+          if (!selectedNode.value) {
+            setStatus("node is not selected", true);
+            return;
+          }
+          try {
+            const keyPath = normalizePromptKeyPath(nodeEditor.promptKey);
+            nodeEditor.promptKey = keyPath;
+            const path = normalizeText(nodeEditor.promptFilePath);
+            if (!path) {
+              const refPath = normalizeText(nodeEditor.promptRef);
+              if (!refPath) {
+                setStatus("prompt key will be used when prompt yaml is auto-created");
+                return;
+              }
+              const refParts = splitPromptReference(refPath);
+              if (!refParts.path) {
+                setStatus("prompt key will be used when prompt yaml is auto-created");
+                return;
+              }
+              nodeEditor.promptRef = buildPromptReference(refParts.path, keyPath);
+              setStatus(`prompt_ref updated: ${nodeEditor.promptRef}`);
+              return;
+            }
+            await loadPromptFromYaml(path, {
+              preferredKeyPath: keyPath,
+              updatePromptRef: true,
+              quiet: false,
+            });
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            setStatus(message, true);
+          }
+        }
+
+        async function onPromptRefChange() {
+          if (!selectedNode.value) {
+            setStatus("node is not selected", true);
+            return;
+          }
+          const parsed = splitPromptReference(nodeEditor.promptRef);
+          nodeEditor.promptFilePath = parsed.path;
+          nodeEditor.promptKey = parsed.keyPath;
+          if (!parsed.path) {
+            nodeEditor.promptFileParseError = "";
+            nodeEditor.promptKeyOptions = [];
+            setStatus("prompt_ref cleared");
+            return;
+          }
+          const loaded = await loadPromptFromYaml(parsed.path, {
+            preferredKeyPath: parsed.keyPath,
+            updatePromptRef: false,
+            quiet: false,
+          });
+          if (!loaded) {
+            return;
+          }
+          setStatus(`prompt_ref set: ${buildPromptReference(parsed.path, parsed.keyPath)}`);
+        }
+
+        async function createPromptFileForNode(nodeId, systemPrompt, userPrompt, promptKeyPath = "") {
           const stem = sanitizePromptFileStem(nodeId);
-          const content = buildPromptYamlContent(systemPrompt, userPrompt);
+          const content = buildPromptYamlContent(systemPrompt, userPrompt, promptKeyPath);
+          const promptDirectory = resolveDefaultPromptDirectory();
           let attempt = 0;
           while (attempt < 200) {
             const suffix = attempt === 0 ? "" : `-${attempt + 1}`;
-            const path = `prompts/${stem}${suffix}.yaml`;
+            const path = `${promptDirectory}/${stem}${suffix}.yaml`;
             const { response, data } = await requestJson("/api/studio/file/save", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -2766,7 +2942,7 @@ def _studio_html() -> str:
             }
             throw new Error(data.message || data.error || `yaml save failed: ${path}`);
           }
-          throw new Error("failed to allocate prompt yaml path under prompts/");
+          throw new Error(`failed to allocate prompt yaml path under ${promptDirectory}/`);
         }
 
         async function refreshStudioFiles() {
@@ -3053,6 +3229,8 @@ def _studio_html() -> str:
           openStudioTarget,
           createStudioTarget,
           onNodePromptFileChange,
+          onNodePromptKeyChange,
+          onPromptRefChange,
           previewDiff,
           saveWorkflow,
           rollbackWorkflow,

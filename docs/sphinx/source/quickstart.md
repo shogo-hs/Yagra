@@ -108,7 +108,8 @@ yagra studio --workflow workflows/support.yaml --port 8787
 
 `yagra studio` 実行後は `http://127.0.0.1:8787/` を開いて編集できます。
 Node Properties の `prompt yaml` から YAML ファイルを選ぶと prompt が自動読込されます。
-未選択のまま `Apply Node Edit` すると `prompts/` 配下に YAML が自動作成され、`prompt_ref` が自動設定されます。
+未選択のまま `Apply Node Edit` すると workflow YAML と同階層の `prompts/` 配下に YAML が自動作成され、`prompt_ref` が自動設定されます。
+`prompt key` を指定すると `prompt_ref` は `path#key` になり、作成される YAML は key 配下に `system/user` を持つ構造になります。
 `model_ref` は廃止されているため、モデル設定は `nodes[].params.model` にインライン定義してください。
 
 ## Next
