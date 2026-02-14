@@ -159,6 +159,26 @@ Yagra.from_workflow(
 Yagra.invoke(state: Mapping[str, Any]) -> dict[str, Any]
 ```
 
+### `yagra visualize`（Read Only 可視化）
+
+Workflow YAML を Read Only の可視化 HTML に変換します。
+
+```bash
+yagra visualize \
+  --workflow examples/workflows/loop-split.yaml \
+  --output /tmp/yagra-view.html \
+  --title "Yagra Workflow Viewer"
+```
+
+オプション:
+
+- `--workflow`: 可視化対象 workflow ファイル（必須）
+- `--bundle-root`: 分割参照解決の基準ディレクトリ（任意）
+- `--output`: 生成 HTML の出力先（既定: `workflow-visualization.html`）
+- `--title`: ページタイトル（任意）
+
+検証エラーがある場合は HTML は生成せず、エラー一覧を標準エラーへ出力します。
+
 ## 仕様上の契約（Implicit Contracts）
 
 ### 1. 条件分岐の契約

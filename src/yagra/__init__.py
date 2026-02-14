@@ -2,14 +2,22 @@
 
 from __future__ import annotations
 
+import argparse
+import sys
 from collections.abc import Mapping
 from os import PathLike
+from pathlib import Path
 from typing import Any
 
 from langgraph.graph.state import CompiledStateGraph
 
 from yagra.adapters.outbound import InMemoryNodeRegistry
-from yagra.application.use_cases import build_from_workflow_path
+from yagra.application.use_cases import (
+    build_from_workflow_path,
+    format_validation_report,
+    render_workflow_visualization_html,
+    validate_workflow_for_ui,
+)
 from yagra.ports.outbound import NodeHandler, NodeRegistryPort
 
 
@@ -76,8 +84,14 @@ class Yagra:
 
 
 def main() -> None:
-    """Yagra の初期化状態を標準出力へ表示する。"""
-    print("Yagra bootstrap is ready.")
+    """Yagra の CLI エントリーポイント。"""
+    parser = _build_cli_parser()
+    args = parser.parse_args()
+
+    if args.command == "visualize":
+        exit_code = _run_visualize_command(args)
+        raise SystemExit(exit_code)
+    raise SystemExit(2)
 
 
 def _normalize_registry(registry: NodeRegistryPort | Mapping[str, NodeHandler]) -> NodeRegistryPort:
@@ -97,6 +111,74 @@ def _normalize_registry(registry: NodeRegistryPort | Mapping[str, NodeHandler]) 
     if isinstance(registry, Mapping):
         return InMemoryNodeRegistry(registry)
     raise TypeError("registry must be NodeRegistryPort or mapping[str, NodeHandler]")
+
+
+def _build_cli_parser() -> argparse.ArgumentParser:
+    """CLI パーサーを構築する。
+
+    Returns:
+        `argparse.ArgumentParser` のインスタンス。
+    """
+    parser = argparse.ArgumentParser(prog="yagra")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    visualize = subparsers.add_parser(
+        "visualize",
+        help="workflow を Read Only HTML として可視化する",
+    )
+    visualize.add_argument(
+        "--workflow",
+        required=True,
+        help="可視化対象 workflow YAML のパス",
+    )
+    visualize.add_argument(
+        "--bundle-root",
+        default=None,
+        help="分割参照解決の基準ディレクトリ",
+    )
+    visualize.add_argument(
+        "--output",
+        default="workflow-visualization.html",
+        help="生成する HTML ファイルパス",
+    )
+    visualize.add_argument(
+        "--title",
+        default=None,
+        help="可視化ページのタイトル",
+    )
+
+    return parser
+
+
+def _run_visualize_command(args: argparse.Namespace) -> int:
+    """`visualize` サブコマンドを実行する。
+
+    Args:
+        args: 解析済みの CLI 引数。
+
+    Returns:
+        終了コード。成功時は 0。
+    """
+    report = validate_workflow_for_ui(
+        workflow_path=args.workflow,
+        bundle_root=args.bundle_root,
+    )
+    if not report.is_valid:
+        print(format_validation_report(report), file=sys.stderr)
+        return 1
+
+    html_text = render_workflow_visualization_html(
+        workflow_path=args.workflow,
+        bundle_root=args.bundle_root,
+        title=args.title,
+    )
+
+    output_path = Path(args.output).expanduser().resolve()
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(html_text, encoding="utf-8")
+
+    print(f"workflow visualization generated: {output_path}")
+    return 0
 
 
 __all__ = ["Yagra", "main"]
