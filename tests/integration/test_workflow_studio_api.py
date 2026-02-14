@@ -336,6 +336,71 @@ def test_workflow_studio_api_save_accepts_path_based_prompt_ref(tmp_path: Path) 
         thread.join(timeout=2)
 
 
+def test_workflow_studio_api_resolves_prompt_ref_from_workspace_root_by_default(
+    tmp_path: Path,
+) -> None:
+    workspace_root = tmp_path / "workspace"
+    workflow_path = _write_workflow(workspace_root / "workflows" / "main.yaml", _base_payload())
+    (workspace_root / "prompts").mkdir(parents=True, exist_ok=True)
+    (workspace_root / "prompts" / "catalog.yaml").write_text(
+        yaml.safe_dump(
+            {
+                "intent": {
+                    "system": "Classify the request.",
+                    "user": "{{input}}",
+                }
+            },
+            sort_keys=False,
+            allow_unicode=True,
+        ),
+        encoding="utf-8",
+    )
+
+    previous_cwd = Path.cwd()
+    os.chdir(workspace_root)
+    try:
+        server = create_workflow_studio_server(
+            workflow_path=workflow_path,
+            backup_dir=tmp_path / ".yagra-backups",
+            host="127.0.0.1",
+            port=0,
+        )
+        thread = Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        base_url = _server_base_url(server)
+
+        try:
+            status, form_payload = _request_json("GET", f"{base_url}/api/workflow/form")
+            assert status == 200
+            base_revision = str(form_payload["revision"])
+            candidate_workflow = deepcopy(form_payload["workflow"])
+            candidate_workflow["nodes"][1]["params"] = {
+                "prompt_ref": "prompts/catalog.yaml#intent",
+                "model": {
+                    "provider": "openai",
+                    "name": "gpt-4.1-mini",
+                },
+            }
+
+            status, save_payload = _request_json(
+                "POST",
+                f"{base_url}/api/workflow/save",
+                {
+                    "workflow": candidate_workflow,
+                    "ui_state": form_payload["ui_state"],
+                    "base_revision": base_revision,
+                },
+            )
+            assert status == 200
+            assert save_payload["backup_id"]
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=2)
+    finally:
+        os.chdir(previous_cwd)
+
+
 def test_workflow_studio_api_supports_diff_save_rollback(tmp_path: Path) -> None:
     workflow_path = _write_workflow(tmp_path / "workflow.yaml", _base_payload())
     backup_dir = tmp_path / ".yagra-backups"

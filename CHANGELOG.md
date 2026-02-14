@@ -7,6 +7,10 @@
 ### Changed
 - なし
 
+### Fixed
+- Studio の `prompt_ref` パス解決を workspace root 基準に統一し、`prompts/...` が `workflows/prompts/...` と誤解決される不整合を修正。
+- `studio --workflow` 起動時に `bundle_root` 未指定なら `workspace_root` を既定採用し、保存/読込と実行時参照の解決基準を一致させた。
+
 ## [0.1.6] - 2026-02-15
 
 ### Changed

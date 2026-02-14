@@ -76,7 +76,6 @@ def create_workflow_studio_server(
     workflow_abspath = (
         Path(workflow_path).expanduser().resolve() if workflow_path is not None else None
     )
-    bundle_root_path = Path(bundle_root).expanduser().resolve() if bundle_root is not None else None
     ui_state_override = (
         Path(ui_state_path).expanduser().resolve() if ui_state_path is not None else None
     )
@@ -90,6 +89,9 @@ def create_workflow_studio_server(
     workspace_root_path = _resolve_workspace_root_path(
         workflow_abspath=workflow_abspath,
         workspace_root=workspace_root,
+    )
+    bundle_root_path = (
+        Path(bundle_root).expanduser().resolve() if bundle_root is not None else workspace_root_path
     )
     backup_dir_path = Path(backup_dir).expanduser().resolve()
 
@@ -2008,8 +2010,11 @@ def _studio_html() -> str:
             }
             return normalizePosixPath(normalizedPath.slice(workspacePrefix.length));
           }
-          const workflowDir = getWorkflowDirectoryRelative();
-          return joinPosixPath(workflowDir, normalizedPath);
+          if (normalizedPath.startsWith("../") || normalizedPath.startsWith("./")) {
+            const workflowDir = getWorkflowDirectoryRelative();
+            return joinPosixPath(workflowDir, normalizedPath);
+          }
+          return normalizedPath;
         }
 
         function workspacePathToPromptRefPath(rawPath) {
@@ -2028,9 +2033,7 @@ def _studio_html() -> str:
             }
             return workspacePathToPromptRefPath(normalizedPath.slice(workspacePrefix.length));
           }
-          const workflowDir = getWorkflowDirectoryRelative();
-          const relative = relativePosixPath(workflowDir, normalizedPath);
-          return relative === "." ? "" : relative;
+          return normalizedPath;
         }
 
         function normalizePromptKeyPath(rawKeyPath) {
