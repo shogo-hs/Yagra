@@ -138,6 +138,33 @@ def test_workflow_studio_api_launcher_open_and_create(tmp_path: Path) -> None:
         thread.join(timeout=2)
 
 
+def test_workflow_studio_html_bootstrap_has_valid_backslash_normalization_js(
+    tmp_path: Path,
+) -> None:
+    workspace_root = tmp_path / "workspace"
+    _write_workflow(workspace_root / "workflows" / "existing.yaml", _base_payload())
+
+    server = create_workflow_studio_server(
+        workspace_root=workspace_root,
+        backup_dir=tmp_path / ".yagra-backups",
+        host="127.0.0.1",
+        port=0,
+    )
+    thread = Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    base_url = _server_base_url(server)
+
+    try:
+        req = request.Request(url=f"{base_url}/", method="GET")
+        with request.urlopen(req, timeout=5) as res:
+            html = res.read().decode("utf-8")
+        assert 'text.replace(/\\\\/g, "/")' in html
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+
 def test_workflow_studio_api_supports_prompt_yaml_read_and_save(tmp_path: Path) -> None:
     workspace_root = tmp_path / "workspace"
     _write_workflow(workspace_root / "workflows" / "main.yaml", _base_payload())

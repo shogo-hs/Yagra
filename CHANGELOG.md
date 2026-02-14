@@ -7,6 +7,12 @@
 ### Changed
 - なし
 
+## [0.1.5] - 2026-02-14
+
+### Fixed
+- Studio Launcher の初期化時に JavaScript 構文エラーが発生し、`Open Existing Workflow` の一覧が表示されない不具合を修正。
+- HTML 応答内の backslash 正規化ロジックに対する回帰テストを追加。
+
 ## [0.1.4] - 2026-02-14
 
 ### Fixed

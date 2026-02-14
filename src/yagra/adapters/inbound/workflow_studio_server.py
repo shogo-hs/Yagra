@@ -1883,7 +1883,7 @@ def _studio_html() -> str:
             return "";
           }
           const isAbsolute = text.startsWith("/");
-          const normalized = text.replace(/\\/g, "/");
+          const normalized = text.replace(/\\\\/g, "/");
           const segments = normalized.split("/");
           const stack = [];
           for (const segment of segments) {
