@@ -10,10 +10,13 @@
 | G-02 | YAML 定義と Python 実処理を疎結合に接続できる | Registry でノード名から Python callable を解決し、実行に成功する | Done |
 | G-03 | YAML 差し替えで複数ワークフローを低コストに運用できる | Graph 構築コードを追加せずに設定変更だけで別フローを起動できる | Done |
 | G-04 | 開発運用で品質ゲートを常時維持できる | CI / pre-commit で format・lint・type・test が一貫して通る | Done |
-| G-05 | 非エンジニアが WebUI 上でワークフローを可視化・編集できる | Read Only 可視化と編集（prompt/model/エッジ接続）を WebUI で行い、round-trip 後も意味整合を維持できる | Done |
+| G-05 | 非エンジニアが WebUI 上でワークフローを可視化・編集し、迷わず運用できる | Read Only 可視化と編集（prompt/model/エッジ接続）を WebUI で行い、round-trip 後も意味整合を維持しつつ、主要操作の導線と視認性が初見ユーザーにとって自己説明的である | In Progress |
 
 ## 運用ルール
 
 - ゴールは 3〜5 個に絞る。
 - 各ゴールは必ず「ユーザーが到達したい状態」で書く。
 - 各ゴールに `到達判定（Definition of Done）` を 1 つ以上持たせる。
+
+補足:
+- G-05 は M-09 までで「機能到達」を完了済み。現在は M-10/M-11 で UX 高度化を進行中。
