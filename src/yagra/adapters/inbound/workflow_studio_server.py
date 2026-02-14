@@ -839,11 +839,18 @@ def _studio_html() -> str:
       height: 9px;
       border: 1px solid #0b63be;
       background: #ffffff;
+      opacity: 0;
+      transition: opacity 120ms ease;
     }
     .node-handle-top,
     .node-handle-bottom {
       border-color: #c2793b;
       background: #fff7f0;
+    }
+    .workflow-node:hover .node-handle,
+    .workflow-node.selected .node-handle,
+    .page.is-connecting .node-handle {
+      opacity: 1;
     }
     @media (max-width: 1320px) {
       .main {
@@ -860,7 +867,7 @@ def _studio_html() -> str:
   </style>
 </head>
 <body>
-  <div id="app" class="page">
+  <div id="app" class="page" :class="{ 'is-connecting': isConnecting }">
     <section class="header">
       <h1>Yagra Workflow Studio</h1>
       <div class="muted">Vue 3 + Vue Flow (CDN / ES Modules / no-build)</div>
@@ -887,7 +894,7 @@ def _studio_html() -> str:
         <div class="section-head">
           <h2>Graph Canvas</h2>
           <div class="hint">
-            ノードをクリックすると右サイドバーに編集フォームが表示されます。右ハンドルから左ハンドルへドラッグでエッジ接続できます。
+            ノードをクリックすると右サイドバーに編集フォームが表示されます。通常は右→左、戻りループは下→上ハンドルで接続できます。
           </div>
         </div>
         <div class="flow-shell">
@@ -911,6 +918,8 @@ def _studio_html() -> str:
             @nodes-change="onNodesChange"
             @edges-change="onEdgesChange"
             @connect="onConnect"
+            @connect-start="onConnectStart"
+            @connect-end="onConnectEnd"
             @node-click="onNodeClick"
             @edge-click="onEdgeClick"
             @edge-update="onEdgeUpdate"
@@ -1146,22 +1155,494 @@ def _studio_html() -> str:
       return `${source}=>${target}`;
     }
 
-    function buildEdgeDirectionSet(items) {
-      const keys = new Set();
-      for (const item of items) {
-        if (!item || typeof item.source !== "string" || typeof item.target !== "string") {
-          continue;
-        }
-        keys.add(edgeDirectionKey(item.source, item.target));
-      }
-      return keys;
+    function edgePairKey(source, target) {
+      return source <= target ? `${source}<=>${target}` : `${target}<=>${source}`;
     }
 
-    function isLoopEdge(source, target, directionSet) {
-      if (source === target) {
-        return true;
+    function isRetryLikeCondition(condition) {
+      const text = normalizeText(condition).toLowerCase();
+      if (!text) {
+        return false;
       }
-      return directionSet.has(edgeDirectionKey(target, source));
+      const keywords = [
+        "retry",
+        "re-try",
+        "re_try",
+        "loop",
+        "again",
+        "redo",
+        "replan",
+        "back",
+        "リトライ",
+        "再試行",
+        "やり直し",
+      ];
+      return keywords.some(keyword => text.includes(keyword));
+    }
+
+    function compareLoopPriority(left, right) {
+      if (left.retryLike !== right.retryLike) {
+        return left.retryLike ? 1 : -1;
+      }
+      if (left.hasCondition !== right.hasCondition) {
+        return left.hasCondition ? 1 : -1;
+      }
+      if (left.index !== right.index) {
+        return left.index > right.index ? 1 : -1;
+      }
+      return 0;
+    }
+
+    function buildLoopEdgeKeySet(edgeItems) {
+      const normalizedItems = edgeItems
+        .map((item, fallbackIndex) => {
+          if (
+            !item
+            || typeof item.key !== "string"
+            || typeof item.source !== "string"
+            || typeof item.target !== "string"
+          ) {
+            return null;
+          }
+          const condition = normalizeText(item.condition);
+          const index = Number.isInteger(item.index) ? item.index : fallbackIndex;
+          return {
+            key: item.key,
+            source: item.source,
+            target: item.target,
+            index,
+            condition,
+            hasCondition: Boolean(condition),
+            retryLike: isRetryLikeCondition(condition),
+          };
+        })
+        .filter(Boolean);
+
+      const loopKeys = new Set();
+      const pairGroups = new Map();
+
+      for (const item of normalizedItems) {
+        if (item.source === item.target) {
+          loopKeys.add(item.key);
+          continue;
+        }
+        const pairKey = edgePairKey(item.source, item.target);
+        if (!pairGroups.has(pairKey)) {
+          pairGroups.set(pairKey, []);
+        }
+        pairGroups.get(pairKey).push(item);
+      }
+
+      for (const groupItems of pairGroups.values()) {
+        const directionMap = new Map();
+        for (const item of groupItems) {
+          const directionKey = edgeDirectionKey(item.source, item.target);
+          if (!directionMap.has(directionKey)) {
+            directionMap.set(directionKey, []);
+          }
+          directionMap.get(directionKey).push(item);
+        }
+        if (directionMap.size < 2) {
+          continue;
+        }
+
+        const directionLeaders = [];
+        for (const directionItems of directionMap.values()) {
+          let leader = directionItems[0];
+          for (const candidate of directionItems.slice(1)) {
+            if (compareLoopPriority(candidate, leader) > 0) {
+              leader = candidate;
+            }
+          }
+          directionLeaders.push(leader);
+        }
+        if (directionLeaders.length < 2) {
+          continue;
+        }
+
+        let pairWinner = directionLeaders[0];
+        for (const candidate of directionLeaders.slice(1)) {
+          if (compareLoopPriority(candidate, pairWinner) > 0) {
+            pairWinner = candidate;
+          }
+        }
+        loopKeys.add(pairWinner.key);
+      }
+
+      return loopKeys;
+    }
+
+    const SOURCE_HANDLE_OPTIONS = ["right-out", "bottom-out"];
+    const TARGET_HANDLE_OPTIONS = ["left-in", "top-in"];
+    const NODE_WIDTH_ESTIMATE = 220;
+    const NODE_HEIGHT_ESTIMATE = 88;
+    const EDGE_DETOUR_OFFSET = 48;
+
+    function toFiniteNumber(value, fallback = 0) {
+      const num = Number(value);
+      return Number.isFinite(num) ? num : fallback;
+    }
+
+    function buildNodeMap(nodeItems) {
+      const map = new Map();
+      for (const node of Array.isArray(nodeItems) ? nodeItems : []) {
+        if (!node || typeof node.id !== "string") {
+          continue;
+        }
+        map.set(node.id, node);
+      }
+      return map;
+    }
+
+    function sourceVectorForHandle(handleId) {
+      if (handleId === "bottom-out") {
+        return { x: 0, y: 1 };
+      }
+      return { x: 1, y: 0 };
+    }
+
+    function targetVectorForHandle(handleId) {
+      if (handleId === "top-in") {
+        return { x: 0, y: 1 };
+      }
+      return { x: 1, y: 0 };
+    }
+
+    function estimateHandlePoint(nodeLike, handleId) {
+      const position = isRecord(nodeLike?.position) ? nodeLike.position : {};
+      const baseX = toFiniteNumber(position.x, 0);
+      const baseY = toFiniteNumber(position.y, 0);
+      const halfW = NODE_WIDTH_ESTIMATE / 2;
+      const halfH = NODE_HEIGHT_ESTIMATE / 2;
+      if (handleId === "right-out") {
+        return { x: baseX + NODE_WIDTH_ESTIMATE, y: baseY + halfH };
+      }
+      if (handleId === "bottom-out") {
+        return { x: baseX + halfW, y: baseY + NODE_HEIGHT_ESTIMATE };
+      }
+      if (handleId === "top-in") {
+        return { x: baseX + halfW, y: baseY };
+      }
+      return { x: baseX, y: baseY + halfH };
+    }
+
+    function estimateNodeRect(nodeLike, margin = 8) {
+      const position = isRecord(nodeLike?.position) ? nodeLike.position : {};
+      const baseX = toFiniteNumber(position.x, 0);
+      const baseY = toFiniteNumber(position.y, 0);
+      return {
+        left: baseX - margin,
+        right: baseX + NODE_WIDTH_ESTIMATE + margin,
+        top: baseY - margin,
+        bottom: baseY + NODE_HEIGHT_ESTIMATE + margin,
+      };
+    }
+
+    function segmentIntersectsRect(start, end, rect) {
+      const sx = toFiniteNumber(start?.x, 0);
+      const sy = toFiniteNumber(start?.y, 0);
+      const ex = toFiniteNumber(end?.x, 0);
+      const ey = toFiniteNumber(end?.y, 0);
+      const epsilon = 1e-6;
+
+      if (Math.abs(sy - ey) <= epsilon) {
+        if (sy < rect.top || sy > rect.bottom) {
+          return false;
+        }
+        const minX = Math.min(sx, ex);
+        const maxX = Math.max(sx, ex);
+        return maxX >= rect.left && minX <= rect.right;
+      }
+
+      if (Math.abs(sx - ex) <= epsilon) {
+        if (sx < rect.left || sx > rect.right) {
+          return false;
+        }
+        const minY = Math.min(sy, ey);
+        const maxY = Math.max(sy, ey);
+        return maxY >= rect.top && minY <= rect.bottom;
+      }
+
+      const minX = Math.min(sx, ex);
+      const maxX = Math.max(sx, ex);
+      const minY = Math.min(sy, ey);
+      const maxY = Math.max(sy, ey);
+      return maxX >= rect.left && minX <= rect.right && maxY >= rect.top && minY <= rect.bottom;
+    }
+
+    function countPathOverlappedNodes(pathPoints, nodeMap, sourceId, targetId) {
+      let overlaps = 0;
+      for (const [nodeId, node] of nodeMap.entries()) {
+        if (nodeId === sourceId || nodeId === targetId) {
+          continue;
+        }
+        const rect = estimateNodeRect(node);
+        let hit = false;
+        for (let index = 0; index < pathPoints.length - 1; index += 1) {
+          if (segmentIntersectsRect(pathPoints[index], pathPoints[index + 1], rect)) {
+            hit = true;
+            break;
+          }
+        }
+        if (hit) {
+          overlaps += 1;
+        }
+      }
+      return overlaps;
+    }
+
+    function translatePoint(point, vector, distance) {
+      return {
+        x: toFiniteNumber(point?.x, 0) + toFiniteNumber(vector?.x, 0) * distance,
+        y: toFiniteNumber(point?.y, 0) + toFiniteNumber(vector?.y, 0) * distance,
+      };
+    }
+
+    function buildOrthogonalPathVariants(sourcePoint, targetPoint, sourceHandle, targetHandle) {
+      const sourceVector = sourceVectorForHandle(sourceHandle);
+      const targetVector = targetVectorForHandle(targetHandle);
+      const sourceDetourPoint = translatePoint(sourcePoint, sourceVector, EDGE_DETOUR_OFFSET);
+      const targetDetourPoint = translatePoint(targetPoint, targetVector, -EDGE_DETOUR_OFFSET);
+      return [
+        [
+          sourcePoint,
+          { x: targetPoint.x, y: sourcePoint.y },
+          targetPoint,
+        ],
+        [
+          sourcePoint,
+          { x: sourcePoint.x, y: targetPoint.y },
+          targetPoint,
+        ],
+        [
+          sourcePoint,
+          sourceDetourPoint,
+          { x: targetDetourPoint.x, y: sourceDetourPoint.y },
+          targetDetourPoint,
+          targetPoint,
+        ],
+        [
+          sourcePoint,
+          sourceDetourPoint,
+          { x: sourceDetourPoint.x, y: targetDetourPoint.y },
+          targetDetourPoint,
+          targetPoint,
+        ],
+      ];
+    }
+
+    function compareRoutingScore(left, right) {
+      if (left.overlaps !== right.overlaps) {
+        return left.overlaps - right.overlaps;
+      }
+      if (left.bends !== right.bends) {
+        return left.bends - right.bends;
+      }
+      if (left.distance !== right.distance) {
+        return left.distance - right.distance;
+      }
+      return 0;
+    }
+
+    function evaluateHandlePair(sourceNode, targetNode, sourceHandle, targetHandle, nodeMap, sourceId, targetId) {
+      const sourcePoint = estimateHandlePoint(sourceNode, sourceHandle);
+      const targetPoint = estimateHandlePoint(targetNode, targetHandle);
+      const dx = targetPoint.x - sourcePoint.x;
+      const dy = targetPoint.y - sourcePoint.y;
+
+      const sourceVector = sourceVectorForHandle(sourceHandle);
+      const targetVector = targetVectorForHandle(targetHandle);
+
+      let bends = 0;
+      if (sourceVector.x !== targetVector.x || sourceVector.y !== targetVector.y) {
+        bends += 1;
+      }
+      if (dx * sourceVector.x + dy * sourceVector.y <= 0) {
+        bends += 1;
+      }
+      if (dx * targetVector.x + dy * targetVector.y <= 0) {
+        bends += 1;
+      }
+
+      const pathVariants = buildOrthogonalPathVariants(sourcePoint, targetPoint, sourceHandle, targetHandle);
+      let overlaps = Number.POSITIVE_INFINITY;
+      for (const variant of pathVariants) {
+        const overlappedNodes = countPathOverlappedNodes(variant, nodeMap, sourceId, targetId);
+        if (overlappedNodes < overlaps) {
+          overlaps = overlappedNodes;
+        }
+      }
+      if (!Number.isFinite(overlaps)) {
+        overlaps = 0;
+      }
+
+      return {
+        overlaps,
+        bends,
+        distance: Math.abs(dx) + Math.abs(dy),
+      };
+    }
+
+    function chooseBestTargetHandle(edge, sourceNode, targetNode, sourceHandle, nodeMap) {
+      let bestHandle = TARGET_HANDLE_OPTIONS[0];
+      let bestScore = evaluateHandlePair(
+        sourceNode,
+        targetNode,
+        sourceHandle,
+        bestHandle,
+        nodeMap,
+        edge.source,
+        edge.target,
+      );
+      for (const candidate of TARGET_HANDLE_OPTIONS.slice(1)) {
+        const score = evaluateHandlePair(
+          sourceNode,
+          targetNode,
+          sourceHandle,
+          candidate,
+          nodeMap,
+          edge.source,
+          edge.target,
+        );
+        if (compareRoutingScore(score, bestScore) < 0) {
+          bestHandle = candidate;
+          bestScore = score;
+        }
+      }
+      return { targetHandle: bestHandle, score: bestScore };
+    }
+
+    function chooseBestRoutingForEdge(edge, nodeMap) {
+      const sourceNode = nodeMap.get(edge.source);
+      const targetNode = nodeMap.get(edge.target);
+
+      let bestSourceHandle = SOURCE_HANDLE_OPTIONS[0];
+      let bestTarget = chooseBestTargetHandle(edge, sourceNode, targetNode, bestSourceHandle, nodeMap);
+
+      for (const sourceHandle of SOURCE_HANDLE_OPTIONS.slice(1)) {
+        const targetResult = chooseBestTargetHandle(edge, sourceNode, targetNode, sourceHandle, nodeMap);
+        if (compareRoutingScore(targetResult.score, bestTarget.score) < 0) {
+          bestSourceHandle = sourceHandle;
+          bestTarget = targetResult;
+        }
+      }
+
+      return {
+        sourceHandle: bestSourceHandle,
+        targetHandle: bestTarget.targetHandle,
+        score: bestTarget.score,
+      };
+    }
+
+    function chooseBranchSourceHandle(edgeGroup, nodeMap) {
+      let bestSourceHandle = SOURCE_HANDLE_OPTIONS[0];
+      let bestTotalScore = null;
+      let bestTargetByEdge = new Map();
+
+      for (const sourceHandle of SOURCE_HANDLE_OPTIONS) {
+        const targetByEdge = new Map();
+        let totalOverlaps = 0;
+        let totalBends = 0;
+        let totalDistance = 0;
+
+        for (const edge of edgeGroup) {
+          const sourceNode = nodeMap.get(edge.source);
+          const targetNode = nodeMap.get(edge.target);
+          const targetResult = chooseBestTargetHandle(edge, sourceNode, targetNode, sourceHandle, nodeMap);
+          targetByEdge.set(edge.id, targetResult.targetHandle);
+          totalOverlaps += targetResult.score.overlaps;
+          totalBends += targetResult.score.bends;
+          totalDistance += targetResult.score.distance;
+        }
+
+        const totalScore = { overlaps: totalOverlaps, bends: totalBends, distance: totalDistance };
+        if (bestTotalScore === null || compareRoutingScore(totalScore, bestTotalScore) < 0) {
+          bestSourceHandle = sourceHandle;
+          bestTotalScore = totalScore;
+          bestTargetByEdge = targetByEdge;
+        }
+      }
+
+      return {
+        sourceHandle: bestSourceHandle,
+        score: bestTotalScore || { overlaps: 0, bends: 0, distance: 0 },
+        targetByEdge: bestTargetByEdge,
+      };
+    }
+
+    function computeEdgeGroupScore(routesByEdgeId) {
+      let overlaps = 0;
+      let bends = 0;
+      let distance = 0;
+      for (const route of routesByEdgeId.values()) {
+        const score = route?.score;
+        if (!score) {
+          continue;
+        }
+        overlaps += toFiniteNumber(score.overlaps, 0);
+        bends += toFiniteNumber(score.bends, 0);
+        distance += toFiniteNumber(score.distance, 0);
+      }
+      return { overlaps, bends, distance };
+    }
+
+    function buildEdgeHandlePlan(edgeItems, nodeMap) {
+      const sourceGroups = new Map();
+      for (const edge of edgeItems) {
+        if (!edge || typeof edge.id !== "string") {
+          continue;
+        }
+        if (!sourceGroups.has(edge.source)) {
+          sourceGroups.set(edge.source, []);
+        }
+        sourceGroups.get(edge.source).push(edge);
+      }
+
+      const plan = new Map();
+      for (const edgeGroup of sourceGroups.values()) {
+        if (edgeGroup.length >= 2) {
+          const branchPlan = chooseBranchSourceHandle(edgeGroup, nodeMap);
+          const splitRoutes = new Map();
+          for (const edge of edgeGroup) {
+            splitRoutes.set(edge.id, chooseBestRoutingForEdge(edge, nodeMap));
+          }
+          const splitScore = computeEdgeGroupScore(splitRoutes);
+          const shouldUseSplit =
+            branchPlan.score.overlaps > 0
+            && compareRoutingScore(splitScore, branchPlan.score) < 0;
+
+          if (shouldUseSplit) {
+            for (const edge of edgeGroup) {
+              const splitRoute = splitRoutes.get(edge.id);
+              if (!splitRoute) {
+                continue;
+              }
+              plan.set(edge.id, {
+                sourceHandle: splitRoute.sourceHandle,
+                targetHandle: splitRoute.targetHandle,
+              });
+            }
+            continue;
+          }
+
+          for (const edge of edgeGroup) {
+            plan.set(edge.id, {
+              sourceHandle: branchPlan.sourceHandle,
+              targetHandle: branchPlan.targetByEdge.get(edge.id) || "left-in",
+            });
+          }
+          continue;
+        }
+
+        const edge = edgeGroup[0];
+        const route = chooseBestRoutingForEdge(edge, nodeMap);
+        plan.set(edge.id, {
+          sourceHandle: route.sourceHandle,
+          targetHandle: route.targetHandle,
+        });
+      }
+
+      return plan;
     }
 
     function normalizeHandleId(value) {
@@ -1169,9 +1650,9 @@ def _studio_html() -> str:
       return value.trim();
     }
 
-    function resolveEdgeHandles(edgeLike, loopEdge) {
-      const defaultSource = loopEdge ? "bottom-out" : "right-out";
-      const defaultTarget = loopEdge ? "top-in" : "left-in";
+    function resolveEdgeHandles(edgeLike) {
+      const defaultSource = "right-out";
+      const defaultTarget = "left-in";
       const sourceHandle = normalizeHandleId(edgeLike?.sourceHandle) || defaultSource;
       const targetHandle = normalizeHandleId(edgeLike?.targetHandle) || defaultTarget;
       return { sourceHandle, targetHandle };
@@ -1247,6 +1728,7 @@ def _studio_html() -> str:
 
         const selectedNodeId = ref(null);
         const selectedEdgeId = ref(null);
+        const isConnecting = ref(false);
 
         const newNode = reactive({
           id: "",
@@ -1332,12 +1814,26 @@ def _studio_html() -> str:
         }
 
         function refreshEdgeMetadata() {
-          const directionSet = buildEdgeDirectionSet(edges.value);
+          const edgeInputs = edges.value.map((edge, index) => {
+            const current = isRecord(edge.data) ? edge.data : {};
+            return {
+              key: edge.id,
+              source: edge.source,
+              target: edge.target,
+              condition: normalizeText(current.condition),
+              index,
+            };
+          });
+          const loopEdgeKeySet = buildLoopEdgeKeySet(edgeInputs);
           edges.value = edges.value.map((edge, index) => {
             const current = isRecord(edge.data) ? edge.data : {};
             const condition = normalizeText(current.condition);
-            const loopEdge = isLoopEdge(edge.source, edge.target, directionSet);
-            const handles = resolveEdgeHandles(edge, loopEdge);
+            const loopEdge = loopEdgeKeySet.has(edge.id);
+            const manualHandle = Boolean(current.manualHandle);
+            const handles = resolveEdgeHandles({
+              sourceHandle: normalizeHandleId(edge.sourceHandle) || normalizeHandleId(current.sourceHandle),
+              targetHandle: normalizeHandleId(edge.targetHandle) || normalizeHandleId(current.targetHandle),
+            });
             return {
               ...edge,
               ...handles,
@@ -1347,6 +1843,9 @@ def _studio_html() -> str:
                 index,
                 condition,
                 isLoopEdge: loopEdge,
+                manualHandle,
+                sourceHandle: handles.sourceHandle,
+                targetHandle: handles.targetHandle,
               },
             };
           });
@@ -1416,7 +1915,7 @@ def _studio_html() -> str:
             });
         }
 
-        function buildEdgesFromPayload(workflow, formEdges) {
+        function buildEdgesFromPayload(workflow, formEdges, nodeItems) {
           const workflowEdges = Array.isArray(workflow?.edges) ? workflow.edges : [];
           const edgeFormByIndex = new Map(
             (Array.isArray(formEdges) ? formEdges : [])
@@ -1437,12 +1936,25 @@ def _studio_html() -> str:
               return { edge, index, condition };
             })
             .filter(Boolean);
-          const directionSet = buildEdgeDirectionSet(validEdges.map(item => item.edge));
+          const edgeInputs = validEdges.map(item => ({
+            key: `edge-${item.index}-${item.edge.source}-${item.edge.target}`,
+            source: item.edge.source,
+            target: item.edge.target,
+            condition: item.condition,
+            index: item.index,
+          }));
+          const loopEdgeKeySet = buildLoopEdgeKeySet(edgeInputs);
+          const nodeMap = buildNodeMap(nodeItems);
+          const handlePlan = buildEdgeHandlePlan(
+            edgeInputs.map(item => ({ id: item.key, source: item.source, target: item.target })),
+            nodeMap,
+          );
           return validEdges.map(item => {
-            const loopEdge = isLoopEdge(item.edge.source, item.edge.target, directionSet);
-            const handles = resolveEdgeHandles(item.edge, loopEdge);
+            const edgeId = `edge-${item.index}-${item.edge.source}-${item.edge.target}`;
+            const loopEdge = loopEdgeKeySet.has(edgeId);
+            const handles = handlePlan.get(edgeId) || resolveEdgeHandles(item.edge);
             return {
-              id: `edge-${item.index}-${item.edge.source}-${item.edge.target}`,
+              id: edgeId,
               source: item.edge.source,
               target: item.edge.target,
               ...handles,
@@ -1451,6 +1963,9 @@ def _studio_html() -> str:
                 index: item.index,
                 condition: item.condition,
                 isLoopEdge: loopEdge,
+                manualHandle: false,
+                sourceHandle: handles.sourceHandle,
+                targetHandle: handles.targetHandle,
                 rawEdge: deepClone(item.edge),
               },
             };
@@ -1645,15 +2160,19 @@ def _studio_html() -> str:
             return;
           }
           const edgeId = `edge-${Date.now()}-${Math.floor(Math.random() * 100000)}`;
+          const handles = resolveEdgeHandles(connection);
           const nextEdge = {
             id: edgeId,
             source: connection.source,
             target: connection.target,
-            sourceHandle: connection.sourceHandle,
-            targetHandle: connection.targetHandle,
+            sourceHandle: handles.sourceHandle,
+            targetHandle: handles.targetHandle,
             data: {
               condition: "",
               isLoopEdge: false,
+              manualHandle: true,
+              sourceHandle: handles.sourceHandle,
+              targetHandle: handles.targetHandle,
               rawEdge: { source: connection.source, target: connection.target },
             },
           };
@@ -1661,7 +2180,16 @@ def _studio_html() -> str:
           refreshEdgeMetadata();
           selectedNodeId.value = null;
           selectedEdgeId.value = edgeId;
+          isConnecting.value = false;
           setStatus(`edge created: ${connection.source} -> ${connection.target}`);
+        }
+
+        function onConnectStart() {
+          isConnecting.value = true;
+        }
+
+        function onConnectEnd() {
+          isConnecting.value = false;
         }
 
         function onNodeClick(event) {
@@ -1683,12 +2211,29 @@ def _studio_html() -> str:
             if (edge.id !== event.edge.id) {
               return edge;
             }
+            const currentData = isRecord(edge.data) ? edge.data : {};
+            const handles = resolveEdgeHandles({
+              sourceHandle:
+                event.connection.sourceHandle
+                || edge.sourceHandle
+                || currentData.sourceHandle,
+              targetHandle:
+                event.connection.targetHandle
+                || edge.targetHandle
+                || currentData.targetHandle,
+            });
             return {
               ...edge,
               source: event.connection.source,
               target: event.connection.target,
-              sourceHandle: event.connection.sourceHandle || edge.sourceHandle,
-              targetHandle: event.connection.targetHandle || edge.targetHandle,
+              sourceHandle: handles.sourceHandle,
+              targetHandle: handles.targetHandle,
+              data: {
+                ...currentData,
+                manualHandle: true,
+                sourceHandle: handles.sourceHandle,
+                targetHandle: handles.targetHandle,
+              },
             };
           });
           refreshEdgeMetadata();
@@ -1717,7 +2262,7 @@ def _studio_html() -> str:
           baseUiState.value = isRecord(data.ui_state) ? deepClone(data.ui_state) : {};
 
           nodes.value = buildNodesFromPayload(data.workflow, data.ui_state, data.nodes);
-          edges.value = buildEdgesFromPayload(data.workflow, data.edges);
+          edges.value = buildEdgesFromPayload(data.workflow, data.edges, nodes.value);
           refreshEdgeMetadata();
           selectedNodeId.value = null;
           selectedEdgeId.value = null;
@@ -1830,6 +2375,7 @@ def _studio_html() -> str:
           newNode,
           nodeEditor,
           edgeEditor,
+          isConnecting,
           nodeTypes,
           defaultEdgeOptions,
           loadWorkflow,
@@ -1842,6 +2388,8 @@ def _studio_html() -> str:
           onNodesChange,
           onEdgesChange,
           onConnect,
+          onConnectStart,
+          onConnectEnd,
           onNodeClick,
           onEdgeClick,
           onEdgeUpdate,
