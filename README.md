@@ -201,7 +201,7 @@ yagra studio \
 1. 必要に応じて `Add Node` でノードを追加し、Node/Edge フォームで値を編集して `Apply ...`
    - `Add Node` は選択中ノードの近傍（未選択時は自動レイアウト位置）へ自動配置されます。
 2. Node Properties の `prompt yaml` で参照先 YAML を選択すると、`system prompt` / `user prompt` が自動で読み込まれます。
-3. `prompt yaml` 未選択のまま `Apply Node Edit` した場合、workflow YAML と同階層の `prompts/<node-id>.yaml`（重複時は連番）が自動作成され、`prompt_ref` が自動設定されます。
+3. `prompt yaml` 未選択のまま `Apply Node Edit` した場合、workspace root（通常は project root）直下の `prompts/<node-id>.yaml`（重複時は連番）が自動作成され、`prompt_ref` が自動設定されます。
    - `prompt key` を指定した場合は `path#key` 形式になり、生成 YAML は `{ key: { system, user } }` 形式になります。
 4. Graph Canvas 上でノードをドラッグして位置調整し、右側ポート（output）から左側ポート（input）へドラッグしてエッジ追加（戻りループは下側 output → 上側 input で接続）
 5. 再接続時はエッジ端点をドラッグして接続先を変更（ドラッグ起点が新 source、ドロップ先が新 target）
@@ -219,7 +219,7 @@ yagra studio \
 - `--workflow`: 編集対象 workflow ファイル（任意、未指定時はランチャーで選択/作成）
 - `--bundle-root`: 分割参照解決の基準ディレクトリ（任意）
 - `--ui-state`: UI サイドカー JSON の保存先（既定: `<workflow>.workflow-ui.json`）
-- `--workspace-root`: ランチャーが探索/作成可能なワークスペースルート（既定: `<workflow> の親` またはカレント）
+- `--workspace-root`: ランチャーが探索/作成可能なワークスペースルート（既定: `workflow` がカレント配下ならカレント、そうでなければ `<workflow> の親`、`--workflow` 未指定時はカレント）
 - `--backup-dir`: バックアップ保存先（既定: `.yagra/backups`）
 - `--host`: バインドホスト（既定: `127.0.0.1`）
 - `--port`: バインドポート（既定: `8787`）

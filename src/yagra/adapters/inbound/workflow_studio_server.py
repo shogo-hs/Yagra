@@ -23,6 +23,33 @@ from yagra.ports.inbound import (
 )
 
 
+def _resolve_workspace_root_path(
+    *,
+    workflow_abspath: Path | None,
+    workspace_root: str | PathLike[str] | None,
+) -> Path:
+    """Studio のデフォルト workspace_root を決定する。
+
+    Args:
+        workflow_abspath: 編集対象 workflow の絶対パス。
+        workspace_root: CLI から明示指定された workspace_root。
+
+    Returns:
+        使用する workspace_root の絶対パス。
+    """
+    if workspace_root is not None:
+        return Path(workspace_root).expanduser().resolve()
+
+    current_dir = Path.cwd().resolve()
+    if workflow_abspath is None:
+        return current_dir
+    try:
+        workflow_abspath.relative_to(current_dir)
+    except ValueError:
+        return workflow_abspath.parent
+    return current_dir
+
+
 def create_workflow_studio_server(
     workflow_path: str | PathLike[str] | None = None,
     bundle_root: str | PathLike[str] | None = None,
@@ -60,12 +87,9 @@ def create_workflow_studio_server(
         if workflow_abspath is not None
         else None
     )
-    workspace_root_path = (
-        Path(workspace_root).expanduser().resolve()
-        if workspace_root is not None
-        else workflow_abspath.parent
-        if workflow_abspath is not None
-        else Path.cwd().resolve()
+    workspace_root_path = _resolve_workspace_root_path(
+        workflow_abspath=workflow_abspath,
+        workspace_root=workspace_root,
     )
     backup_dir_path = Path(backup_dir).expanduser().resolve()
 
@@ -863,7 +887,7 @@ def _studio_html() -> str:
                     id="nodePromptRefInput"
                     v-model="nodeEditor.promptRef"
                     type="text"
-                    placeholder="prompts/review.yaml#intent"
+                    placeholder="../prompts/review.yaml#intent"
                     @change="onPromptRefChange"
                   />
                 </div>
@@ -930,7 +954,7 @@ def _studio_html() -> str:
                 </div>
               </div>
               <button type="button" class="secondary" @click="applyNodeEdit">Apply Node Edit</button>
-              <div class="hint">node id は空文字/重複不可です。prompt yaml 未選択で Apply すると workflow YAML と同階層の `prompts/` 配下へ自動作成されます。prompt key を指定すると `path#key` で保存されます。</div>
+              <div class="hint">node id は空文字/重複不可です。prompt yaml 未選択で Apply すると workspace_root（project root）直下の `prompts/` 配下へ自動作成されます。prompt key を指定すると `path#key` で保存されます。</div>
             </template>
           </section>
 
@@ -2073,8 +2097,7 @@ def _studio_html() -> str:
         }
 
         function resolveDefaultPromptDirectory() {
-          const workflowDir = getWorkflowDirectoryRelative();
-          return workflowDir ? `${workflowDir}/prompts` : "prompts";
+          return "prompts";
         }
 
         function buildPromptYamlContent(systemPrompt, userPrompt, keyPath = "") {

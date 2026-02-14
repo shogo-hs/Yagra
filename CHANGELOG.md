@@ -7,6 +7,12 @@
 ### Changed
 - なし
 
+## [0.1.6] - 2026-02-15
+
+### Changed
+- Studio の `prompt yaml` 自動生成先を workflow 同階層から workspace root（project root）直下の `prompts/` に変更。
+- `studio --workflow` 起動時の `workspace_root` 既定値を調整し、workflow がカレント配下にある場合は project root（カレント）を優先するよう変更。
+
 ## [0.1.5] - 2026-02-14
 
 ### Fixed

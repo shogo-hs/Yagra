@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from copy import deepcopy
 from pathlib import Path
 from threading import Thread
@@ -138,6 +139,41 @@ def test_workflow_studio_api_launcher_open_and_create(tmp_path: Path) -> None:
         thread.join(timeout=2)
 
 
+def test_workflow_studio_api_defaults_workspace_root_to_cwd_for_nested_workflow(
+    tmp_path: Path,
+) -> None:
+    workspace_root = tmp_path / "workspace"
+    workflow_path = _write_workflow(workspace_root / "workflows" / "main.yaml", _base_payload())
+    previous_cwd = Path.cwd()
+    os.chdir(workspace_root)
+    try:
+        server = create_workflow_studio_server(
+            workflow_path=workflow_path,
+            backup_dir=tmp_path / ".yagra-backups",
+            host="127.0.0.1",
+            port=0,
+        )
+        thread = Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        base_url = _server_base_url(server)
+
+        try:
+            status, target_payload = _request_json("GET", f"{base_url}/api/studio/target")
+            assert status == 200
+            assert target_payload["has_target"] is True
+            assert target_payload["workspace_root"] == str(workspace_root.resolve())
+
+            status, files_payload = _request_json("GET", f"{base_url}/api/studio/files")
+            assert status == 200
+            assert "workflows/main.yaml" in files_payload["workflows"]
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=2)
+    finally:
+        os.chdir(previous_cwd)
+
+
 def test_workflow_studio_html_bootstrap_has_valid_backslash_normalization_js(
     tmp_path: Path,
 ) -> None:
@@ -159,6 +195,7 @@ def test_workflow_studio_html_bootstrap_has_valid_backslash_normalization_js(
         with request.urlopen(req, timeout=5) as res:
             html = res.read().decode("utf-8")
         assert 'text.replace(/\\\\/g, "/")' in html
+        assert 'return "prompts";' in html
     finally:
         server.shutdown()
         server.server_close()

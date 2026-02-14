@@ -173,7 +173,11 @@ def _build_cli_parser() -> argparse.ArgumentParser:
     studio.add_argument(
         "--workspace-root",
         default=None,
-        help="Studio が workflow を探索/作成するワークスペースルート（未指定時は workflow 親 or 現在ディレクトリ）",
+        help=(
+            "Studio が workflow を探索/作成するワークスペースルート"
+            "（未指定時は workflow がカレント配下ならカレント、"
+            "それ以外は workflow 親、workflow 未指定時はカレント）"
+        ),
     )
     studio.add_argument(
         "--backup-dir",
