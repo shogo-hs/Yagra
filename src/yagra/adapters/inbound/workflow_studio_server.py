@@ -1441,6 +1441,10 @@ def _studio_html() -> str:
             <template v-else>
               <div class="mono">selected: {{ selectedNode.id }}</div>
               <div class="field">
+                <label for="nodeIdInput">node id</label>
+                <input id="nodeIdInput" v-model.trim="nodeEditor.id" type="text" />
+              </div>
+              <div class="field">
                 <label for="nodeHandlerInput">handler</label>
                 <input id="nodeHandlerInput" v-model="nodeEditor.handler" type="text" />
               </div>
@@ -1500,7 +1504,7 @@ def _studio_html() -> str:
                 </div>
               </div>
               <button type="button" class="secondary" @click="applyNodeEdit">Apply Node Edit</button>
-              <div class="hint">空文字の prompt_ref / model_ref / JSON は削除として扱います。model_ref 利用時は model(JSON/Runtime Params) が上書き設定として扱われます。</div>
+              <div class="hint">node id は空文字/重複不可です。空文字の prompt_ref / model_ref / JSON は削除として扱います。model_ref 利用時は model(JSON/Runtime Params) が上書き設定として扱われます。</div>
             </template>
           </section>
 
@@ -2283,6 +2287,7 @@ def _studio_html() -> str:
           handler: "",
         });
         const nodeEditor = reactive({
+          id: "",
           handler: "",
           promptRef: "",
           modelRef: "",
@@ -2339,6 +2344,7 @@ def _studio_html() -> str:
           selectedNode,
           node => {
             if (!node) {
+              nodeEditor.id = "";
               nodeEditor.handler = "";
               nodeEditor.promptRef = "";
               nodeEditor.modelRef = "";
@@ -2355,6 +2361,7 @@ def _studio_html() -> str:
             const temperatureRaw = model?.temperature ?? modelKwargs?.temperature;
             const topPRaw = model?.top_p ?? modelKwargs?.top_p;
             const maxTokensRaw = model?.max_tokens ?? modelKwargs?.max_tokens;
+            nodeEditor.id = normalizeText(node.id);
             nodeEditor.handler = normalizeText(data.handler);
             nodeEditor.promptRef = normalizeText(data.promptRef);
             nodeEditor.modelRef = normalizeText(data.modelRef);
@@ -2795,6 +2802,19 @@ def _studio_html() -> str:
             return;
           }
           try {
+            const currentNodeId = selectedNode.value.id;
+            const nextNodeId = normalizeText(nodeEditor.id);
+            if (!nextNodeId) {
+              setStatus("node id is required", true);
+              return;
+            }
+            if (
+              nextNodeId !== currentNodeId
+              && nodes.value.some(node => node.id === nextNodeId)
+            ) {
+              setStatus(`node already exists: ${nextNodeId}`, true);
+              return;
+            }
             const promptObj = parseJsonObjectOrNull(nodeEditor.promptJson, "prompt");
             const modelObj = parseJsonObjectOrNull(nodeEditor.modelJson, "model");
             const temperature = parseOptionalNumber(nodeEditor.temperature, "temperature");
@@ -2816,17 +2836,18 @@ def _studio_html() -> str:
               Object.assign(nextModel, runtimeOverrides);
             }
             const finalModel = Object.keys(nextModel).length > 0 ? nextModel : null;
-            const nodeId = selectedNode.value.id;
+            const renamed = currentNodeId !== nextNodeId;
             nodes.value = nodes.value.map(node => {
-              if (node.id !== nodeId) {
+              if (node.id !== currentNodeId) {
                 return node;
               }
               const current = isRecord(node.data) ? node.data : {};
               return {
                 ...node,
+                id: nextNodeId,
                 data: {
                   ...current,
-                  id: nodeId,
+                  id: nextNodeId,
                   handler: normalizeText(nodeEditor.handler),
                   promptRef: normalizeText(nodeEditor.promptRef),
                   modelRef: normalizeText(nodeEditor.modelRef),
@@ -2835,7 +2856,43 @@ def _studio_html() -> str:
                 },
               };
             });
-            setStatus(`node edit applied: ${nodeId}`);
+            if (renamed) {
+              edges.value = edges.value.map(edge => {
+                const source =
+                  edge.source === currentNodeId ? nextNodeId : edge.source;
+                const target =
+                  edge.target === currentNodeId ? nextNodeId : edge.target;
+                const currentData = isRecord(edge.data) ? edge.data : {};
+                const rawEdge = isRecord(currentData.rawEdge)
+                  ? deepClone(currentData.rawEdge)
+                  : {};
+                rawEdge.source = source;
+                rawEdge.target = target;
+                return {
+                  ...edge,
+                  source,
+                  target,
+                  data: {
+                    ...currentData,
+                    rawEdge,
+                  },
+                };
+              });
+              if (normalizeText(workflowMeta.startAt) === currentNodeId) {
+                workflowMeta.startAt = nextNodeId;
+              }
+              workflowMeta.endAt = normalizeNodeIdList(workflowMeta.endAt).map(nodeId =>
+                nodeId === currentNodeId ? nextNodeId : nodeId,
+              );
+              selectedNodeId.value = nextNodeId;
+            }
+            onWorkflowMetaChange();
+            refreshEdgeMetadata();
+            if (renamed) {
+              setStatus(`node renamed: ${currentNodeId} -> ${nextNodeId}`);
+              return;
+            }
+            setStatus(`node edit applied: ${nextNodeId}`);
           } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
             setStatus(message, true);

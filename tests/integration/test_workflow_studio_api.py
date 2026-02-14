@@ -635,3 +635,78 @@ def test_workflow_studio_form_preview_supports_dnd_like_edits(tmp_path: Path) ->
         server.shutdown()
         server.server_close()
         thread.join(timeout=2)
+
+
+def test_workflow_studio_api_save_accepts_node_rename_payload(tmp_path: Path) -> None:
+    workflow_path = _write_workflow(tmp_path / "workflow.yaml", _base_payload())
+    backup_dir = tmp_path / ".yagra-backups"
+
+    server = create_workflow_studio_server(
+        workflow_path=workflow_path,
+        backup_dir=backup_dir,
+        host="127.0.0.1",
+        port=0,
+    )
+    thread = Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    base_url = _server_base_url(server)
+
+    try:
+        status, form_payload = _request_json("GET", f"{base_url}/api/workflow/form")
+        assert status == 200
+        base_revision = str(form_payload["revision"])
+
+        candidate_workflow = deepcopy(form_payload["workflow"])
+        for node in candidate_workflow["nodes"]:
+            if node["id"] == "router":
+                node["id"] = "entry"
+        candidate_workflow["start_at"] = "entry"
+        candidate_workflow["edges"] = [
+            {
+                **edge,
+                "source": "entry" if edge["source"] == "router" else edge["source"],
+                "target": "entry" if edge["target"] == "router" else edge["target"],
+            }
+            for edge in candidate_workflow["edges"]
+        ]
+        candidate_ui_state = {
+            "positions": {
+                "entry": {"x": 80, "y": 120},
+                "planner": {"x": 320, "y": 120},
+                "finish": {"x": 560, "y": 120},
+            },
+            "edge_handles": {
+                "0": {"source_handle": "bottom-out", "target_handle": "top-in"},
+            },
+        }
+
+        status, save_payload = _request_json(
+            "POST",
+            f"{base_url}/api/workflow/save",
+            {
+                "workflow": candidate_workflow,
+                "ui_state": candidate_ui_state,
+                "base_revision": base_revision,
+            },
+        )
+        assert status == 200
+        assert save_payload["backup_id"]
+
+        status, after_form = _request_json("GET", f"{base_url}/api/workflow/form")
+        assert status == 200
+        assert after_form["workflow"]["start_at"] == "entry"
+        node_ids = {node["id"] for node in after_form["workflow"]["nodes"]}
+        assert "entry" in node_ids
+        assert "router" not in node_ids
+        assert all(
+            edge["source"] != "router" and edge["target"] != "router"
+            for edge in after_form["workflow"]["edges"]
+        )
+        assert "entry" in after_form["ui_state"]["positions"]
+        assert "router" not in after_form["ui_state"]["positions"]
+        assert after_form["ui_state"]["edge_handles"]["0"]["source_handle"] == "bottom-out"
+        assert after_form["ui_state"]["edge_handles"]["0"]["target_handle"] == "top-in"
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)

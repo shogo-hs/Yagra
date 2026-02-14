@@ -203,7 +203,8 @@ yagra studio \
 2. `Workflow Settings` で `prompt_catalog` / `model_catalog` を設定し、必要なら `Reload Catalog Keys` で候補キーを更新
 3. Graph Canvas 上でノードをドラッグして位置調整し、右側ポート（output）から左側ポート（input）へドラッグしてエッジ追加（戻りループは下側 output → 上側 input で接続）
 4. 再接続時はエッジ端点をドラッグして接続先を変更（ドラッグ起点が新 source、ドロップ先が新 target）
-5. Node Properties で `prompt_ref` / `model_ref` と `Model Runtime Params (LiteLLM)`（`temperature` など）を設定
+5. Node Properties で `node id`（リネーム）, `prompt_ref` / `model_ref`, `Model Runtime Params (LiteLLM)`（`temperature` など）を設定
+   - `node id` を変更して `Apply Node Edit` すると、関連する `edges[].source/target` と `start_at/end_at` も自動で同期されます。
 6. `Preview Diff` で変更差分と validation を確認
 7. `Save` で workflow を保存（backup 作成）
 8. 必要なら `Rollback` で `backup_id` から復元
