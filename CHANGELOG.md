@@ -7,6 +7,22 @@
 ### Changed
 - なし
 
+## [0.1.2] - 2026-02-14
+
+### Added
+- Workflow Studio のランチャー導線（既存 workflow 選択 / 新規作成）を追加。
+- 保存時バックアップと rollback 安全化を含む Studio 初期運用フローを追加。
+- エッジ接続ポート（source/target handle）の永続化を追加。
+
+### Changed
+- Studio の Node Properties を専用フォーム化し、`system prompt` / `user prompt` と model 設定を編集しやすく改善。
+- `prompt_ref` / `model_ref` の catalog 参照導線と Studio API ドキュメントを整備。
+- 単一ノード workflow で `edges: []` を許可するよう validation 契約を更新。
+- Studio inbound の port 分離と quickstart/API ドキュメントを改善。
+
+### Fixed
+- `prompt_ref` / `model_ref` 利用時の実行時パラメータ正規化を追加し、ref/inline 入力の実行時表現を統一。
+
 ## [0.1.1] - 2026-02-14
 
 ### Changed
