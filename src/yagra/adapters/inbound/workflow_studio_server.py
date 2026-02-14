@@ -591,7 +591,7 @@ def _studio_html() -> str:
     button.secondary { background: #fff; color: var(--accent); }
     input[type="text"], select, textarea { border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; width: 100%; font-size: 13px; background: #fff; color: var(--text); }
     textarea { min-height: 82px; line-height: 1.4; }
-    .layout { margin-top: 14px; display: grid; grid-template-columns: 1.1fr 1fr .95fr; gap: 14px; align-items: start; }
+    .layout { margin-top: 14px; display: grid; grid-template-columns: 1fr 1.35fr; gap: 14px; align-items: start; }
     .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
     h2 { margin: 0 0 8px; font-size: 18px; }
     h3 { margin: 0 0 8px; font-size: 15px; }
@@ -603,9 +603,8 @@ def _studio_html() -> str:
     .field > label { display: block; margin-bottom: 4px; color: var(--muted); font-size: 12px; font-weight: 700; }
     .split { border-top: 1px dashed var(--line); margin: 12px 0; padding-top: 12px; }
     .stack { display: grid; gap: 14px; }
-    .raw textarea { min-height: 220px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
     .hint { font-size: 12px; color: var(--muted); }
-    .graph-canvas { position: relative; width: 100%; min-height: 360px; border: 1px solid var(--line); border-radius: 10px; background: linear-gradient(180deg, #fdfefe 0%, #f3f8ff 100%); overflow: hidden; }
+    .graph-canvas { position: relative; width: 100%; min-height: 480px; border: 1px solid var(--line); border-radius: 10px; background: linear-gradient(180deg, #fdfefe 0%, #f3f8ff 100%); overflow: hidden; }
     .graph-edge-layer { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: auto; }
     .graph-node-layer { position: absolute; inset: 0; pointer-events: none; }
     .graph-node { position: absolute; width: 140px; padding: 8px; border: 1px solid #8da8cb; border-radius: 10px; background: #fff; box-shadow: 0 2px 7px rgba(35, 70, 120, 0.14); cursor: grab; touch-action: none; user-select: none; }
@@ -731,16 +730,6 @@ def _studio_html() -> str:
           <pre id="pendingView"></pre>
         </div>
       </article>
-      <article class="panel stack raw">
-        <div>
-          <h2>Workflow (JSON: read only)</h2>
-          <textarea id="workflowEditor" readonly></textarea>
-        </div>
-        <div>
-          <h2>UI State (JSON: read only)</h2>
-          <textarea id="uiStateEditor" readonly></textarea>
-        </div>
-      </article>
     </section>
     <datalist id="promptRefOptions"></datalist>
     <datalist id="modelRefOptions"></datalist>
@@ -764,8 +753,6 @@ def _studio_html() -> str:
       dragConnection: null,
     };
 
-    const workflowEditor = document.getElementById("workflowEditor");
-    const uiStateEditor = document.getElementById("uiStateEditor");
     const validationView = document.getElementById("validationView");
     const diffView = document.getElementById("diffView");
     const pendingView = document.getElementById("pendingView");
@@ -1038,11 +1025,6 @@ def _studio_html() -> str:
       };
       pendingView.textContent = JSON.stringify(payload, null, 2);
       renderSelectionSummary();
-    }
-
-    function renderEditors() {
-      workflowEditor.value = JSON.stringify(state.workflow || {}, null, 2);
-      uiStateEditor.value = JSON.stringify(state.uiState || {}, null, 2);
     }
 
     function renderCatalogOptions() {
@@ -1461,7 +1443,6 @@ def _studio_html() -> str:
       rebuildFormStateFromWorkflow();
       renderNodeOptions();
       renderEdgeOptions();
-      renderEditors();
       renderPending();
       renderGraph();
       updateConnectionModeLabel();
@@ -1524,7 +1505,6 @@ def _studio_html() -> str:
         nodeSelect.value = create.node_id;
         renderNodeForm(create.node_id);
         renderEdgeOptions();
-        renderEditors();
         renderPending();
         renderGraph();
         nodeCreateIdInput.value = "";
@@ -1547,7 +1527,6 @@ def _studio_html() -> str:
         applyNodeEditToWorkflow(edit);
         rebuildFormStateFromWorkflow();
         renderNodeOptions();
-        renderEditors();
         renderPending();
         renderGraph();
         setStatus(`node edit applied: ${edit.node_id}`);
@@ -1568,7 +1547,6 @@ def _studio_html() -> str:
         applyEdgeEditToWorkflow(edit);
         rebuildFormStateFromWorkflow();
         renderEdgeOptions();
-        renderEditors();
         renderPending();
         renderGraph();
         setStatus(`edge edit applied: [${edit.edge_index}]`);
@@ -1669,7 +1647,6 @@ def _studio_html() -> str:
         renderEdgeOptions();
         edgeSelect.value = String(edit.edge_index);
         renderEdgeForm(edit.edge_index);
-        renderEditors();
         renderPending();
         updateConnectionModeLabel();
         updateRewireButton();
@@ -1686,7 +1663,6 @@ def _studio_html() -> str:
       rebuildFormStateFromWorkflow();
       renderNodeOptions();
       renderEdgeOptions();
-      renderEditors();
       renderPending();
       renderSelectionSummary();
       setStatus(`edge created: ${create.source} -> ${create.target}`);
@@ -1719,7 +1695,6 @@ def _studio_html() -> str:
         const nodeId = state.dragNode.nodeId;
         state.dragNode = null;
         renderGraph();
-        renderEditors();
         setStatus(`node moved: ${nodeId}`);
         return;
       }
@@ -1778,7 +1753,6 @@ def _studio_html() -> str:
       rebuildFormStateFromWorkflow();
       renderNodeOptions();
       renderEdgeOptions();
-      renderEditors();
       renderPending();
       renderGraph();
       updateConnectionModeLabel();

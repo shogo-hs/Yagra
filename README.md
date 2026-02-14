@@ -202,6 +202,9 @@ yagra studio \
 5. `Save` で workflow を保存（backup 作成）
 6. 必要なら `Rollback` で `backup_id` から復元
 
+補足:
+- Studio 画面は操作性優先のため `Workflow/UI State` の生JSONは常時表示しません。必要時は `GET /api/workflow` / `GET /api/workflow/form` で確認してください。
+
 オプション:
 
 - `--workflow`: 編集対象 workflow ファイル（必須）
