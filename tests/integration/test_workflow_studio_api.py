@@ -200,6 +200,25 @@ def test_workflow_studio_html_bootstrap_has_valid_backslash_normalization_js(
         assert "const requestSeq = studioFilesRequestSeq.value + 1;" in html
         assert "if (requestSeq !== studioFilesRequestSeq.value) {" in html
         assert "if (currentYamlPath && !yamlFiles.value.includes(currentYamlPath)) {" not in html
+        assert "https://cdn.jsdelivr.net" not in html
+        assert "/assets/vendor/vue/3.5.28/vue.esm-browser.prod.js" in html
+        assert "/assets/vendor/vue-flow/core/1.48.2/style.css" in html
+
+        asset_req = request.Request(
+            url=f"{base_url}/assets/vendor/vue/3.5.28/vue.esm-browser.prod.js",
+            method="GET",
+        )
+        with request.urlopen(asset_req, timeout=5) as asset_res:
+            asset_js = asset_res.read().decode("utf-8")
+            assert asset_res.status == 200
+            assert "createApp" in asset_js
+
+        status, payload = _request_json(
+            "GET",
+            f"{base_url}/assets/%2e%2e/pyproject.toml",
+        )
+        assert status == 404
+        assert payload["error"] == "not_found"
     finally:
         server.shutdown()
         server.server_close()

@@ -164,6 +164,7 @@ Yagra.invoke(state: Mapping[str, Any]) -> dict[str, Any]
 ### `yagra visualize`（Read Only 可視化）
 
 Workflow YAML を Read Only の可視化 HTML に変換します。
+出力 HTML は Mermaid を同梱しており、インターネット接続なしでも描画できます。
 
 ```bash
 yagra visualize \
@@ -197,6 +198,7 @@ yagra studio \
 ```
 
 起動後はブラウザで `http://127.0.0.1:8787/` を開きます。
+Studio は同梱アセットをローカル配信するため、インターネット接続なしでも表示・操作できます。
 
 主な編集フロー:
 

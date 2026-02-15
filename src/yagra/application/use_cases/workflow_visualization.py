@@ -5,6 +5,8 @@ from __future__ import annotations
 import html
 import json
 from dataclasses import dataclass
+from functools import lru_cache
+from importlib import resources
 from os import PathLike
 from pathlib import Path
 
@@ -121,6 +123,7 @@ def build_workflow_visualization_view(
 def _render_html(view: WorkflowVisualizationView) -> str:
     """可視化表示モデルを HTML へ変換する。"""
     mermaid_graph = _build_mermaid_graph(view)
+    mermaid_bundle = _load_mermaid_bundle_source()
     node_cards = "\n".join(_render_node_card(node) for node in view.nodes)
     edge_rows = "\n".join(_render_edge_row(edge) for edge in view.edges)
 
@@ -201,13 +204,26 @@ def _render_html(view: WorkflowVisualizationView) -> str:
       </aside>
     </section>
   </div>
-  <script type=\"module\">
-    import mermaid from \"https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs\";
-    mermaid.initialize({{ startOnLoad: true, securityLevel: \"loose\" }});
+  <script>
+{mermaid_bundle}
+  </script>
+  <script>
+    const mermaidApi = window.mermaid
+      || (window.__esbuild_esm_mermaid_nm && window.__esbuild_esm_mermaid_nm.mermaid);
+    if (mermaidApi) {{
+      mermaidApi.initialize({{ startOnLoad: true, securityLevel: "loose" }});
+    }}
   </script>
 </body>
 </html>
 """
+
+
+@lru_cache(maxsize=1)
+def _load_mermaid_bundle_source() -> str:
+    """同梱 Mermaid バンドルを読み込む。"""
+    bundle = resources.files("yagra.web_assets").joinpath("vendor/mermaid/11.12.2/mermaid.min.js")
+    return bundle.read_text(encoding="utf-8").replace("</script>", "<\\/script>")
 
 
 def _build_mermaid_graph(view: WorkflowVisualizationView) -> str:

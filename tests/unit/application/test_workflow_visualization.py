@@ -63,6 +63,9 @@ def test_render_workflow_visualization_html_contains_graph_and_node_details() ->
     assert "router" in html_text
     assert "planner_handler" in html_text
     assert "needs_plan" in html_text
+    assert "https://cdn.jsdelivr.net" not in html_text
+    assert "import mermaid from" not in html_text
+    assert "window.__esbuild_esm_mermaid_nm" in html_text
 
 
 def test_render_workflow_visualization_html_raises_on_invalid_workflow(tmp_path: Path) -> None:

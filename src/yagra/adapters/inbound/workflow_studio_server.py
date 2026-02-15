@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import json
+import mimetypes
 from collections.abc import Callable
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from importlib import resources
 from os import PathLike
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import unquote, urlparse
 
 from yagra.application.services import (
     StudioService,
@@ -21,6 +23,44 @@ from yagra.ports.inbound import (
     StudioPort,
     StudioUnprocessableEntityError,
 )
+
+
+def _load_web_asset(asset_path: str) -> tuple[bytes, str] | None:
+    """同梱 Web アセットを読み込む。
+
+    Args:
+        asset_path: `/assets/` 以降の相対パス。
+
+    Returns:
+        `(body, content_type)`。不正パスや未存在時は `None`。
+    """
+    normalized = asset_path.strip().replace("\\", "/")
+    if not normalized:
+        return None
+    path_parts = normalized.split("/")
+    if path_parts[0] != "vendor" or any(part in {"", ".", ".."} for part in path_parts):
+        return None
+
+    resource: resources.abc.Traversable = resources.files("yagra.web_assets")
+    for part in path_parts:
+        resource = resource.joinpath(part)
+    if not resource.is_file():
+        return None
+
+    body = resource.read_bytes()
+    mime_type, _ = mimetypes.guess_type(normalized)
+    if mime_type is None and normalized.endswith(".mjs"):
+        mime_type = "application/javascript"
+    if mime_type is None:
+        mime_type = "application/octet-stream"
+    if mime_type.startswith("text/") or mime_type in {
+        "application/javascript",
+        "application/json",
+        "application/xml",
+        "image/svg+xml",
+    }:
+        return body, f"{mime_type}; charset=utf-8"
+    return body, mime_type
 
 
 def _resolve_workspace_root_path(
@@ -135,6 +175,9 @@ def _build_handler_class(
             if path == "/":
                 self._write_html(_studio_html())
                 return
+            if path.startswith("/assets/"):
+                self._handle_get_asset(path)
+                return
             if path == "/api/studio/target":
                 self._handle_get_studio_target()
                 return
@@ -199,6 +242,20 @@ def _build_handler_class(
             payload = self._execute_studio_call(self._studio.get_studio_files)
             if payload is not None:
                 self._write_json(200, payload)
+
+        def _handle_get_asset(self, path: str) -> None:
+            """同梱静的アセットを返す。"""
+            asset_path = unquote(path.removeprefix("/assets/"))
+            loaded = _load_web_asset(asset_path)
+            if loaded is None:
+                self._write_json(404, {"error": "not_found"})
+                return
+            body, content_type = loaded
+            self.send_response(200)
+            self.send_header("Content-Type", content_type)
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
 
         def _handle_open_studio_target(self, body: dict[str, Any]) -> None:
             """既存 workflow を Studio 編集対象として開く。"""
@@ -337,19 +394,19 @@ def _studio_html() -> str:
   <title>Yagra Workflow Studio</title>
   <link
     rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/@vue-flow/core@1.48.2/dist/style.css"
+    href="/assets/vendor/vue-flow/core/1.48.2/style.css"
   />
   <link
     rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/@vue-flow/core@1.48.2/dist/theme-default.css"
+    href="/assets/vendor/vue-flow/core/1.48.2/theme-default.css"
   />
   <link
     rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/@vue-flow/minimap@1.5.4/dist/style.css"
+    href="/assets/vendor/vue-flow/minimap/1.5.4/style.css"
   />
   <link
     rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/@vue-flow/controls@1.1.3/dist/style.css"
+    href="/assets/vendor/vue-flow/controls/1.1.3/style.css"
   />
   <style>
     :root {
@@ -1000,11 +1057,11 @@ def _studio_html() -> str:
   <script type="importmap">
     {
       "imports": {
-        "vue": "https://cdn.jsdelivr.net/npm/vue@3.5.28/dist/vue.esm-browser.prod.js",
-        "@vue-flow/core": "https://cdn.jsdelivr.net/npm/@vue-flow/core@1.48.2/dist/vue-flow-core.mjs",
-        "@vue-flow/minimap": "https://cdn.jsdelivr.net/npm/@vue-flow/minimap@1.5.4/dist/vue-flow-minimap.mjs",
-        "@vue-flow/controls": "https://cdn.jsdelivr.net/npm/@vue-flow/controls@1.1.3/dist/vue-flow-controls.mjs",
-        "@vue-flow/background": "https://cdn.jsdelivr.net/npm/@vue-flow/background@1.3.2/dist/vue-flow-background.mjs"
+        "vue": "/assets/vendor/vue/3.5.28/vue.esm-browser.prod.js",
+        "@vue-flow/core": "/assets/vendor/vue-flow/core/1.48.2/vue-flow-core.mjs",
+        "@vue-flow/minimap": "/assets/vendor/vue-flow/minimap/1.5.4/vue-flow-minimap.mjs",
+        "@vue-flow/controls": "/assets/vendor/vue-flow/controls/1.1.3/vue-flow-controls.mjs",
+        "@vue-flow/background": "/assets/vendor/vue-flow/background/1.3.2/vue-flow-background.mjs"
       }
     }
   </script>
