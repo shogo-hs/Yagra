@@ -1,23 +1,27 @@
-# Yagra: Declarative LangGraph Builder
+# Yagra: YAML-to-Agent-Graph Builder
 
-Yagra は、YAML 定義から LangGraph の `StateGraph` を構築・実行する Python ライブラリです。
+<p align="center">
+  <img src="docs/assets/yagra-logo.jpg" alt="Yagra logo" width="720" />
+</p>
+
+Yagra は、**YAML 定義から LangGraph の `StateGraph` を構築・実行**する Python ライブラリです。
 フロー制御（分岐・ループ）とノード設定（prompt/model など）をコードから分離し、
-`workflow.yaml` の差し替えで挙動を切り替えられます。
+`workflow.yaml` の差し替えだけで挙動を切り替えられます。
 
-## 公開運用ポリシー
+## Yagraでできること
 
-- パッケージ配布: Public（PyPI）
-- ソースリポジトリ: Private（GitHub）
-- 利用者向け導線は PyPI を正とし、リポジトリ参照は必須としません。
+- **宣言的なワークフロー管理**: ノード・エッジ・条件分岐を YAML で管理
+- **実装と設定の分離**: `handler` 文字列と Python callable を Registry で接続
+- **安全な構成検証**: Pydantic ベースのスキーマ検証で入力不整合を早期検出
+- **最小コードで実行**: `Yagra.from_workflow(...)` でグラフを即構築
 
-## 主な特徴
+## 想定ユースケース
 
-- Schema-Driven: Pydantic で YAML 構造を検証
-- Registry Pattern: `handler` 文字列と Python callable を疎結合に接続
-- Typed State: `state_schema` に TypedDict/Pydantic などの状態スキーマを指定可能
-- Zero-Boilerplate: `Yagra.from_workflow(...)` で構築コードを最小化
+- LLM エージェントのフローをプロトタイプし、YAML 差し替えで高速に試行錯誤したい
+- 非エンジニアも読める形式で、ワークフロー定義を運用したい
+- LangGraph のコード量を抑えながら、分岐・ループを含む制御を扱いたい
 
-## インストール（利用者向け）
+## インストール
 
 - Python 3.12+
 
@@ -25,9 +29,7 @@ Yagra は、YAML 定義から LangGraph の `StateGraph` を構築・実行す�
 pip install yagra
 ```
 
-## 開発セットアップ（メンテナー向け）
-
-この手順は private リポジトリへのアクセス権があるメンテナー向けです。
+## 開発者向けセットアップ
 
 ```bash
 git clone https://github.com/shogo-hs/Yagra.git
