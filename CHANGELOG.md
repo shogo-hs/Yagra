@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+なし
+
+## [0.1.8] - 2026-02-16
+
 ### Changed
 - Studio のフロント依存（Vue / Vue Flow）を CDN 読み込みから同梱アセットのローカル配信へ切り替え、オフライン利用を可能にした。
 - `yagra visualize` の出力 HTML を Mermaid 同梱方式へ変更し、単体ファイルでオフライン描画できるようにした。
