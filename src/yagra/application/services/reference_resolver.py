@@ -177,12 +177,30 @@ def _resolve_catalog_path(catalog_path: str, workflow_path: Path, bundle_root: P
     """参照先 YAML の実パスを解決する。"""
     raw = Path(catalog_path)
     if raw.is_absolute():
-        path = raw
-    elif bundle_root is not None:
-        path = bundle_root / raw
-    else:
-        path = workflow_path.parent / raw
-    return path.resolve()
+        return raw.resolve()
+
+    workflow_relative_path = (workflow_path.parent / raw).resolve()
+
+    if bundle_root is not None:
+        return (bundle_root / raw).resolve()
+
+    if _has_explicit_relative_prefix(raw):
+        return workflow_relative_path
+
+    if workflow_relative_path.exists():
+        return workflow_relative_path
+
+    for ancestor in workflow_path.parents[1:]:
+        candidate = (ancestor / raw).resolve()
+        if candidate.exists():
+            return candidate
+
+    return workflow_relative_path
+
+
+def _has_explicit_relative_prefix(path: Path) -> bool:
+    """`./` や `../` を含む明示相対パスかどうかを返す。"""
+    return any(part in {".", ".."} for part in path.parts)
 
 
 def _load_yaml_file(path: Path, location: Location = ()) -> Any:

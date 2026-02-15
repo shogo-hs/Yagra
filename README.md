@@ -265,6 +265,9 @@ Studio は同梱アセットをローカル配信するため、インターネ�
 - `prompt_ref` の参照形式:
   - `<path>`（YAML ルートが prompt mapping の場合）
   - `<path>#<key.path>`（YAML 内キーを指定）
+- `bundle_root` 未指定時の `<path>` 解決:
+  - `./` / `../` を含む場合は workflow YAML からの相対パスとして解決
+  - それ以外は workflow 親を優先し、未発見時は上位ディレクトリも探索して解決
 
 例:
 

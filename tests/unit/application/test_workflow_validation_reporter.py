@@ -190,6 +190,42 @@ def test_load_validated_graph_spec_merges_prompt_ref_with_prompt_overrides(tmp_p
     assert prompt["user"] == "Create a concise plan."
 
 
+def test_load_validated_graph_spec_resolves_workspace_relative_prompt_ref_without_bundle_root(
+    tmp_path: Path,
+) -> None:
+    workspace_root = tmp_path / "workspace"
+    workflow_path = workspace_root / "workflows" / "main.yaml"
+    prompt_path = workspace_root / "prompts" / "catalog.yaml"
+    prompt_path.parent.mkdir(parents=True, exist_ok=True)
+    prompt_path.write_text(
+        yaml.safe_dump(
+            {
+                "intent": {
+                    "system": "Classify intent.",
+                    "user": "{{input}}",
+                }
+            },
+            sort_keys=False,
+            allow_unicode=True,
+        ),
+        encoding="utf-8",
+    )
+
+    payload = _base_payload()
+    payload["nodes"][1]["params"] = {
+        "prompt_ref": "prompts/catalog.yaml#intent",
+    }
+    workflow_path.parent.mkdir(parents=True, exist_ok=True)
+    _write_workflow(workflow_path, payload)
+
+    spec = load_validated_graph_spec(workflow_path)
+
+    planner_node = next(node for node in spec.nodes if node.id == "planner")
+    prompt = planner_node.params["prompt"]
+    assert prompt["system"] == "Classify intent."
+    assert prompt["user"] == "{{input}}"
+
+
 def test_validate_workflow_for_ui_reports_error_when_model_ref_is_used(
     tmp_path: Path,
 ) -> None:
