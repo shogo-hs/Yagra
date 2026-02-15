@@ -203,6 +203,7 @@ yagra studio \
 1. 必要に応じて `Add Node` でノードを追加し、Node/Edge フォームで値を編集して `Apply ...`
    - `Add Node` は選択中ノードの近傍（未選択時は自動レイアウト位置）へ自動配置されます。
 2. Node Properties の `prompt yaml` で参照先 YAML を選択すると、`system prompt` / `user prompt` が自動で読み込まれます。
+   - 候補一覧（`yaml_files`）の再読込中でも、現在選択中の `prompt yaml` は自動で空に戻らず保持されます（明示的に `(auto create on Apply)` を選んだ場合のみ未選択化）。
 3. `prompt yaml` 未選択のまま `Apply Node Edit` した場合、workspace root（通常は project root）直下の `prompts/<node-id>.yaml`（重複時は連番）が自動作成され、`prompt_ref` が自動設定されます。
    - `prompt key` を指定した場合は `path#key` 形式になり、生成 YAML は `{ key: { system, user } }` 形式になります。
 4. Graph Canvas 上でノードをドラッグして位置調整し、右側ポート（output）から左側ポート（input）へドラッグしてエッジ追加（戻りループは下側 output → 上側 input で接続）

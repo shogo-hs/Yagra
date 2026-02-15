@@ -196,6 +196,10 @@ def test_workflow_studio_html_bootstrap_has_valid_backslash_normalization_js(
             html = res.read().decode("utf-8")
         assert 'text.replace(/\\\\/g, "/")' in html
         assert 'return "prompts";' in html
+        assert "const studioFilesRequestSeq = ref(0);" in html
+        assert "const requestSeq = studioFilesRequestSeq.value + 1;" in html
+        assert "if (requestSeq !== studioFilesRequestSeq.value) {" in html
+        assert "if (currentYamlPath && !yamlFiles.value.includes(currentYamlPath)) {" not in html
     finally:
         server.shutdown()
         server.server_close()

@@ -1698,6 +1698,7 @@ def _studio_html() -> str:
         });
 
         const yamlFiles = ref([]);
+        const studioFilesRequestSeq = ref(0);
         const nodes = ref([]);
         const edges = ref([]);
         const originalWorkflow = ref({});
@@ -2856,7 +2857,12 @@ def _studio_html() -> str:
         }
 
         async function loadStudioFiles() {
+          const requestSeq = studioFilesRequestSeq.value + 1;
+          studioFilesRequestSeq.value = requestSeq;
           const { response, data } = await requestJson("/api/studio/files");
+          if (requestSeq !== studioFilesRequestSeq.value) {
+            return null;
+          }
           if (!response.ok) {
             setStatus(data.message || data.error || "failed to load studio files", true);
             return false;
@@ -2870,13 +2876,6 @@ def _studio_html() -> str:
           const selected = normalizeText(launcher.openWorkflowPath);
           if (!selected || !workflowCandidates.value.includes(selected)) {
             launcher.openWorkflowPath = workflowCandidates.value[0] || "";
-          }
-          const currentYamlPath = normalizeText(nodeEditor.promptFilePath);
-          if (currentYamlPath && !yamlFiles.value.includes(currentYamlPath)) {
-            nodeEditor.promptFilePath = "";
-            nodeEditor.promptFileParseError = "";
-            nodeEditor.promptKey = "";
-            nodeEditor.promptKeyOptions = [];
           }
           const workspaceRoot = normalizeText(data.workspace_root);
           if (workspaceRoot) {
@@ -3139,6 +3138,7 @@ def _studio_html() -> str:
             return;
           }
           await loadStudioTarget();
+          await loadStudioFiles();
           showLauncher.value = false;
           await loadWorkflow();
           setStatus(`opened: ${workflowPath}`);
@@ -3164,8 +3164,8 @@ def _studio_html() -> str:
             return;
           }
           launcher.openWorkflowPath = workflowPath;
-          await loadStudioFiles();
           await loadStudioTarget();
+          await loadStudioFiles();
           showLauncher.value = false;
           await loadWorkflow();
           setStatus(`created: ${workflowPath}`);
