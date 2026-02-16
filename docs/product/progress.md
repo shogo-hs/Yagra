@@ -80,11 +80,11 @@
 | G05-I05 | prompt/model/条件をフォーム編集できるようにする | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` |
 | G05-I06 | DnD でノード追加とエッジ接続変更を行い round-trip 整合を維持する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` |
 | G05-I07 | 主要操作の情報設計と導線を見直し、初見でも操作順が分かる UI にする | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` |
-| G05-I08 | レイアウト/配色/ラベル体系を改善し、可読性と視認性を向上する | Todo | `docs/product/milestones.md` (M-11) |
+| G05-I08 | レイアウト/配色/ラベル体系を改善し、可読性と視認性を向上する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` (CSS改善) |
 
-- 完了済み: G05-I01, G05-I02, G05-I03, G05-I04, G05-I05, G05-I06, G05-I07
-- 未完了: G05-I08
-- 現在地: M-05〜M-10 で機能到達と主要操作導線の明確化は完了。次フェーズとして M-11（レイアウト/配色/ラベル体系の改善）に着手する。
+- 完了済み: G05-I01, G05-I02, G05-I03, G05-I04, G05-I05, G05-I06, G05-I07, G05-I08
+- 未完了: なし
+- 現在地: M-11（UI ビジュアル品質向上）完了。CSS Variables によるデザインシステム統一、状態表現（hover/active/focus/disabled）の明確化、タイポグラフィ・余白の体系化により、視認性と誤操作防止を改善。G-05 の全項目が完了し、非エンジニアが WebUI 上でワークフローを迷わず運用できる環境が整った。
 
 ### G-06: コーディングエージェントが Yagra ワークフローを正確に生成・検証できる
 
