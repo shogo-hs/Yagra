@@ -226,6 +226,7 @@ __marimo__/
 workflows/
 prompts/
 .claude/
+.serena/
 
 # Internal planning docs
 docs/task-designs/
