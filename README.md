@@ -5,7 +5,7 @@
 </p>
 
 Yagra は、**YAML 定義から LangGraph の `StateGraph` を構築・実行**する Python ライブラリです。
-フロー制御（分岐・ループ）とノード設定（prompt/model など）をコードから分離し、
+フロー制御（分岐・ループ）とノード設定（prompt_ref/model など）をコードから分離し、
 `workflow.yaml` の差し替えだけで挙動を切り替えられます。
 
 ## Yagraでできること
@@ -91,8 +91,7 @@ nodes:
   - id: "faq_bot"
     handler: "answer_faq"
     params:
-      prompt:
-        system: "pricing response"
+      prompt_ref: "../prompts/support_prompts.yaml#faq"
   - id: "general_bot"
     handler: "answer_general"
     params:
@@ -184,7 +183,7 @@ yagra visualize \
 
 ### `yagra studio`（フォーム + DnD 編集 + 保存）
 
-Workflow の `prompt` / `model` / `condition` 編集に加え、DnD でノード追加・接続変更を行い、diff 確認・保存・rollback を実行するローカル WebUI/API を起動します。
+Workflow の `prompt_ref` / `model` / `condition` 編集に加え、DnD でノード追加・接続変更を行い、diff 確認・保存・rollback を実行するローカル WebUI/API を起動します。
 
 ```bash
 # ランチャー起動（UI で workflow を選択/新規作成）
@@ -210,7 +209,7 @@ Studio は同梱アセットをローカル配信するため、インターネ�
    - `prompt key` を指定した場合は `path#key` 形式になり、生成 YAML は `{ key: { system, user } }` 形式になります。
 4. Graph Canvas 上でノードをドラッグして位置調整し、右側ポート（output）から左側ポート（input）へドラッグしてエッジ追加（戻りループは下側 output → 上側 input で接続）
 5. 再接続時はエッジ端点をドラッグして接続先を変更（ドラッグ起点が新 source、ドロップ先が新 target）
-6. Node Properties で `node id`（リネーム）, `prompt_ref`, `Model Settings`（`provider` / `name` / `temperature` など）を設定
+6. Node Properties で `node id`（リネーム）, `prompt yaml` / `prompt key`, `Model Settings`（`provider` / `name` / `temperature` など）を設定
    - `node id` を変更して `Apply Node Edit` すると、関連する `edges[].source/target` と `start_at/end_at` も自動で同期されます。
 7. `Preview Diff` で変更差分と validation を確認
 8. `Save` で workflow を保存（backup 作成）
@@ -255,11 +254,12 @@ Studio は同梱アセットをローカル配信するため、インターネ�
 
 ### 2. prompt 参照解決の契約
 
+- プロンプトは `prompts/` 配下の外部 YAML ファイルに定義し、`prompt_ref` で参照します。
+- **`params.prompt`（インラインプロンプト）は廃止されました。** ワークフロー YAML に `params.prompt` が存在するとバリデーションエラーになります。
 - `prompt_ref` は実行前に解決されます。
 - handler が受け取る `params` には解決済み値が入ります。
   - `params["prompt"]`
   - `params["model"]`
-- `prompt_ref` と `prompt` を同時指定した場合、`prompt_ref` 解決結果に `prompt` が上書きマージされます（ノード側優先）。
 - 実行時に handler へ渡る `params` からは `prompt_ref` は除去されます（`prompt`/`model` を利用）。
 - `model_ref` は廃止です。モデル設定は `nodes[].params.model` にインライン定義します。
 - `prompt_ref` の参照形式:

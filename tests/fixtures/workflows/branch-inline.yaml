@@ -12,9 +12,7 @@ nodes:
   - id: "planner"
     handler: "planner_handler"
     params:
-      prompt:
-        system: "You are planner."
-        user: "Plan for: {goal}"
+      prompt_ref: "prompts/branch_prompts.yaml#planner"
       model:
         provider: "openai"
         name: "gpt-4.1-mini"
@@ -32,4 +30,3 @@ edges:
     condition: "direct_answer"
   - source: "planner"
     target: "finish"
-

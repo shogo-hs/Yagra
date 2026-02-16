@@ -25,8 +25,7 @@ nodes:
   - id: "faq_bot"
     handler: "answer_faq"
     params:
-      prompt:
-        system: "pricing response"
+      prompt_ref: "../prompts/support_prompts.yaml#faq"
   - id: "general_bot"
     handler: "answer_general"
   - id: "finish"

@@ -935,20 +935,16 @@ def _studio_html() -> str:
                   v-model.trim="nodeEditor.promptKey"
                   type="text"
                   list="nodePromptKeyOptions"
-                  placeholder="intent"
+                  placeholder="default"
                   @change="onNodePromptKeyChange"
                 />
               </div>
               <div class="inline-row">
                 <div class="field">
-                  <label for="nodePromptRefInput">prompt_ref</label>
-                  <input
-                    id="nodePromptRefInput"
-                    v-model="nodeEditor.promptRef"
-                    type="text"
-                    placeholder="../prompts/review.yaml#intent"
-                    @change="onPromptRefChange"
-                  />
+                  <label>prompt_ref (auto)</label>
+                  <div class="mono hint" style="padding: 4px 0; min-height: 1.4em; word-break: break-all;">
+                    {{ nodeEditor.promptRef || "(auto create on Apply)" }}
+                  </div>
                 </div>
               </div>
               <div v-if="nodeEditor.promptFileParseError" class="hint danger">
@@ -1013,7 +1009,7 @@ def _studio_html() -> str:
                 </div>
               </div>
               <button type="button" class="secondary" @click="applyNodeEdit">Apply Node Edit</button>
-              <div class="hint">node id は空文字/重複不可です。prompt yaml 未選択で Apply すると workspace_root（project root）直下の `prompts/` 配下へ自動作成されます。prompt key を指定すると `path#key` で保存されます。</div>
+              <div class="hint">node id は空文字/重複不可です。prompt yaml 未選択で Apply すると prompts/ 配下へ自動作成されます。既存ファイル選択時は Apply でファイル内容を上書き更新します。prompt key を指定すると path#key で保存されます。</div>
             </template>
           </section>
 
@@ -1779,7 +1775,7 @@ def _studio_html() -> str:
           handler: "",
           promptFilePath: "",
           promptFileParseError: "",
-          promptKey: "",
+          promptKey: "default",
           promptKeyOptions: [],
           promptRef: "",
           promptSystem: "",
@@ -1841,7 +1837,7 @@ def _studio_html() -> str:
               nodeEditor.handler = "";
               nodeEditor.promptFilePath = "";
               nodeEditor.promptFileParseError = "";
-              nodeEditor.promptKey = "";
+              nodeEditor.promptKey = "default";
               nodeEditor.promptKeyOptions = [];
               nodeEditor.promptRef = "";
               nodeEditor.promptSystem = "";
@@ -1893,7 +1889,7 @@ def _studio_html() -> str:
             const refParts = splitPromptReference(nodeEditor.promptRef);
             const workspacePromptPath = promptRefPathToWorkspacePath(refParts.path);
             nodeEditor.promptFilePath = workspacePromptPath;
-            nodeEditor.promptKey = refParts.keyPath;
+            nodeEditor.promptKey = refParts.keyPath || "default";
             nodeEditor.promptFileParseError = "";
             if (workspacePromptPath) {
               void loadPromptFromYaml(workspacePromptPath, {
@@ -2212,7 +2208,7 @@ def _studio_html() -> str:
           nodeEditor.handler = "";
           nodeEditor.promptFilePath = "";
           nodeEditor.promptFileParseError = "";
-          nodeEditor.promptKey = "";
+          nodeEditor.promptKey = "default";
           nodeEditor.promptKeyOptions = [];
           nodeEditor.promptRef = "";
           nodeEditor.promptSystem = "";
@@ -2361,11 +2357,6 @@ def _studio_html() -> str:
                 x: Number.isFinite(x) ? x : fallbackPos.x,
                 y: Number.isFinite(y) ? y : fallbackPos.y,
               };
-              const promptObj = isRecord(formItem?.prompt)
-                ? deepClone(formItem.prompt)
-                : isRecord(params.prompt)
-                  ? deepClone(params.prompt)
-                  : null;
               const modelObj = isRecord(formItem?.model)
                 ? deepClone(formItem.model)
                 : isRecord(params.model)
@@ -2383,7 +2374,7 @@ def _studio_html() -> str:
                     : typeof params.prompt_ref === "string"
                       ? params.prompt_ref
                       : "",
-                  prompt: promptObj,
+                  prompt: null,
                   model: modelObj,
                   isStart: startIds.has(node.id),
                   isEnd: endIds.has(node.id),
@@ -2466,9 +2457,6 @@ def _studio_html() -> str:
             const promptRef = normalizeText(data.promptRef);
             if (promptRef) {
               params.prompt_ref = promptRef;
-            }
-            if (isRecord(data.prompt)) {
-              params.prompt = deepClone(data.prompt);
             }
             if (isRecord(data.model)) {
               params.model = deepClone(data.model);
@@ -2566,22 +2554,8 @@ def _studio_html() -> str:
               return;
             }
             const selectedData = isRecord(selectedNode.value.data) ? selectedNode.value.data : {};
-            const promptObj = isRecord(selectedData.prompt)
-              ? deepClone(selectedData.prompt)
-              : {};
             const promptSystem = normalizeText(nodeEditor.promptSystem);
             const promptUser = normalizeText(nodeEditor.promptUser);
-            if (promptSystem) {
-              promptObj.system = promptSystem;
-            } else {
-              delete promptObj.system;
-            }
-            if (promptUser) {
-              promptObj.user = promptUser;
-            } else {
-              delete promptObj.user;
-            }
-            const finalPrompt = Object.keys(promptObj).length > 0 ? promptObj : null;
             const promptKey = normalizePromptKeyPath(nodeEditor.promptKey);
             nodeEditor.promptKey = promptKey;
             let promptFilePath = normalizePosixPath(nodeEditor.promptFilePath);
@@ -2600,6 +2574,12 @@ def _studio_html() -> str:
               promptRef = buildPromptReference(promptRefPath, promptKey);
               nodeEditor.promptRef = promptRef;
             } else {
+              await savePromptToExistingFile(
+                promptFilePath,
+                promptSystem,
+                promptUser,
+                promptKey,
+              );
               const promptRefPath = workspacePathToPromptRefPath(promptFilePath) || promptFilePath;
               promptRef = buildPromptReference(promptRefPath, promptKey);
               nodeEditor.promptRef = promptRef;
@@ -2663,7 +2643,7 @@ def _studio_html() -> str:
                   id: nextNodeId,
                   handler: normalizeText(nodeEditor.handler),
                   promptRef,
-                  prompt: finalPrompt,
+                  prompt: null,
                   model: finalModel,
                 },
               };
@@ -3155,6 +3135,23 @@ def _studio_html() -> str:
             throw new Error(data.message || data.error || `yaml save failed: ${path}`);
           }
           throw new Error(`failed to allocate prompt yaml path under ${promptDirectory}/`);
+        }
+
+        async function savePromptToExistingFile(filePath, systemPrompt, userPrompt, promptKeyPath) {
+          const content = buildPromptYamlContent(systemPrompt, userPrompt, promptKeyPath);
+          const { response, data } = await requestJson("/api/studio/file/save", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              path: filePath,
+              content,
+              overwrite: true,
+            }),
+          });
+          if (!response.ok) {
+            throw new Error(data.message || data.error || `prompt file save failed: ${filePath}`);
+          }
+          return normalizeText(data.path) || filePath;
         }
 
         async function refreshStudioFiles() {

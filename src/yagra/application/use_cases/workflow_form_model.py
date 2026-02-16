@@ -21,7 +21,6 @@ class WorkflowNodeFormItem:
     id: str
     handler: str
     prompt_ref: str | None
-    prompt: dict[str, Any] | None
     model: dict[str, Any] | None
 
 
@@ -116,7 +115,6 @@ def build_workflow_form_view(
                 id=node_id,
                 handler=handler,
                 prompt_ref=_as_optional_string(params_mapping.get("prompt_ref")),
-                prompt=_as_optional_mapping(params_mapping.get("prompt")),
                 model=_as_optional_mapping(params_mapping.get("model")),
             )
         )

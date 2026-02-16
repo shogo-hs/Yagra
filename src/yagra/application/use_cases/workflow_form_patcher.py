@@ -114,7 +114,6 @@ def _apply_node_edits(nodes: list[Any], node_edits: Sequence[Mapping[str, Any]])
             raise ValueError(f"node params must be a mapping: {node_id}")
 
         _apply_optional_string_field(edit_mapping, params, "prompt_ref")
-        _apply_optional_mapping_field(edit_mapping, params, "prompt")
         _apply_optional_mapping_field(edit_mapping, params, "model")
 
 
