@@ -201,7 +201,6 @@ def test_graphyml_from_workflow_normalizes_runtime_params_and_hides_ref_keys(
                         "handler": "inspect_handler",
                         "params": {
                             "prompt_ref": "prompts/support_prompts.yaml#planner",
-                            "prompt": {"system": "Override planner system prompt."},
                             "model": {
                                 "provider": "openai",
                                 "name": "gpt-4.1-mini",
@@ -248,9 +247,46 @@ def test_graphyml_from_workflow_normalizes_runtime_params_and_hides_ref_keys(
     )
 
     result = engine.invoke({})
-    assert result["prompt_system"] == "Override planner system prompt."
+    assert result["prompt_system"] == "You are planner."
     assert result["prompt_user"] == "Create a concise plan."
     assert result["model_name"] == "gpt-4.1-mini"
     assert result["model_temperature"] == 0.42
     assert result["kwargs_temperature"] == 0.1
     assert result["has_prompt_ref"] is False
+
+
+def test_graphyml_from_workflow_rejects_inline_prompt(tmp_path: Path) -> None:
+    workflow_path = tmp_path / "inline-prompt-rejected.yaml"
+    workflow_path.write_text(
+        yaml.safe_dump(
+            {
+                "version": "1.0",
+                "start_at": "start",
+                "end_at": ["start"],
+                "nodes": [
+                    {
+                        "id": "start",
+                        "handler": "start_handler",
+                        "params": {
+                            "prompt": {"system": "inline prompt"},
+                        },
+                    },
+                ],
+                "edges": [],
+                "params": {},
+            },
+            sort_keys=False,
+            allow_unicode=True,
+        ),
+        encoding="utf-8",
+    )
+
+    def _start_handler(state: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
+        _ = params
+        return dict(state)
+
+    with pytest.raises(ValueError, match="inline prompt is no longer supported"):
+        Yagra.from_workflow(
+            workflow_path=workflow_path,
+            registry={"start_handler": _start_handler},
+        )

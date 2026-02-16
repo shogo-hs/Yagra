@@ -170,24 +170,24 @@ def test_load_validated_graph_spec_accepts_inline_model_mapping(tmp_path: Path) 
     assert model["max_tokens"] == 512
 
 
-def test_load_validated_graph_spec_merges_prompt_ref_with_prompt_overrides(tmp_path: Path) -> None:
+def test_load_validated_graph_spec_rejects_inline_prompt(tmp_path: Path) -> None:
     payload = _base_payload()
-    prompt_file = str((FIXTURES_ROOT / "prompts" / "support_prompts.yaml").resolve())
     payload["params"] = {}
     payload["nodes"][1]["params"] = {
-        "prompt_ref": f"{prompt_file}#planner",
         "prompt": {
-            "system": "You are planner (overridden).",
+            "system": "You are planner.",
+            "user": "Create a plan.",
         },
     }
-    workflow_path = _write_workflow(tmp_path / "prompt-merge.yaml", payload)
+    workflow_path = _write_workflow(tmp_path / "inline-prompt.yaml", payload)
 
-    spec = load_validated_graph_spec(workflow_path)
+    with pytest.raises(WorkflowValidationFailedError) as exc:
+        load_validated_graph_spec(workflow_path)
 
-    planner_node = next(node for node in spec.nodes if node.id == "planner")
-    prompt = planner_node.params["prompt"]
-    assert prompt["system"] == "You are planner (overridden)."
-    assert prompt["user"] == "Create a concise plan."
+    report = exc.value.report
+    assert report.is_valid is False
+    assert any(issue.code == "reference_error" for issue in report.issues)
+    assert any(issue.location == ("nodes", 1, "params", "prompt") for issue in report.issues)
 
 
 def test_load_validated_graph_spec_resolves_workspace_relative_prompt_ref_without_bundle_root(
@@ -243,17 +243,15 @@ def test_validate_workflow_for_ui_reports_error_when_model_ref_is_used(
     assert issue.location == ("nodes", 1, "params", "model_ref")
 
 
-def test_validate_workflow_for_ui_reports_error_when_prompt_override_is_not_mapping(
+def test_validate_workflow_for_ui_reports_error_when_inline_prompt_is_used(
     tmp_path: Path,
 ) -> None:
     payload = _base_payload()
-    prompt_file = str((FIXTURES_ROOT / "prompts" / "support_prompts.yaml").resolve())
     payload["params"] = {}
     payload["nodes"][1]["params"] = {
-        "prompt_ref": f"{prompt_file}#planner",
-        "prompt": "invalid",
+        "prompt": {"system": "inline prompt"},
     }
-    workflow_path = _write_workflow(tmp_path / "prompt-override-invalid.yaml", payload)
+    workflow_path = _write_workflow(tmp_path / "inline-prompt-error.yaml", payload)
 
     report = validate_workflow_for_ui(workflow_path)
 

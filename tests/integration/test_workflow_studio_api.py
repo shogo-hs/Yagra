@@ -634,6 +634,15 @@ def test_workflow_studio_api_supports_bootstrap_save_from_empty_workflow(
 
 def test_workflow_studio_form_preview_and_save(tmp_path: Path) -> None:
     workflow_path = _write_workflow(tmp_path / "workflow.yaml", _base_payload())
+    prompt_file_path = tmp_path / "prompts.yaml"
+    prompt_file_path.write_text(
+        yaml.safe_dump(
+            {"edited": {"system": "edited prompt", "user": "do something"}},
+            sort_keys=False,
+            allow_unicode=True,
+        ),
+        encoding="utf-8",
+    )
     backup_dir = tmp_path / ".yagra-backups"
 
     server = create_workflow_studio_server(
@@ -662,7 +671,7 @@ def test_workflow_studio_form_preview_and_save(tmp_path: Path) -> None:
                 "node_edits": [
                     {
                         "node_id": "planner",
-                        "prompt": {"system": "edited prompt"},
+                        "prompt_ref": f"{prompt_file_path.resolve()}#edited",
                         "model": {"provider": "openai", "name": "gpt-4.1-nano"},
                     }
                 ],
@@ -676,8 +685,8 @@ def test_workflow_studio_form_preview_and_save(tmp_path: Path) -> None:
         assert preview["summary"]["total"] >= 1
         assert preview["validation_report"]["is_valid"] is True
         assert (
-            preview["candidate_workflow"]["nodes"][1]["params"]["prompt"]["system"]
-            == "edited prompt"
+            preview["candidate_workflow"]["nodes"][1]["params"]["prompt_ref"]
+            == f"{prompt_file_path.resolve()}#edited"
         )
         assert preview["candidate_workflow"]["edges"][2]["condition"] == "done"
 
@@ -696,7 +705,7 @@ def test_workflow_studio_form_preview_and_save(tmp_path: Path) -> None:
         status, after_form = _request_json("GET", f"{base_url}/api/workflow/form")
         assert status == 200
         planner = next(item for item in after_form["nodes"] if item["id"] == "planner")
-        assert planner["prompt"]["system"] == "edited prompt"
+        assert planner["prompt_ref"] == f"{prompt_file_path.resolve()}#edited"
         assert planner["model"]["name"] == "gpt-4.1-nano"
     finally:
         server.shutdown()

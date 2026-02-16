@@ -740,7 +740,6 @@ def _node_form_item_to_dict(item: WorkflowNodeFormItem) -> dict[str, Any]:
         "id": item.id,
         "handler": item.handler,
         "prompt_ref": item.prompt_ref,
-        "prompt": item.prompt,
         "model": item.model,
     }
 

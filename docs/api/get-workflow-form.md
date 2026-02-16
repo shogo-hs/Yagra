@@ -46,7 +46,7 @@ curl -X GET 'http://127.0.0.1:8787/api/workflow/form'
 | field | type | nullable | 説明 |
 | --- | --- | --- | --- |
 | revision | string | No | 現在リビジョン |
-| nodes | object[] | No | ノード編集項目（`id`,`handler`,`prompt_ref`,`prompt`,`model`） |
+| nodes | object[] | No | ノード編集項目（`id`,`handler`,`prompt_ref`,`model`） |
 | edges | object[] | No | エッジ編集項目（`index`,`source`,`target`,`condition`） |
 | prompt_catalog_keys | string[] | No | （Deprecated）prompt catalog候補キー |
 | workflow | object | No | workflow 生データ |
@@ -64,7 +64,6 @@ curl -X GET 'http://127.0.0.1:8787/api/workflow/form'
       "id": "planner",
       "handler": "planner_handler",
       "prompt_ref": "prompts/new_task.yaml#intent",
-      "prompt": null,
       "model": {"provider": "openai", "name": "gpt-4.1-mini", "temperature": 0.2}
     }
   ],
@@ -93,6 +92,7 @@ curl -X GET 'http://127.0.0.1:8787/api/workflow/form'
 - UIでは通常このAPIをロード起点として利用する。
 - Studio の現行運用では `prompt_catalog_keys` / `catalog_preview` は利用しない（後方互換のため返却）。
 - `model_ref` は廃止。モデル設定は `nodes[].params.model` のインライン定義を使用する。
+- `prompt`（インラインプロンプト）は廃止。プロンプトは `prompts/` 配下の YAML ファイルに定義し `prompt_ref` で参照する。
 
 ## 6. 実装同期メモ
 

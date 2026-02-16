@@ -26,7 +26,6 @@ def _base_payload() -> dict[str, Any]:
                 "id": "planner",
                 "handler": "planner_handler",
                 "params": {
-                    "prompt": {"system": "You are planner.", "user": "Create a plan."},
                     "model": {"provider": "openai", "name": "gpt-4.1-mini"},
                 },
             },
@@ -68,8 +67,10 @@ def test_build_workflow_form_view_includes_path_based_prompt_ref() -> None:
     assert retry_edge.target == "planner"
 
 
-def test_build_workflow_form_view_handles_inline_prompt_and_model(tmp_path: Path) -> None:
-    workflow_path = _write_workflow(tmp_path / "inline.yaml", _base_payload())
+def test_build_workflow_form_view_handles_prompt_ref_and_model(tmp_path: Path) -> None:
+    payload = _base_payload()
+    payload["nodes"][1]["params"]["prompt_ref"] = "prompts/support_prompts.yaml#planner"
+    workflow_path = _write_workflow(tmp_path / "ref.yaml", payload)
     session = load_workflow_edit_session(workflow_path=workflow_path)
 
     view = build_workflow_form_view(
@@ -79,8 +80,7 @@ def test_build_workflow_form_view_handles_inline_prompt_and_model(tmp_path: Path
     )
 
     planner = next(item for item in view.nodes if item.id == "planner")
-    assert planner.prompt_ref is None
-    assert planner.prompt == {"system": "You are planner.", "user": "Create a plan."}
+    assert planner.prompt_ref == "prompts/support_prompts.yaml#planner"
     assert planner.model == {"provider": "openai", "name": "gpt-4.1-mini"}
     assert view.prompt_catalog_keys == ()
 

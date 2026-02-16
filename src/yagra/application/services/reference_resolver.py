@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
@@ -73,6 +73,12 @@ def resolve_workflow_references(
                 location=("nodes", index, "params"),
             )
 
+        if "prompt" in node_params and node_params["prompt"] is not None:
+            raise WorkflowReferenceError(
+                "inline prompt is no longer supported; use prompt_ref to reference an external prompt file",
+                location=("nodes", index, "params", "prompt"),
+            )
+
         prompt_ref = _as_optional_string(
             node_params.get("prompt_ref"),
             location=("nodes", index, "params", "prompt_ref"),
@@ -85,22 +91,7 @@ def resolve_workflow_references(
                 ref_label="prompt_ref",
                 location=("nodes", index, "params", "prompt_ref"),
             )
-            prompt_override = _as_optional_mapping(
-                node_params.get("prompt"),
-                location=("nodes", index, "params", "prompt"),
-            )
-            if prompt_override is None:
-                node_params["prompt"] = resolved_prompt
-            else:
-                if not isinstance(resolved_prompt, Mapping):
-                    raise WorkflowReferenceError(
-                        "prompt_ref must resolve to a mapping when prompt override is provided",
-                        location=("nodes", index, "params", "prompt_ref"),
-                    )
-                node_params["prompt"] = _merge_mapping(
-                    base=deepcopy(dict(resolved_prompt)),
-                    override=prompt_override,
-                )
+            node_params["prompt"] = resolved_prompt
 
         if "model_ref" in node_params:
             raise WorkflowReferenceError(
@@ -276,23 +267,3 @@ def _as_optional_string(value: Any, location: Location = ()) -> str | None:
     if not normalized:
         return None
     return normalized
-
-
-def _as_optional_mapping(value: Any, location: Location = ()) -> dict[str, Any] | None:
-    """値を任意辞書として正規化する。"""
-    if value is None:
-        return None
-    if not isinstance(value, Mapping):
-        raise WorkflowReferenceError("override value must be a mapping", location=location)
-    return deepcopy(dict(value))
-
-
-def _merge_mapping(base: dict[str, Any], override: Mapping[str, Any]) -> dict[str, Any]:
-    """辞書を再帰マージし、override 側を優先する。"""
-    merged = deepcopy(base)
-    for key, value in override.items():
-        if key in merged and isinstance(merged[key], Mapping) and isinstance(value, Mapping):
-            merged[key] = _merge_mapping(dict(merged[key]), dict(value))
-            continue
-        merged[key] = deepcopy(value)
-    return merged
