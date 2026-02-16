@@ -1,0 +1,188 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, Yagra contributors
+# This file is distributed under the same license as the Yagra package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: Yagra 0.1.9\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-02-17 00:16+0900\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: ja\n"
+"Language-Team: ja <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: ../contributing.md:1
+msgid "Contributing to Yagra"
+msgstr ""
+
+#: ../contributing.md:3
+msgid ""
+"Thank you for your interest in contributing to Yagra! This guide will "
+"help you get started."
+msgstr ""
+
+#: ../contributing.md:5
+msgid ""
+"For detailed development setup and guidelines, see "
+"[CONTRIBUTING.md](https://github.com/shogo-"
+"hs/Yagra/blob/main/CONTRIBUTING.md) in the repository root."
+msgstr ""
+
+#: ../contributing.md:7
+msgid "Quick Start"
+msgstr ""
+
+#: ../contributing.md:9
+msgid "Prerequisites"
+msgstr ""
+
+#: ../contributing.md:11
+msgid "Python 3.12+"
+msgstr ""
+
+#: ../contributing.md:12
+msgid "[uv](https://github.com/astral-sh/uv) (recommended package manager)"
+msgstr ""
+
+#: ../contributing.md:14
+msgid "Setup"
+msgstr ""
+
+#: ../contributing.md:22
+msgid "Run Quality Checks"
+msgstr ""
+
+#: ../contributing.md:28
+msgid "Project Structure"
+msgstr ""
+
+#: ../contributing.md:43
+msgid "Development Workflow"
+msgstr ""
+
+#: ../contributing.md:45
+msgid "**Fork and Clone**: Fork the repository and clone your fork"
+msgstr ""
+
+#: ../contributing.md:46
+msgid "**Create Branch**: `git checkout -b feature/my-feature`"
+msgstr ""
+
+#: ../contributing.md:47
+msgid "**Make Changes**: Implement your feature or fix"
+msgstr ""
+
+#: ../contributing.md:48
+msgid "**Run Tests**: `uv run pytest`"
+msgstr ""
+
+#: ../contributing.md:49
+msgid "**Run Quality Checks**: `uv run pre-commit run --all-files`"
+msgstr ""
+
+#: ../contributing.md:50
+msgid "**Commit**: Follow conventional commit format"
+msgstr ""
+
+#: ../contributing.md:51
+msgid "**Push**: `git push origin feature/my-feature`"
+msgstr ""
+
+#: ../contributing.md:52
+msgid "**Create PR**: Submit a pull request with clear description"
+msgstr ""
+
+#: ../contributing.md:54
+msgid "Coding Standards"
+msgstr ""
+
+#: ../contributing.md:56
+msgid "**Type Hints**: Required for all function signatures"
+msgstr ""
+
+#: ../contributing.md:57
+msgid "**Docstrings**: Use Google style with Japanese descriptions"
+msgstr ""
+
+#: ../contributing.md:58
+msgid "**Formatting**: `ruff format .`"
+msgstr ""
+
+#: ../contributing.md:59
+msgid "**Linting**: `ruff check .`"
+msgstr ""
+
+#: ../contributing.md:60
+msgid "**Type Checking**: `mypy .`"
+msgstr ""
+
+#: ../contributing.md:62
+msgid "Testing"
+msgstr ""
+
+#: ../contributing.md:75
+msgid "Documentation"
+msgstr ""
+
+#: ../contributing.md:77
+msgid "Building Sphinx Documentation"
+msgstr ""
+
+#: ../contributing.md:83
+msgid "Open `docs/sphinx/_build/html/index.html` in your browser."
+msgstr ""
+
+#: ../contributing.md:85
+msgid "Documentation Guidelines"
+msgstr ""
+
+#: ../contributing.md:87
+msgid "Write in English (primary language)"
+msgstr ""
+
+#: ../contributing.md:88
+msgid "Use Markdown (`.md`) with MyST parser"
+msgstr ""
+
+#: ../contributing.md:89
+msgid "Include code examples for all features"
+msgstr ""
+
+#: ../contributing.md:90
+msgid "Update docstrings for Python API changes"
+msgstr ""
+
+#: ../contributing.md:92
+msgid "Questions?"
+msgstr ""
+
+#: ../contributing.md:94
+msgid ""
+"**GitHub Issues**: [https://github.com/shogo-"
+"hs/Yagra/issues](https://github.com/shogo-hs/Yagra/issues)"
+msgstr ""
+
+#: ../contributing.md:95
+msgid ""
+"**Discussions**: [https://github.com/shogo-"
+"hs/Yagra/discussions](https://github.com/shogo-hs/Yagra/discussions)"
+msgstr ""
+
+#: ../contributing.md:97
+msgid "License"
+msgstr ""
+
+#: ../contributing.md:99
+msgid ""
+"By contributing, you agree that your contributions will be licensed under"
+" the MIT License."
+msgstr ""
+

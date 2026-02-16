@@ -1,0 +1,402 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, Yagra contributors
+# This file is distributed under the same license as the Yagra package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: Yagra 0.1.9\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-02-17 00:16+0900\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: ja\n"
+"Language-Team: ja <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: ../user_guide/prompt_model.md:1
+msgid "Prompt & Model Configuration"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:3
+msgid ""
+"This guide explains how to configure prompts and models in Yagra "
+"workflows."
+msgstr ""
+
+#: ../user_guide/prompt_model.md:5
+msgid "Overview"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:7
+msgid "Yagra separates configuration from code:"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:8
+msgid "**Prompts**: Stored in external YAML files, referenced via `prompt_ref`"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:9
+msgid "**Models**: Defined inline in workflow YAML under `params.model`"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:11
+msgid "This separation enables:"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:12
+msgid "Non-engineers to adjust prompts without touching code"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:13
+msgid "Easy A/B testing of different models"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:14
+msgid "Version control and review of prompt changes"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:16
+msgid "Prompt Configuration"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:18
+msgid "External Prompt Files"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:20
+msgid "Prompts are stored in separate YAML files (typically under `prompts/`)."
+msgstr ""
+
+#: ../user_guide/prompt_model.md:22
+msgid "**Example**: `prompts/support_prompts.yaml`"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:39
+msgid "Referencing Prompts in Workflow"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:41
+msgid "Use `prompt_ref` to link a node to a prompt:"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:51
+msgid "**Syntax**:"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:52
+msgid "`<path>`: Path to YAML file (relative to workflow or `bundle_root`)"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:53
+msgid "`#<key>`: Key path within the YAML (e.g., `#faq`, `#nested.key`)"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:55
+msgid "Prompt Resolution"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:57
+msgid "Yagra resolves `prompt_ref` before passing `params` to the handler:"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:67
+msgid ""
+"**Note**: `prompt_ref` is removed from `params` after resolution—use "
+"`params[\"prompt\"]` instead."
+msgstr ""
+
+#: ../user_guide/prompt_model.md:69
+msgid "Path Resolution Rules"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:71
+msgid "**Explicit relative path** (e.g., `../prompts/foo.yaml`):"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:72
+msgid "Resolved relative to the workflow YAML file"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:74
+msgid "**Implicit path** (e.g., `support_prompts.yaml`):"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:75
+msgid "First tries workflow parent directory"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:76
+msgid "Then searches up the directory tree"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:78
+msgid "**Custom `bundle_root`**:"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:79
+msgid "Use `--bundle-root` to override the base directory"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:81
+msgid "Example:"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:87
+msgid "Prompt YAML Structure"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:89
+msgid "Prompts must be mappings with `system` and `user` keys:"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:97
+msgid "You can nest prompts:"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:109
+msgid "Reference nested prompts: `prompt_ref: \"prompts.yaml#retrieval.search\"`"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:111
+msgid "Model Configuration"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:113
+msgid "Inline Model Definition"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:115
+msgid "Models are defined directly in workflow YAML under `params.model`:"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:130
+msgid "**Fields**:"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:131
+msgid "`provider` (str): Model provider (e.g., `\"openai\"`, `\"anthropic\"`)"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:132
+msgid "`name` (str): Model name (e.g., `\"gpt-4.1-mini\"`, `\"claude-3-sonnet\"`)"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:133
+msgid ""
+"`kwargs` (dict, optional): Additional arguments (temperature, max_tokens,"
+" etc.)"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:135
+msgid "Accessing Model Config in Handlers"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:149
+msgid "Why Inline Instead of `model_ref`?"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:151
+msgid ""
+"Earlier versions of Yagra supported `model_ref`, but it was removed in "
+"favor of inline definitions for simplicity. Inline definitions:"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:152
+msgid "Are easier to version control (single file)"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:153
+msgid "Reduce indirection (no need to chase references)"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:154
+msgid "Work well for most use cases"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:156
+msgid ""
+"If you need to share model configs across multiple nodes, use YAML "
+"anchors:"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:179
+msgid "Studio Integration"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:181
+msgid "Yagra Studio provides visual editing for prompts and models:"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:183
+msgid "**Prompt Editing**:"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:184
+msgid "Select a prompt YAML from dropdown"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:185
+msgid "Edit `system` and `user` fields in form"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:186
+msgid "Auto-create prompt YAML if not selected"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:188
+msgid "**Model Editing**:"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:189
+msgid "Fill in `provider`, `name`, and `kwargs` via form"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:190
+msgid "Changes are reflected in workflow YAML immediately"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:192
+msgid "**Diff Preview**:"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:193
+msgid "Review changes before saving"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:194
+msgid "See exact YAML diff with validation results"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:196
+msgid "Launch Studio:"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:202
+msgid "Open `http://127.0.0.1:8787/` and edit visually."
+msgstr ""
+
+#: ../user_guide/prompt_model.md:204
+msgid "Best Practices"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:206
+msgid "Prompt Management"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:208
+msgid ""
+"**One file per domain**: Group related prompts (e.g., "
+"`support_prompts.yaml`, `rag_prompts.yaml`)"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:209
+msgid "**Use descriptive keys**: `faq_system` is better than `prompt1`"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:210
+#, python-brace-format
+msgid "**Include placeholders**: Use `{variable}` for dynamic content"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:211
+msgid "**Version control**: Track prompt changes via Git for review and rollback"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:213
+msgid "Model Selection"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:215
+msgid ""
+"**Match task complexity**: Use smaller models (e.g., `gpt-4.1-mini`) for "
+"simple tasks"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:216
+msgid ""
+"**Tune temperature**: Lower (0.1-0.3) for factual, higher (0.7-0.9) for "
+"creative"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:217
+msgid "**Set limits**: Use `max_tokens` to control output length and cost"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:218
+msgid "**Test alternatives**: Swap models easily to compare quality and cost"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:220
+msgid "Example: Complete Configuration"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:222
+msgid "**Workflow**: `workflows/support.yaml`"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:268
+msgid "**Prompts**: `prompts/support_prompts.yaml`"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:284
+msgid "Troubleshooting"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:286
+msgid "`prompt_ref` Not Resolved"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:288
+msgid "**Error**: `ValidationError: prompt_ref path not found`"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:290
+msgid "**Solutions**:"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:291
+msgid "Check file path is correct (relative to workflow or `bundle_root`)"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:292
+msgid "Ensure key exists in YAML (e.g., `#faq` in `support_prompts.yaml`)"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:293
+msgid "Use `--bundle-root` to override base directory"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:295
+msgid "Model Config Not Passed"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:297
+msgid "**Issue**: `model` is `None` or empty in handler"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:299
+msgid "**Solution**: Ensure `params.model` is defined in workflow YAML:"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:308
+msgid "Next Steps"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:310
+msgid "[Branching & Loops](branching_loops.md)"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:311
+msgid "[Templates](templates.md)"
+msgstr ""
+
+#: ../user_guide/prompt_model.md:312
+msgid "[CLI Reference](../cli_reference.md)"
+msgstr ""
+

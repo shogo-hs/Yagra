@@ -1,0 +1,191 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, Yagra contributors
+# This file is distributed under the same license as the Yagra package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: Yagra 0.1.9\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-02-17 00:16+0900\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: ja\n"
+"Language-Team: ja <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: ../index.md:21
+msgid "Getting Started"
+msgstr ""
+
+#: ../index.md:28
+msgid "User Guide"
+msgstr ""
+
+#: ../index.md:38
+msgid "CLI & API"
+msgstr ""
+
+#: ../index.md:46
+msgid "Additional Resources"
+msgstr ""
+
+#: ../index.md:1
+msgid "Yagra Documentation"
+msgstr "Yagra ドキュメント"
+
+#: ../index.md:3
+msgid "**Declarative LangGraph Builder powered by YAML**"
+msgstr "**YAML で動作する宣言的 LangGraph ビルダー**"
+
+#: ../index.md:5
+msgid ""
+"Yagra enables you to build [LangGraph](https://langchain-"
+"ai.github.io/langgraph/)'s `StateGraph` from YAML definitions, separating"
+" workflow logic from Python implementation."
+msgstr ""
+"Yagra は YAML 定義から [LangGraph](https://langchain-ai.github.io/langgraph/) の "
+"`StateGraph` を構築できます。ワークフローロジックを Python 実装から分離します。"
+
+#: ../index.md:7
+msgid "What is Yagra?"
+msgstr "Yagra とは？"
+
+#: ../index.md:9
+msgid ""
+"Yagra is a Python library that lets you define LLM agent workflows "
+"declaratively in YAML files. Instead of writing boilerplate LangGraph "
+"code for every workflow variation, you define nodes, edges, and branching"
+" logic in YAML—then swap configurations without touching code."
+msgstr ""
+"Yagra は LLM エージェントワークフローを YAML ファイルで宣言的に定義できる Python ライブラリです。"
+"ワークフローのバリエーションごとに LangGraph のボイラープレートコードを書く代わりに、"
+"ノード、エッジ、分岐ロジックを YAML で定義し、コードを触らずに設定を切り替えられます。"
+
+#: ../index.md:11
+msgid "Key Benefits"
+msgstr "主な利点"
+
+#: ../index.md:13
+msgid "**Faster iteration**: Adjust workflows by editing YAML, not Python"
+msgstr "**高速な反復開発**: Python ではなく YAML を編集してワークフローを調整"
+
+#: ../index.md:14
+msgid ""
+"**Non-engineer friendly**: Prompt engineers and domain experts can modify"
+" workflows"
+msgstr "**非エンジニアフレンドリー**: プロンプトエンジニアやドメインエキスパートがワークフローを変更可能"
+
+#: ../index.md:15
+msgid ""
+"**Validation by design**: Pydantic-based schema catches errors before "
+"runtime"
+msgstr ""
+
+#: ../index.md:16
+msgid "**Visual editing**: Studio WebUI for drag-and-drop workflow construction"
+msgstr ""
+
+#: ../index.md:17
+msgid ""
+"**AI-ready**: JSON Schema export enables coding agents to generate "
+"workflows"
+msgstr ""
+
+#: ../index.md:19
+msgid "Quick Links"
+msgstr ""
+
+#: ../index.md:55
+msgid "Architecture Overview"
+msgstr ""
+
+#: ../index.md:57
+msgid "Yagra follows **Hexagonal Architecture** (Ports and Adapters):"
+msgstr ""
+
+#: ../index.md:59
+msgid "**Domain**: Core workflow entities (`GraphSpec`, `NodeSpec`, `EdgeSpec`)"
+msgstr ""
+
+#: ../index.md:60
+msgid "**Application**: Use cases (`build_state_graph`, `validate_workflow`)"
+msgstr ""
+
+#: ../index.md:61
+msgid "**Ports**: Interfaces for extensibility (`NodeRegistryPort`)"
+msgstr ""
+
+#: ../index.md:62
+msgid "**Adapters**: Implementations (file system, WebUI server)"
+msgstr ""
+
+#: ../index.md:64
+msgid "Dependency rule: Outer layers depend on inner layers, never the reverse."
+msgstr ""
+
+#: ../index.md:66
+msgid "Use Cases"
+msgstr ""
+
+#: ../index.md:68
+msgid ""
+"**Prototyping LLM agent flows**: Rapidly test different workflow "
+"variations"
+msgstr ""
+
+#: ../index.md:69
+msgid ""
+"**Collaborative workflow development**: Enable non-engineers to adjust "
+"prompts and branching"
+msgstr ""
+
+#: ../index.md:70
+msgid ""
+"**AI-assisted workflow generation**: Let coding agents generate and "
+"validate workflows"
+msgstr ""
+
+#: ../index.md:71
+msgid ""
+"**Reducing boilerplate**: Build complex LangGraph applications with less "
+"code"
+msgstr ""
+
+#: ../index.md:73
+msgid "Community"
+msgstr ""
+
+#: ../index.md:75
+msgid ""
+"**GitHub**: [https://github.com/shogo-hs/Yagra](https://github.com/shogo-"
+"hs/Yagra)"
+msgstr ""
+
+#: ../index.md:76
+msgid ""
+"**Issues**: [https://github.com/shogo-hs/Yagra/issues](https://github.com"
+"/shogo-hs/Yagra/issues)"
+msgstr ""
+
+#: ../index.md:77
+msgid ""
+"**PyPI**: "
+"[https://pypi.org/project/yagra/](https://pypi.org/project/yagra/)"
+msgstr ""
+
+#: ../index.md:79
+msgid "License"
+msgstr ""
+
+#: ../index.md:81
+msgid ""
+"MIT License - see [LICENSE](https://github.com/shogo-"
+"hs/Yagra/blob/main/LICENSE) for details."
+msgstr ""
+

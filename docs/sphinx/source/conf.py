@@ -45,6 +45,16 @@ myst_enable_extensions = [
 templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
+# Internationalization
+language = "en"
+locale_dirs = ["locale/"]
+gettext_compact = False
+
 html_theme = "furo"
 html_title = f"{project} Documentation"
 html_static_path = ["_static"]
+
+# Furo theme options for language switcher
+html_theme_options = {
+    "top_of_page_buttons": ["view", "edit"],
+}

@@ -1,0 +1,738 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, Yagra contributors
+# This file is distributed under the same license as the Yagra package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: Yagra 0.1.9\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-02-17 00:16+0900\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: ja\n"
+"Language-Team: ja <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: ../cli_reference.md:1
+msgid "CLI Reference"
+msgstr ""
+
+#: ../cli_reference.md:3
+msgid ""
+"Yagra provides command-line tools for workflow management, validation, "
+"and visualization."
+msgstr ""
+
+#: ../cli_reference.md:5
+msgid "Command Overview"
+msgstr ""
+
+#: ../cli_reference.md:11
+msgid "**Available commands**:"
+msgstr ""
+
+#: ../cli_reference.md:12
+msgid "`init`: Initialize from template"
+msgstr ""
+
+#: ../cli_reference.md:13
+msgid "`schema`: Export JSON Schema"
+msgstr ""
+
+#: ../cli_reference.md:14
+msgid "`validate`: Validate workflow YAML"
+msgstr ""
+
+#: ../cli_reference.md:15
+msgid "`visualize`: Generate visualization HTML"
+msgstr ""
+
+#: ../cli_reference.md:16
+msgid "`studio`: Launch visual editor WebUI"
+msgstr ""
+
+#: ../cli_reference.md:18
+msgid "`yagra init`"
+msgstr ""
+
+#: ../cli_reference.md:20
+msgid "Initialize a workflow from a template."
+msgstr ""
+
+#: ../cli_reference.md:22 ../cli_reference.md:77 ../cli_reference.md:119
+#: ../cli_reference.md:214 ../cli_reference.md:262
+msgid "Usage"
+msgstr ""
+
+#: ../cli_reference.md:29 ../cli_reference.md:83 ../cli_reference.md:125
+#: ../cli_reference.md:220 ../cli_reference.md:269
+msgid "Options"
+msgstr ""
+
+#: ../cli_reference.md
+msgid "Option"
+msgstr ""
+
+#: ../cli_reference.md
+msgid "Description"
+msgstr ""
+
+#: ../cli_reference.md
+msgid "Default"
+msgstr ""
+
+#: ../cli_reference.md
+msgid "`--template`"
+msgstr ""
+
+#: ../cli_reference.md
+msgid "Template name to use (`branch`, `loop`, `rag`)"
+msgstr ""
+
+#: ../cli_reference.md
+msgid "Required (unless `--list`)"
+msgstr ""
+
+#: ../cli_reference.md
+msgid "`--output`"
+msgstr ""
+
+#: ../cli_reference.md
+msgid "Output directory"
+msgstr ""
+
+#: ../cli_reference.md
+msgid "Current directory (`.`)"
+msgstr ""
+
+#: ../cli_reference.md
+msgid "`--force`"
+msgstr ""
+
+#: ../cli_reference.md
+msgid "Overwrite existing files"
+msgstr ""
+
+#: ../cli_reference.md
+msgid "`False`"
+msgstr ""
+
+#: ../cli_reference.md
+msgid "`--list`"
+msgstr ""
+
+#: ../cli_reference.md
+msgid "List available templates"
+msgstr ""
+
+#: ../cli_reference.md
+msgid "N/A"
+msgstr ""
+
+#: ../cli_reference.md:38 ../cli_reference.md:89 ../cli_reference.md:133
+#: ../cli_reference.md:229 ../cli_reference.md:281
+msgid "Examples"
+msgstr ""
+
+#: ../cli_reference.md:40
+msgid "**List templates**:"
+msgstr ""
+
+#: ../cli_reference.md:46 ../cli_reference.md:335
+msgid "Output:"
+msgstr ""
+
+#: ../cli_reference.md:54
+msgid "**Initialize from template**:"
+msgstr ""
+
+#: ../cli_reference.md:60
+msgid "**Overwrite existing files**:"
+msgstr ""
+
+#: ../cli_reference.md:66 ../cli_reference.md:103
+msgid "Behavior"
+msgstr ""
+
+#: ../cli_reference.md:68
+msgid "Copies template files to output directory"
+msgstr ""
+
+#: ../cli_reference.md:69
+msgid "Creates `workflow.yaml` and `prompts/<template>_prompts.yaml`"
+msgstr ""
+
+#: ../cli_reference.md:70
+msgid "Validates the generated workflow"
+msgstr ""
+
+#: ../cli_reference.md:71
+msgid "Reports success or validation errors"
+msgstr ""
+
+#: ../cli_reference.md:73
+msgid "`yagra schema`"
+msgstr ""
+
+#: ../cli_reference.md:75
+msgid ""
+"Export JSON Schema for workflow YAML. Useful for coding agents and IDE "
+"autocomplete."
+msgstr ""
+
+#: ../cli_reference.md
+msgid "Output file path"
+msgstr ""
+
+#: ../cli_reference.md
+msgid "Print to stdout"
+msgstr ""
+
+#: ../cli_reference.md:91
+msgid "**Print to stdout**:"
+msgstr ""
+
+#: ../cli_reference.md:97
+msgid "**Save to file**:"
+msgstr ""
+
+#: ../cli_reference.md:105
+msgid "Exports `GraphSpec` Pydantic model as JSON Schema"
+msgstr ""
+
+#: ../cli_reference.md:106
+msgid "Includes all field definitions, validation rules, and descriptions"
+msgstr ""
+
+#: ../cli_reference.md:107
+msgid "Compatible with JSON Schema Draft 7"
+msgstr ""
+
+#: ../cli_reference.md:109
+msgid "Use Cases"
+msgstr ""
+
+#: ../cli_reference.md:111
+msgid "**Coding agents**: Let agents generate valid workflows"
+msgstr ""
+
+#: ../cli_reference.md:112
+msgid ""
+"**IDE support**: Enable autocomplete in editors (e.g., VS Code with YAML "
+"extension)"
+msgstr ""
+
+#: ../cli_reference.md:113
+msgid "**Documentation**: Generate schema documentation automatically"
+msgstr ""
+
+#: ../cli_reference.md:115
+msgid "`yagra validate`"
+msgstr ""
+
+#: ../cli_reference.md:117
+msgid "Validate a workflow YAML file and report issues."
+msgstr ""
+
+#: ../cli_reference.md
+msgid "`--workflow`"
+msgstr ""
+
+#: ../cli_reference.md
+msgid "Path to workflow YAML"
+msgstr ""
+
+#: ../cli_reference.md
+msgid "Required"
+msgstr ""
+
+#: ../cli_reference.md
+msgid "`--bundle-root`"
+msgstr ""
+
+#: ../cli_reference.md
+msgid "Base directory for reference resolution"
+msgstr ""
+
+#: ../cli_reference.md
+msgid "Workflow parent directory"
+msgstr ""
+
+#: ../cli_reference.md
+msgid "`--format`"
+msgstr ""
+
+#: ../cli_reference.md
+msgid "Output format (`text` or `json`)"
+msgstr ""
+
+#: ../cli_reference.md
+msgid "`text`"
+msgstr ""
+
+#: ../cli_reference.md:135
+msgid "**Basic validation**:"
+msgstr ""
+
+#: ../cli_reference.md:141
+msgid "**JSON output** (for agent consumption):"
+msgstr ""
+
+#: ../cli_reference.md:147
+msgid "**Custom bundle root**:"
+msgstr ""
+
+#: ../cli_reference.md:153
+msgid "Output Formats"
+msgstr ""
+
+#: ../cli_reference.md:155
+msgid "Text Format (Default)"
+msgstr ""
+
+#: ../cli_reference.md:157
+msgid "Human-readable output:"
+msgstr ""
+
+#: ../cli_reference.md:163
+msgid "Or if invalid:"
+msgstr ""
+
+#: ../cli_reference.md:172
+msgid "JSON Format"
+msgstr ""
+
+#: ../cli_reference.md:174
+msgid "Structured output for agents:"
+msgstr ""
+
+#: ../cli_reference.md:196 ../cli_reference.md:367
+msgid "Exit Codes"
+msgstr ""
+
+#: ../cli_reference.md:198
+msgid "`0`: Valid workflow"
+msgstr ""
+
+#: ../cli_reference.md:199
+msgid "`1`: Invalid workflow"
+msgstr ""
+
+#: ../cli_reference.md:201
+msgid "Validation Steps"
+msgstr ""
+
+#: ../cli_reference.md:203
+msgid "Yagra validates:"
+msgstr ""
+
+#: ../cli_reference.md:204
+msgid "**Schema compliance**: YAML matches `GraphSpec` Pydantic model"
+msgstr ""
+
+#: ../cli_reference.md:205
+msgid "**Node ID uniqueness**: No duplicate node IDs"
+msgstr ""
+
+#: ../cli_reference.md:206
+msgid "**Edge references**: All `source`/`target` nodes exist"
+msgstr ""
+
+#: ../cli_reference.md:207
+msgid "**Start/End validity**: `start_at` and `end_at` nodes exist"
+msgstr ""
+
+#: ../cli_reference.md:208
+msgid "**Prompt references**: `prompt_ref` paths resolve to valid files"
+msgstr ""
+
+#: ../cli_reference.md:210
+msgid "`yagra visualize`"
+msgstr ""
+
+#: ../cli_reference.md:212
+msgid "Generate a read-only HTML visualization of the workflow."
+msgstr ""
+
+#: ../cli_reference.md
+msgid "Output HTML file path"
+msgstr ""
+
+#: ../cli_reference.md
+msgid "`workflow-visualization.html`"
+msgstr ""
+
+#: ../cli_reference.md
+msgid "`--title`"
+msgstr ""
+
+#: ../cli_reference.md
+msgid "Page title"
+msgstr ""
+
+#: ../cli_reference.md
+msgid "Workflow file name"
+msgstr ""
+
+#: ../cli_reference.md:231
+msgid "**Basic visualization**:"
+msgstr ""
+
+#: ../cli_reference.md:237
+msgid "**Custom title**:"
+msgstr ""
+
+#: ../cli_reference.md:243
+msgid "Output"
+msgstr ""
+
+#: ../cli_reference.md:245
+msgid "Standalone HTML file with embedded Mermaid diagram"
+msgstr ""
+
+#: ../cli_reference.md:246
+msgid "No internet connection required (Mermaid is bundled)"
+msgstr ""
+
+#: ../cli_reference.md:247
+msgid "Nodes, edges, and conditional branches are visualized"
+msgstr ""
+
+#: ../cli_reference.md:248
+msgid "Opens directly in any browser"
+msgstr ""
+
+#: ../cli_reference.md:250
+msgid "Example Visualization"
+msgstr ""
+
+#: ../cli_reference.md:252
+msgid ""
+"![Visualization "
+"Example](https://via.placeholder.com/600x400?text=Workflow+Visualization)"
+msgstr ""
+
+#: ../cli_reference.md:252
+msgid "Visualization Example"
+msgstr ""
+
+#: ../cli_reference.md:254
+msgid "Nodes: Boxes"
+msgstr ""
+
+#: ../cli_reference.md:255
+msgid "Edges: Arrows"
+msgstr ""
+
+#: ../cli_reference.md:256
+msgid "Conditional edges: Labeled arrows"
+msgstr ""
+
+#: ../cli_reference.md:258
+msgid "`yagra studio`"
+msgstr ""
+
+#: ../cli_reference.md:260
+msgid "Launch an interactive WebUI for visual workflow editing."
+msgstr ""
+
+#: ../cli_reference.md
+msgid "Workflow YAML to edit"
+msgstr ""
+
+#: ../cli_reference.md
+msgid "None (launcher mode)"
+msgstr ""
+
+#: ../cli_reference.md
+msgid "Workflow parent"
+msgstr ""
+
+#: ../cli_reference.md
+msgid "`--ui-state`"
+msgstr ""
+
+#: ../cli_reference.md
+msgid "UI sidecar JSON path"
+msgstr ""
+
+#: ../cli_reference.md
+msgid "`<workflow>.workflow-ui.json`"
+msgstr ""
+
+#: ../cli_reference.md
+msgid "`--workspace-root`"
+msgstr ""
+
+#: ../cli_reference.md
+msgid "Workspace root for launcher"
+msgstr ""
+
+#: ../cli_reference.md
+msgid "Current directory"
+msgstr ""
+
+#: ../cli_reference.md
+msgid "`--backup-dir`"
+msgstr ""
+
+#: ../cli_reference.md
+msgid "Backup directory"
+msgstr ""
+
+#: ../cli_reference.md
+msgid "`.yagra/backups`"
+msgstr ""
+
+#: ../cli_reference.md
+msgid "`--host`"
+msgstr ""
+
+#: ../cli_reference.md
+msgid "Bind host"
+msgstr ""
+
+#: ../cli_reference.md
+msgid "`127.0.0.1`"
+msgstr ""
+
+#: ../cli_reference.md
+msgid "`--port`"
+msgstr ""
+
+#: ../cli_reference.md
+msgid "Bind port"
+msgstr ""
+
+#: ../cli_reference.md
+msgid "`8787`"
+msgstr ""
+
+#: ../cli_reference.md:283
+msgid "**Launcher mode** (recommended):"
+msgstr ""
+
+#: ../cli_reference.md:289
+msgid "Opens a launcher UI where you can:"
+msgstr ""
+
+#: ../cli_reference.md:290
+msgid "Select existing workflows"
+msgstr ""
+
+#: ../cli_reference.md:291
+msgid "Create new workflows"
+msgstr ""
+
+#: ../cli_reference.md:293
+msgid "**Direct workflow editing**:"
+msgstr ""
+
+#: ../cli_reference.md:299
+msgid "**Custom workspace**:"
+msgstr ""
+
+#: ../cli_reference.md:305
+msgid "Features"
+msgstr ""
+
+#: ../cli_reference.md:307
+msgid "Visual Editing"
+msgstr ""
+
+#: ../cli_reference.md:308
+msgid "**Node Properties**: Edit `prompt_ref`, model config, and custom params"
+msgstr ""
+
+#: ../cli_reference.md:309
+msgid "**Drag & Drop**: Add nodes, connect edges, adjust layout"
+msgstr ""
+
+#: ../cli_reference.md:310
+msgid "**Re-wiring**: Drag edge endpoints to change connections"
+msgstr ""
+
+#: ../cli_reference.md:312
+msgid "Diff Preview"
+msgstr ""
+
+#: ../cli_reference.md:313
+msgid "View exact YAML diff before saving"
+msgstr ""
+
+#: ../cli_reference.md:314
+msgid "Validation results inline with diff"
+msgstr ""
+
+#: ../cli_reference.md:315
+msgid "Reject or accept changes"
+msgstr ""
+
+#: ../cli_reference.md:317
+msgid "Backup & Rollback"
+msgstr ""
+
+#: ../cli_reference.md:318
+msgid "Automatic backup on save"
+msgstr ""
+
+#: ../cli_reference.md:319
+msgid "List available backups"
+msgstr ""
+
+#: ../cli_reference.md:320
+msgid "Rollback to previous version by backup ID"
+msgstr ""
+
+#: ../cli_reference.md:322
+msgid "Validation"
+msgstr ""
+
+#: ../cli_reference.md:323
+msgid "Real-time validation as you edit"
+msgstr ""
+
+#: ../cli_reference.md:324
+msgid "Detailed error messages with location"
+msgstr ""
+
+#: ../cli_reference.md:325
+msgid "Prevents saving invalid workflows"
+msgstr ""
+
+#: ../cli_reference.md:327
+msgid "Accessing Studio"
+msgstr ""
+
+#: ../cli_reference.md:329
+msgid "After starting the server:"
+msgstr ""
+
+#: ../cli_reference.md:342
+msgid "Open `http://127.0.0.1:8787/` in your browser."
+msgstr ""
+
+#: ../cli_reference.md:344
+msgid "Studio UI Overview"
+msgstr ""
+
+#: ../cli_reference.md:346
+msgid "**Graph Canvas**: Visual workflow editor (drag, drop, connect)"
+msgstr ""
+
+#: ../cli_reference.md:347
+msgid "**Node Properties**: Form for editing selected node"
+msgstr ""
+
+#: ../cli_reference.md:348
+msgid "**Edge Properties**: Form for editing selected edge"
+msgstr ""
+
+#: ../cli_reference.md:349
+msgid "**Diff Panel**: Preview changes before saving"
+msgstr ""
+
+#: ../cli_reference.md:350
+msgid "**Backup Panel**: Manage backups and rollback"
+msgstr ""
+
+#: ../cli_reference.md:352
+msgid "Studio Workflow"
+msgstr ""
+
+#: ../cli_reference.md:354
+msgid "**Select/Create Workflow**: Choose from launcher or load directly"
+msgstr ""
+
+#: ../cli_reference.md:355
+msgid "**Edit Visually**:"
+msgstr ""
+
+#: ../cli_reference.md:356
+msgid "Click node to edit properties"
+msgstr ""
+
+#: ../cli_reference.md:357
+msgid "Drag from output port to input port to connect"
+msgstr ""
+
+#: ../cli_reference.md:358
+msgid "Drag edge endpoint to rewire"
+msgstr ""
+
+#: ../cli_reference.md:359
+msgid "**Preview Changes**: Click \"Preview Diff\""
+msgstr ""
+
+#: ../cli_reference.md:360
+msgid "**Save**: Click \"Save\" to persist changes"
+msgstr ""
+
+#: ../cli_reference.md:361
+msgid "**Rollback** (if needed): Select backup and restore"
+msgstr ""
+
+#: ../cli_reference.md:363
+msgid "Environment Variables"
+msgstr ""
+
+#: ../cli_reference.md:365
+msgid ""
+"Yagra does not currently use environment variables for CLI configuration."
+" All options are passed via command-line flags."
+msgstr ""
+
+#: ../cli_reference.md
+msgid "Code"
+msgstr ""
+
+#: ../cli_reference.md
+msgid "Meaning"
+msgstr ""
+
+#: ../cli_reference.md
+msgid "0"
+msgstr ""
+
+#: ../cli_reference.md
+msgid "Success"
+msgstr ""
+
+#: ../cli_reference.md
+msgid "1"
+msgstr ""
+
+#: ../cli_reference.md
+msgid "Validation error or operation failed"
+msgstr ""
+
+#: ../cli_reference.md
+msgid "2"
+msgstr ""
+
+#: ../cli_reference.md
+msgid "Invalid command-line arguments"
+msgstr ""
+
+#: ../cli_reference.md:375
+msgid "Next Steps"
+msgstr ""
+
+#: ../cli_reference.md:377
+msgid "[Getting Started](getting_started.md)"
+msgstr ""
+
+#: ../cli_reference.md:378
+msgid "[Workflow YAML Reference](user_guide/workflow_yaml.md)"
+msgstr ""
+
+#: ../cli_reference.md:379
+msgid "[API Reference](api.md)"
+msgstr ""
+

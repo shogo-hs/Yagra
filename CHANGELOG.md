@@ -6,6 +6,24 @@
 
 なし
 
+## [0.2.0] - 2026-02-17
+
+### Added
+- 📚 **Documentation Overhaul**: 全面的なドキュメント刷新
+  - 英語メインのREADME.md（国際的ユーザー向け）
+  - 包括的なSphinxドキュメント（11ページ: Getting Started, User Guide, CLI Reference, Examples等）
+  - CONTRIBUTING.md（開発者向けガイド）
+  - 多言語化サポート（Sphinx i18n、英語/日本語）
+- 🌐 **Internationalization**: Sphinx i18n完全セットアップ
+  - POT/POファイル生成済み
+  - 日本語翻訳環境構築
+  - 翻訳ワークフロードキュメント
+
+### Changed
+- README.mdを日本語から英語メインに変更
+- ドキュメント構成を最適化（README=ランディングページ、Sphinx=詳細ドキュメント）
+- Pydantic/Clickスタイルのベストプラクティスに準拠
+
 ## [0.1.9] - 2026-02-16
 
 ### Fixed

@@ -1,0 +1,163 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, Yagra contributors
+# This file is distributed under the same license as the Yagra package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: Yagra 0.1.9\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-02-17 00:16+0900\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: ja\n"
+"Language-Team: ja <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: ../changelog.md:1
+msgid "Changelog"
+msgstr ""
+
+#: ../changelog.md:3
+msgid "All notable changes to Yagra are documented here."
+msgstr ""
+
+#: ../changelog.md:5
+msgid ""
+"The format is based on [Keep a "
+"Changelog](https://keepachangelog.com/en/1.0.0/), and this project "
+"adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)."
+msgstr ""
+
+#: ../changelog.md:7
+msgid ""
+"For the complete changelog, see [CHANGELOG.md](https://github.com/shogo-"
+"hs/Yagra/blob/main/CHANGELOG.md) in the repository."
+msgstr ""
+
+#: ../changelog.md:9
+msgid "[Unreleased]"
+msgstr ""
+
+#: ../changelog.md:11 ../changelog.md:18 ../changelog.md:29 ../changelog.md:36
+#: ../changelog.md:45
+msgid "Added"
+msgstr ""
+
+#: ../changelog.md:12
+msgid "Comprehensive English documentation for README and Sphinx"
+msgstr ""
+
+#: ../changelog.md:13
+msgid "CONTRIBUTING.md for development guidelines"
+msgstr ""
+
+#: ../changelog.md:14
+msgid "Multilingual documentation support (English primary, Japanese secondary)"
+msgstr ""
+
+#: ../changelog.md:16
+msgid "[0.1.9] - 2026-01-XX"
+msgstr ""
+
+#: ../changelog.md:19
+msgid "Template library (`yagra init` command)"
+msgstr ""
+
+#: ../changelog.md:20
+msgid "JSON Schema export (`yagra schema` command)"
+msgstr ""
+
+#: ../changelog.md:21
+msgid "Structured validation output (`yagra validate --format json`)"
+msgstr ""
+
+#: ../changelog.md:23 ../changelog.md:40
+msgid "Changed"
+msgstr ""
+
+#: ../changelog.md:24
+msgid "Removed `model_ref` in favor of inline model definitions"
+msgstr ""
+
+#: ../changelog.md:25
+msgid "Improved Studio UI with enhanced visual design"
+msgstr ""
+
+#: ../changelog.md:27
+msgid "[0.1.8] - 2026-01-XX"
+msgstr ""
+
+#: ../changelog.md:30
+msgid "Studio WebUI for visual workflow editing"
+msgstr ""
+
+#: ../changelog.md:31
+msgid "Drag-and-drop node/edge management"
+msgstr ""
+
+#: ../changelog.md:32
+msgid "Diff preview and backup/rollback support"
+msgstr ""
+
+#: ../changelog.md:34
+msgid "[0.1.7] - 2026-01-XX"
+msgstr ""
+
+#: ../changelog.md:37
+msgid "`yagra visualize` command for read-only HTML generation"
+msgstr ""
+
+#: ../changelog.md:38
+msgid "Prompt reference resolution with `prompt_ref`"
+msgstr ""
+
+#: ../changelog.md:41
+msgid "Removed inline `params.prompt` in favor of external `prompt_ref`"
+msgstr ""
+
+#: ../changelog.md:43
+msgid "[0.1.0] - 2025-XX-XX"
+msgstr ""
+
+#: ../changelog.md:46
+msgid "Initial release"
+msgstr ""
+
+#: ../changelog.md:47
+msgid "YAML-based workflow definitions"
+msgstr ""
+
+#: ../changelog.md:48
+msgid "Pydantic schema validation"
+msgstr ""
+
+#: ../changelog.md:49
+msgid "Registry pattern for handler resolution"
+msgstr ""
+
+#: ../changelog.md:50
+msgid "Conditional branching and loops"
+msgstr ""
+
+#: ../changelog.md:52
+msgid "Links"
+msgstr ""
+
+#: ../changelog.md:54
+msgid "[PyPI](https://pypi.org/project/yagra/)"
+msgstr ""
+
+#: ../changelog.md:55
+msgid "[GitHub Repository](https://github.com/shogo-hs/Yagra)"
+msgstr ""
+
+#: ../changelog.md:56
+msgid "[GitHub Releases](https://github.com/shogo-hs/Yagra/releases)"
+msgstr ""
+

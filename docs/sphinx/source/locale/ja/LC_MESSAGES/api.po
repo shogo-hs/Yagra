@@ -1,0 +1,103 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, Yagra contributors
+# This file is distributed under the same license as the Yagra package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: Yagra 0.1.9\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-02-17 00:16+0900\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: ja\n"
+"Language-Team: ja <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: ../api.md:1
+msgid "API Reference"
+msgstr ""
+
+#: ../api.md:3
+msgid ""
+"Yagra の Python API は、通常 `Yagra.from_workflow(...)` "
+"でインスタンスを構築し、`invoke(...)` で実行します。   CLI 入口は `main()`（`yagra` コマンド）です。"
+msgstr ""
+
+#: of yagra:1
+msgid "Yagra パッケージの公開 API。"
+msgstr ""
+
+#: of yagra.Yagra:1
+msgid "ワークフロー YAML から構築した LangGraph を実行するラッパー。"
+msgstr ""
+
+#: ../api.md
+msgid "Parameters"
+msgstr ""
+
+#: of yagra.Yagra.compiled_graph:1
+msgid "保持しているコンパイル済みグラフを返す。"
+msgstr ""
+
+#: of yagra.Yagra.from_workflow:1
+msgid "ワークフローファイルから `Yagra` インスタンスを生成する。"
+msgstr ""
+
+#: of yagra.Yagra.from_workflow:3
+msgid "入口となる `workflow.yaml` のパス。"
+msgstr ""
+
+#: of yagra.Yagra.from_workflow:4
+msgid "handler 名を callable へ解決するレジストリ実装、または handler マッピング。"
+msgstr ""
+
+#: of yagra.Yagra.from_workflow:5
+msgid "分割参照の解決に使う基準ディレクトリ。未指定時は workflow 親ディレクトリ。"
+msgstr ""
+
+#: of yagra.Yagra.from_workflow:6
+msgid "LangGraph の状態スキーマ。既定は `dict`。"
+msgstr ""
+
+#: ../api.md
+msgid "Returns"
+msgstr ""
+
+#: of yagra.Yagra.from_workflow:8
+msgid "コンパイル済みグラフを内包した `Yagra` インスタンス。"
+msgstr ""
+
+#: ../api.md of yagra.main
+msgid "Return type"
+msgstr ""
+
+#: of yagra.Yagra.invoke:1
+msgid "初期状態を入力してグラフを実行する。"
+msgstr ""
+
+#: of yagra.Yagra.invoke:3
+msgid "実行開始時の状態辞書。"
+msgstr ""
+
+#: of yagra.Yagra.invoke:5
+msgid "実行後の状態辞書。"
+msgstr ""
+
+#: ../api.md
+msgid "Raises"
+msgstr ""
+
+#: of yagra.Yagra.invoke:7
+msgid "グラフ実行結果が辞書互換ではない場合。"
+msgstr ""
+
+#: of yagra.main:1
+msgid "Yagra の CLI エントリーポイント。"
+msgstr ""
+

@@ -1,27 +1,35 @@
-# Yagra: YAML-to-Agent-Graph Builder
+# Yagra
 
 <p align="center">
   <img src="docs/assets/yagra-logo.jpg" alt="Yagra logo" width="720" />
 </p>
 
-Yagra は、**YAML 定義から LangGraph の `StateGraph` を構築・実行**する Python ライブラリです。
-フロー制御（分岐・ループ）とノード設定（prompt_ref/model など）をコードから分離し、
-`workflow.yaml` の差し替えだけで挙動を切り替えられます。
+<p align="center">
+  <a href="https://github.com/shogo-hs/Yagra/actions/workflows/ci.yml"><img src="https://github.com/shogo-hs/Yagra/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://pypi.org/project/yagra/"><img src="https://img.shields.io/pypi/v/yagra.svg" alt="PyPI"></a>
+  <a href="https://pypi.org/project/yagra/"><img src="https://img.shields.io/pypi/pyversions/yagra.svg" alt="Python"></a>
+  <a href="https://github.com/shogo-hs/Yagra/blob/main/LICENSE"><img src="https://img.shields.io/github/license/shogo-hs/Yagra.svg" alt="License"></a>
+  <a href="https://pypi.org/project/yagra/"><img src="https://img.shields.io/pypi/dm/yagra.svg" alt="Downloads"></a>
+</p>
 
-## Yagraでできること
+**Declarative LangGraph Builder powered by YAML**
 
-- **宣言的なワークフロー管理**: ノード・エッジ・条件分岐を YAML で管理
-- **実装と設定の分離**: `handler` 文字列と Python callable を Registry で接続
-- **安全な構成検証**: Pydantic ベースのスキーマ検証で入力不整合を早期検出
-- **最小コードで実行**: `Yagra.from_workflow(...)` でグラフを即構築
+Yagra enables you to build [LangGraph](https://langchain-ai.github.io/langgraph/)'s `StateGraph` from YAML definitions, separating workflow logic from Python implementation. Define nodes, edges, and branching conditions in YAML files—swap configurations without touching code.
 
-## 想定ユースケース
+Designed for **LLM agent developers**, **prompt engineers**, and **non-technical stakeholders** who want to iterate on workflows quickly without diving into Python code every time.
 
-- LLM エージェントのフローをプロトタイプし、YAML 差し替えで高速に試行錯誤したい
-- 非エンジニアも読める形式で、ワークフロー定義を運用したい
-- LangGraph のコード量を抑えながら、分岐・ループを含む制御を扱いたい
+Built with **AI-Native principles**: JSON Schema export and validation CLI enable coding agents (Claude Code, Codex, etc.) to generate and validate workflows automatically.
 
-## インストール
+## ✨ Key Features
+
+- **Declarative Workflow Management**: Define nodes, edges, and conditional branching in YAML
+- **Implementation-Configuration Separation**: Connect YAML `handler` strings to Python callables via Registry
+- **Schema Validation**: Catch configuration errors early with Pydantic-based validation
+- **Visual Workflow Editor**: Launch Studio WebUI for visual editing, drag-and-drop node/edge management, and diff preview
+- **Template Library**: Quick-start templates for common patterns (branching, loops, RAG)
+- **AI-Ready**: JSON Schema export (`yagra schema`) and structured validation for coding agents
+
+## 📦 Installation
 
 - Python 3.12+
 
@@ -29,75 +37,34 @@ Yagra は、**YAML 定義から LangGraph の `StateGraph` を構築・実行**�
 pip install yagra
 ```
 
-## 開発者向けセットアップ
+## 🚀 Quick Start
+
+### Option 1: From Template (Recommended)
+
+Yagra provides ready-to-use templates for common workflow patterns.
 
 ```bash
-git clone https://github.com/shogo-hs/Yagra.git
-cd Yagra
-uv sync --dev
-```
-
-## テンプレートから始める
-
-Yagra は、よくあるワークフローパターン（分岐・ループ・RAG）をテンプレートとして提供しています。
-`yagra init` コマンドで、すぐに実行可能な `workflow.yaml` と `prompts/` を生成できます。
-
-### 利用可能なテンプレート一覧
-
-```bash
+# List available templates
 yagra init --list
+
+# Initialize from a template
+yagra init --template branch --output my-workflow
+
+# Validate the generated workflow
+yagra validate --workflow my-workflow/workflow.yaml
 ```
 
-出力例:
+Available templates:
+- **branch**: Conditional branching pattern
+- **loop**: Planner → Evaluator loop pattern
+- **rag**: Retrieve → Rerank → Generate RAG pattern
 
-```
-利用可能なテンプレート:
-  - branch
-  - loop
-  - rag
-```
+### Option 2: From Scratch
 
-### テンプレートから初期化
-
-```bash
-# カレントディレクトリに生成
-yagra init --template branch
-
-# 出力先ディレクトリを指定
-yagra init --template loop --output my-workflow
-
-# 既存ファイルを上書き
-yagra init --template rag --output my-workflow --force
-```
-
-初期化すると以下のファイルが生成されます:
-
-- `workflow.yaml`: ワークフロー定義（モデル設定はインライン）
-- `prompts/<template>_prompts.yaml`: プロンプト定義
-
-生成後、自動的に validation が実行され、valid な場合は即実行可能です。
-
-### テンプレートの内容
-
-#### branch テンプレート
-
-条件分岐の基本パターン。分類器ノードが判定結果に応じて次のノードを選択します。
-
-#### loop テンプレート
-
-planner → evaluator → planner の反復パターン。evaluator が retry/done を判定してループ制御します。
-
-#### rag テンプレート
-
-retrieve → rerank → generate の RAG パターン。検索・再ランク・生成の3ステップで回答を構築します。
-
-## クイックスタート（条件分岐あり）
-
-### 1. State とノード関数を定義
+#### 1. Define State and Handler Functions
 
 ```python
 from typing import TypedDict
-
 from yagra import Yagra
 
 
@@ -105,11 +72,10 @@ class AgentState(TypedDict, total=False):
     query: str
     intent: str
     answer: str
-    __next__: str
+    __next__: str  # For conditional branching
 
 
 def classify_intent(state: AgentState, params: dict) -> dict:
-    _ = params
     intent = "faq" if "料金" in state.get("query", "") else "general"
     return {"intent": intent, "__next__": intent}
 
@@ -125,11 +91,10 @@ def answer_general(state: AgentState, params: dict) -> dict:
 
 
 def finish(state: AgentState, params: dict) -> dict:
-    _ = params
     return {"answer": state.get("answer", "")}
 ```
 
-### 2. Workflow YAML を定義
+#### 2. Define Workflow YAML
 
 `workflows/support.yaml`
 
@@ -168,9 +133,7 @@ edges:
     target: "finish"
 ```
 
-### 3. Registry と実行
-
-`registry` は `dict[str, callable]` を直接渡せます（`InMemoryNodeRegistry` は内部で自動利用）。
+#### 3. Register Handlers and Run
 
 ```python
 registry = {
@@ -190,259 +153,102 @@ result = app.invoke({"query": "料金を教えて"})
 print(result["answer"])
 ```
 
-## API
+## 🛠️ CLI Tools
 
-### `Yagra.from_workflow(...)`
+Yagra provides CLI commands for workflow management:
 
-```python
-Yagra.from_workflow(
-    workflow_path: str | PathLike,
-    registry: NodeRegistryPort | Mapping[str, NodeHandler],
-    bundle_root: str | PathLike | None = None,
-    state_schema: Any = dict,
-) -> Yagra
-```
+### `yagra init`
 
-- `workflow_path`: 入口となる workflow YAML
-- `registry`: `NodeRegistryPort` 実装、または `dict[str, callable]`
-- `bundle_root`: 分割参照解決の基準ディレクトリ（省略時は workflow の親）
-- `state_schema`: LangGraph の状態スキーマ（既定 `dict`）
-
-### `Yagra.invoke(...)`
-
-```python
-Yagra.invoke(state: Mapping[str, Any]) -> dict[str, Any]
-```
-
-### `yagra visualize`（Read Only 可視化）
-
-Workflow YAML を Read Only の可視化 HTML に変換します。
-出力 HTML は Mermaid を同梱しており、インターネット接続なしでも描画できます。
+Initialize a workflow from a template.
 
 ```bash
-yagra visualize \
-  --workflow examples/workflows/loop-split.yaml \
-  --output /tmp/yagra-view.html \
-  --title "Yagra Workflow Viewer"
+yagra init --template branch --output my-workflow
 ```
 
-オプション:
+### `yagra schema`
 
-- `--workflow`: 可視化対象 workflow ファイル（必須）
-- `--bundle-root`: 分割参照解決の基準ディレクトリ（任意）
-- `--output`: 生成 HTML の出力先（既定: `workflow-visualization.html`）
-- `--title`: ページタイトル（任意）
-
-検証エラーがある場合は HTML は生成せず、エラー一覧を標準エラーへ出力します。
-
-### `yagra studio`（フォーム + DnD 編集 + 保存）
-
-Workflow の `prompt_ref` / `model` / `condition` 編集に加え、DnD でノード追加・接続変更を行い、diff 確認・保存・rollback を実行するローカル WebUI/API を起動します。
+Export JSON Schema for workflow YAML (useful for coding agents).
 
 ```bash
-# ランチャー起動（UI で workflow を選択/新規作成）
+yagra schema --output workflow-schema.json
+```
+
+### `yagra validate`
+
+Validate a workflow YAML and report issues.
+
+```bash
+# Human-readable output
+yagra validate --workflow workflows/support.yaml
+
+# JSON output for agent consumption
+yagra validate --workflow workflows/support.yaml --format json
+```
+
+### `yagra visualize`
+
+Generate a read-only visualization HTML.
+
+```bash
+yagra visualize --workflow workflows/support.yaml --output /tmp/workflow.html
+```
+
+### `yagra studio`
+
+Launch an interactive WebUI for visual editing, drag-and-drop node/edge management, and workflow persistence.
+
+```bash
+# Launch with workflow selector (recommended)
 yagra studio --port 8787
 
-# 従来どおり直接指定で起動
-yagra studio \
-  --workflow examples/workflows/loop-split.yaml \
-  --bundle-root examples \
-  --port 8787
+# Launch with a specific workflow
+yagra studio --workflow workflows/support.yaml --port 8787
 ```
 
-起動後はブラウザで `http://127.0.0.1:8787/` を開きます。
-Studio は同梱アセットをローカル配信するため、インターネット接続なしでも表示・操作できます。
+Open `http://127.0.0.1:8787/` in your browser.
 
-主な編集フロー:
+**Studio Features:**
+- **Visual Editing**: Edit prompts, models, and conditions via forms
+- **Drag & Drop**: Add nodes, connect edges, adjust layout visually
+- **Diff Preview**: Review changes before saving
+- **Backup & Rollback**: Automatic backups with rollback support
+- **Validation**: Real-time validation with detailed error messages
 
-1. 必要に応じて `Add Node` でノードを追加し、Node/Edge フォームで値を編集して `Apply ...`
-   - `Add Node` は選択中ノードの近傍（未選択時は自動レイアウト位置）へ自動配置されます。
-2. Node Properties の `prompt yaml` で参照先 YAML を選択すると、`system prompt` / `user prompt` が自動で読み込まれます。
-   - 候補一覧（`yaml_files`）の再読込中でも、現在選択中の `prompt yaml` は自動で空に戻らず保持されます（明示的に `(auto create on Apply)` を選んだ場合のみ未選択化）。
-3. `prompt yaml` 未選択のまま `Apply Node Edit` した場合、workspace root（通常は project root）直下の `prompts/<node-id>.yaml`（重複時は連番）が自動作成され、`prompt_ref` が自動設定されます。
-   - `prompt key` を指定した場合は `path#key` 形式になり、生成 YAML は `{ key: { system, user } }` 形式になります。
-4. Graph Canvas 上でノードをドラッグして位置調整し、右側ポート（output）から左側ポート（input）へドラッグしてエッジ追加（戻りループは下側 output → 上側 input で接続）
-5. 再接続時はエッジ端点をドラッグして接続先を変更（ドラッグ起点が新 source、ドロップ先が新 target）
-6. Node Properties で `node id`（リネーム）, `prompt yaml` / `prompt key`, `Model Settings`（`provider` / `name` / `temperature` など）を設定
-   - `node id` を変更して `Apply Node Edit` すると、関連する `edges[].source/target` と `start_at/end_at` も自動で同期されます。
-7. `Preview Diff` で変更差分と validation を確認
-8. `Save` で workflow を保存（backup 作成）
-9. 必要なら `Rollback` で `backup_id` から復元
+## 📚 Documentation
 
-補足:
-- Studio 画面は操作性優先のため `Workflow/UI State` の生JSONは常時表示しません。必要時は `GET /api/workflow` / `GET /api/workflow/form` で確認してください。
+Full documentation is available at **[shogo-hs.github.io/Yagra](https://shogo-hs.github.io/Yagra/)**
 
-オプション:
+- **[User Guide](https://shogo-hs.github.io/Yagra/)**: Installation, YAML syntax, CLI tools
+- **[API Reference](https://shogo-hs.github.io/Yagra/api.html)**: Python API documentation
+- **[Examples](https://shogo-hs.github.io/Yagra/examples.html)**: Practical use cases
 
-- `--workflow`: 編集対象 workflow ファイル（任意、未指定時はランチャーで選択/作成）
-- `--bundle-root`: 分割参照解決の基準ディレクトリ（任意）
-- `--ui-state`: UI サイドカー JSON の保存先（既定: `<workflow>.workflow-ui.json`）
-- `--workspace-root`: ランチャーが探索/作成可能なワークスペースルート（既定: `workflow` がカレント配下ならカレント、そうでなければ `<workflow> の親`、`--workflow` 未指定時はカレント）
-- `--backup-dir`: バックアップ保存先（既定: `.yagra/backups`）
-- `--host`: バインドホスト（既定: `127.0.0.1`）
-- `--port`: バインドポート（既定: `8787`）
-
-保存時は以下を実施します。
-
-- 保存前 validation（M-05 契約）
-- atomic write（中途半端な書き込み防止）
-- backup 作成（`<backup-dir>/<workflow-stem>/<backup_id>.*`）
-- 失敗時の自動復旧
-
-フォーム向け API:
-
-- `GET /api/workflow/form`
-- `POST /api/workflow/form/preview`
-  - M-09 の入力契約として、下記フィールドはすべて必須
-  - `base_revision`, `ui_state`
-  - `node_creates[]` / `node_edits[]`
-  - `edge_creates[]` / `edge_rewires[]` / `edge_edits[]`
-
-## 仕様上の契約（Implicit Contracts）
-
-### 1. 条件分岐の契約
-
-- `edges[].condition` は分岐ラベルです。
-- 分岐元ノードは `{"__next__": "<condition-label>"}` を state update として返します。
-- 例: `condition: "faq"` がある場合、`__next__` は `"faq"` を返す必要があります。
-
-### 2. prompt 参照解決の契約
-
-- プロンプトは `prompts/` 配下の外部 YAML ファイルに定義し、`prompt_ref` で参照します。
-- **`params.prompt`（インラインプロンプト）は廃止されました。** ワークフロー YAML に `params.prompt` が存在するとバリデーションエラーになります。
-- `prompt_ref` は実行前に解決されます。
-- handler が受け取る `params` には解決済み値が入ります。
-  - `params["prompt"]`
-  - `params["model"]`
-- 実行時に handler へ渡る `params` からは `prompt_ref` は除去されます（`prompt`/`model` を利用）。
-- `model_ref` は廃止です。モデル設定は `nodes[].params.model` にインライン定義します。
-- `prompt_ref` の参照形式:
-  - `<path>`（YAML ルートが prompt mapping の場合）
-  - `<path>#<key.path>`（YAML 内キーを指定）
-- `bundle_root` 未指定時の `<path>` 解決:
-  - `./` / `../` を含む場合は workflow YAML からの相対パスとして解決
-  - それ以外は workflow 親を優先し、未発見時は上位ディレクトリも探索して解決
-
-例:
-
-```yaml
-nodes:
-  - id: planner
-    handler: planner_loop_handler
-    params:
-      prompt_ref: "../prompts/support_prompts.yaml#planner"
-      model:
-        provider: openai
-        name: gpt-4.1-mini
-        kwargs:
-          temperature: 0.1
-```
-
-### 3. `end_at` の挙動
-
-- `end_at` は「終了ノードIDのリスト」です（複数可）。
-- Yagra は各ノードを LangGraph の finish point として登録します。
-- YAML 上で `END` という特別ノードを直接書く仕様ではありません。
-
-### 4. ノード関数シグネチャ
-
-Yagra は次の順で呼び出しを試みます。
-
-1. `handler(state, params)`
-2. `handler(state)`
-
-## YAML 仕様（要点）
-
-トップレベル:
-
-- `version: str`
-- `start_at: str`
-- `end_at: list[str]`
-- `nodes: list[NodeSpec]`
-- `edges: list[EdgeSpec]`
-- `params: dict[str, Any]`（任意）
-
-`NodeSpec`:
-
-- `id: str`
-- `handler: str`
-- `params: dict[str, Any]`（任意）
-
-`EdgeSpec`:
-
-- `source: str`
-- `target: str`
-- `condition: str | null`（任意）
-
-補足:
-- `edges` は 0 件でも有効です（例: `start_at` と `end_at` が同一の単一ノード workflow）。
-
-## 同梱サンプル
-
-- `examples/workflows/branch-inline.yaml`
-  - 条件分岐の最小例
-- `examples/workflows/loop-split.yaml`
-  - ループ + 条件分岐 + `prompt_ref` 分割参照 + model インライン定義
-- `examples/prompts/support_prompts.yaml`
-- `examples/models/openai_models.yaml`
-
-## 開発コマンド
-
-```bash
-uv run ruff check .
-uv run mypy .
-uv run pytest -q
-uv run pre-commit run --all-files
-```
-
-## ドキュメント（Sphinx）
-
-ローカルで HTML を生成:
+You can also build documentation locally:
 
 ```bash
 uv run sphinx-build -b html docs/sphinx/source docs/sphinx/_build/html
 ```
 
-生成先:
+## 🎯 Use Cases
 
-- `docs/sphinx/_build/html/index.html`
+- Prototype LLM agent flows and iterate rapidly by swapping YAML files
+- Enable non-engineers to adjust workflows (prompts, models, branching) without code changes
+- Integrate with coding agents for automated workflow generation and validation
+- Reduce boilerplate code when building LangGraph applications with complex control flow
 
-公開先（GitHub Pages）:
+## 🤝 Contributing
 
-- `https://shogo-hs.github.io/Yagra/`
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, coding standards, and guidelines.
 
-公開の前提:
+## 📄 License
 
-- GitHub の `Settings > Pages` で Source を `GitHub Actions` に設定する
-- `.github/workflows/docs.yml` が `main` への push または手動実行で成功する
+MIT License - see [LICENSE](LICENSE) for details.
 
-## PyPI 公開
+## 📝 Changelog
 
-公開ワークフローは `v*` タグ push をトリガーに実行されます。
+See [CHANGELOG.md](CHANGELOG.md) for release history.
 
-- workflow: `.github/workflows/publish.yml`
-- build: `uv build`
-- 検証: `uvx twine check dist/*`
-- publish: `pypa/gh-action-pypi-publish`（OIDC）
+---
 
-前提:
-
-- PyPI 側で private repository `shogo-hs/Yagra` を Trusted Publisher として登録しておく
-- GitHub Actions の `pypi` environment が利用可能である
-- Git タグ（`vX.Y.Z`）と `pyproject.toml` の `version` を一致させる
-
-リリース実行例:
-
-```bash
-git tag v0.1.3
-git push origin v0.1.3
-```
-
-## ライセンスと変更履歴
-
-- ライセンス: `LICENSE`（MIT）
-- 変更履歴: `CHANGELOG.md`
-
-## エージェント実行規約
-
-エージェント運用ルールは `AGENTS.md` を参照してください。
+<p align="center">
+  <sub>Built with ❤️ for the LangGraph community</sub>
+</p>
