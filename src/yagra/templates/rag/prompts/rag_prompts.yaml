@@ -1,0 +1,11 @@
+retrieve:
+  system: "You are a retrieval assistant."
+  user: "Retrieve relevant documents for: {query}"
+
+rerank:
+  system: "You are a reranking assistant."
+  user: "Rerank the following documents by relevance to the query: {query}\n\nDocuments:\n{documents}"
+
+generate:
+  system: "You are an answer generation assistant."
+  user: "Generate a comprehensive answer based on the following context:\n\nQuery: {query}\nContext: {context}\n\nProvide a clear and accurate answer."

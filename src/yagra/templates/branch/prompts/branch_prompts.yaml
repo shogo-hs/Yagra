@@ -1,0 +1,3 @@
+planner:
+  system: "You are a planner assistant."
+  user: "Create a plan for: {goal}"

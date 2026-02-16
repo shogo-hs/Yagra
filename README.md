@@ -37,6 +37,60 @@ cd Yagra
 uv sync --dev
 ```
 
+## テンプレートから始める
+
+Yagra は、よくあるワークフローパターン（分岐・ループ・RAG）をテンプレートとして提供しています。
+`yagra init` コマンドで、すぐに実行可能な `workflow.yaml` と `prompts/` を生成できます。
+
+### 利用可能なテンプレート一覧
+
+```bash
+yagra init --list
+```
+
+出力例:
+
+```
+利用可能なテンプレート:
+  - branch
+  - loop
+  - rag
+```
+
+### テンプレートから初期化
+
+```bash
+# カレントディレクトリに生成
+yagra init --template branch
+
+# 出力先ディレクトリを指定
+yagra init --template loop --output my-workflow
+
+# 既存ファイルを上書き
+yagra init --template rag --output my-workflow --force
+```
+
+初期化すると以下のファイルが生成されます:
+
+- `workflow.yaml`: ワークフロー定義（モデル設定はインライン）
+- `prompts/<template>_prompts.yaml`: プロンプト定義
+
+生成後、自動的に validation が実行され、valid な場合は即実行可能です。
+
+### テンプレートの内容
+
+#### branch テンプレート
+
+条件分岐の基本パターン。分類器ノードが判定結果に応じて次のノードを選択します。
+
+#### loop テンプレート
+
+planner → evaluator → planner の反復パターン。evaluator が retry/done を判定してループ制御します。
+
+#### rag テンプレート
+
+retrieve → rerank → generate の RAG パターン。検索・再ランク・生成の3ステップで回答を構築します。
+
 ## クイックスタート（条件分岐あり）
 
 ### 1. State とノード関数を定義

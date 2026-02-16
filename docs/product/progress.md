@@ -94,12 +94,12 @@
 | --- | --- | --- | --- |
 | G06-I01 | `yagra schema export` コマンドを実装する | Done | `src/yagra/__init__.py` (`_run_schema_command`) |
 | G06-I02 | `yagra validate` コマンドを実装し `--format json` オプションを追加する | Done | `src/yagra/__init__.py` (`_run_validate_command`) |
-| G06-I03 | テンプレート YAML を整備する（branch, loop, rag 等） | Todo | `docs/product/milestones.md` (M-13) |
-| G06-I04 | `yagra init --template` コマンドを実装する | Todo | `docs/product/milestones.md` (M-13) |
+| G06-I03 | テンプレート YAML を整備する（branch, loop, rag 等） | Done | `src/yagra/templates/` |
+| G06-I04 | `yagra init --template` コマンドを実装する | Done | `src/yagra/__init__.py` (`_run_init_command`) |
 
-- 完了済み: G06-I01, G06-I02
-- 未完了: G06-I03, G06-I04
-- 現在地: M-12（JSON Schema 公開 + validate CLI）完了。`yagra schema` で GraphSpec の JSON Schema を出力でき、`yagra validate --format json` で構造化エラーを返却できる。テスト 6 件追加済み。次は M-13（テンプレートライブラリ）に着手する。
+- 完了済み: G06-I01, G06-I02, G06-I03, G06-I04
+- 未完了: なし
+- 現在地: M-13（テンプレートライブラリ）完了。`yagra init --template <name>` で branch/loop/rag テンプレートからワークフローを生成できる。テスト 14 件追加済み（単体 7 件 + 結合 7 件）。G-06 の全項目が完了し、コーディングエージェントが Yagra ワークフローを正確に生成・検証できる環境が整った。
 
 ## 補足（2026-02-16）
 
