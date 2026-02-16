@@ -1,6 +1,6 @@
 # 到達ステップ
 
-最終更新: 2026-02-16
+最終更新: 2026-02-17
 
 ## ステップ一覧
 
@@ -19,6 +19,9 @@
 | M-11 | G-05 | UI ビジュアル品質と可読性を向上する | レイアウト・配色・ラベル体系を改善し、重要情報の判別と誤操作防止が現状より向上する | Done |
 | M-12 | G-06 | JSON Schema 公開と validate CLI を整備する | `yagra schema export` で JSON Schema を出力でき、`yagra validate --format json` で構造化エラーを返却できる | Done |
 | M-13 | G-06 | テンプレートライブラリを整備する | `yagra init --template <name>` で典型パターン（branch, loop, rag 等）のスキャフォールドを生成できる | Done |
+| M-14 | G-07 | 基本 LLM ハンドラーユーティリティを提供する | `create_llm_handler()` で litellm 統合ハンドラーを生成でき、YAML 定義だけでテキスト入出力が動作する | Active |
+| M-15 | G-07 | 構造化出力ハンドラーと WebUI スキーマ編集を実装する | Pydantic model 指定で型安全な出力を得られ、WebUI でスキーマを編集できる | Planned |
+| M-16 | G-07 | ストリーミングハンドラーと WebUI リアルタイム表示を実装する | ストリーミングレスポンスを受け取れ、WebUI でリアルタイム表示できる | Planned |
 
 ## 運用ルール
 

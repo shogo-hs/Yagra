@@ -1,6 +1,6 @@
 [project]
 name = "yagra"
-version = "0.2.0"
+version = "0.3.0"
 description = "Declarative LangGraph Builder powered by YAML"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -19,6 +19,11 @@ dependencies = [
     "langgraph>=1.0.8",
     "pydantic>=2.12.5",
     "pyyaml>=6.0.3",
+]
+
+[project.optional-dependencies]
+llm = [
+    "litellm>=1.57.10",
 ]
 
 [project.scripts]
