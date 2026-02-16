@@ -23,6 +23,12 @@ alwaysApply: true
 - `AGENTS.md` はエージェント向け実行規約として、判断基準・編集制約・検証手順・タスクルーティングを記載する。
 - エージェント実行の詳細手順は `README.md` に重複記載しない。必要な場合は `AGENTS.md` と `docs/ai/playbooks/*.md` へリンクする。
 - 記載先に迷った場合は「人が最初に理解するための説明は README、エージェントが実行時に守る規約は AGENTS」を優先する。
+- バージョンリリース時は、変更履歴を以下の3箇所すべてに同期する：
+  - `CHANGELOG.md`（ルート、日本語、正本）
+  - `docs/sphinx/source/changelog.md`（Sphinx、英語、ユーザー向け）
+  - GitHubリリースページ（英語、詳細説明付き）
+- 変更履歴は Keep a Changelog 形式に従い、`Added/Changed/Deprecated/Removed/Fixed/Security` のセクションを使用する。
+- バージョン番号は Semantic Versioning に従い、`pyproject.toml` の `version` フィールドと一致させる。
 
 # コーディング標準
 

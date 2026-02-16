@@ -20,9 +20,15 @@
 - APIキー・トークン・秘密鍵・`.env.keys` などの秘密情報は、出力・コミット・Issue/PR本文へ記載しない。
 - 想定外の大量差分、履歴破壊操作、広範囲削除が必要になった場合は作業を停止し、ユーザーへ再確認する。
 - `README.md` は人間向けの入口として、目的・全体像・セットアップ・利用導線を記載する。
-- `AGENTS.md`や`CLAUDE.md` はエージェント向け実行規約として、判断基準・編集制約・検証手順・タスクルーティングを記載する。
+- `AGENTS.md` はエージェント向け実行規約として、判断基準・編集制約・検証手順・タスクルーティングを記載する。
 - エージェント実行の詳細手順は `README.md` に重複記載しない。必要な場合は `AGENTS.md` と `docs/ai/playbooks/*.md` へリンクする。
 - 記載先に迷った場合は「人が最初に理解するための説明は README、エージェントが実行時に守る規約は AGENTS」を優先する。
+- バージョンリリース時は、変更履歴を以下の3箇所すべてに同期する：
+  - `CHANGELOG.md`（ルート、日本語、正本）
+  - `docs/sphinx/source/changelog.md`（Sphinx、英語、ユーザー向け）
+  - GitHubリリースページ（英語、詳細説明付き）
+- 変更履歴は Keep a Changelog 形式に従い、`Added/Changed/Deprecated/Removed/Fixed/Security` のセクションを使用する。
+- バージョン番号は Semantic Versioning に従い、`pyproject.toml` の `version` フィールドと一致させる。
 
 ## 2. タスクルーティング
 | 判断ケース | この条件なら使う | 参照先Playbook |
@@ -53,7 +59,7 @@
 - Python 3.12+ を前提にする。
 - 型ヒントを必須にし、`mypy` で検証する。
 - `ruff` で format/lint を統一する。
-- docstring は Google style を採用し、処理意図が伝わる説明を英語で記述する。
+- docstring は Google style を採用し、処理意図が伝わる説明を日本語で記述する。
 - docstring は短文 1 行だけで終わらせず、少なくとも概要と入出力が分かる情報を含める。
 - 引数がある関数・メソッドは `Args`、戻り値がある場合は `Returns`、送出しうる例外がある場合は `Raises` を記載する。
 - docstring の説明内容は型ヒントおよび実装挙動と矛盾させない。
