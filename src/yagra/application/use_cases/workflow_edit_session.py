@@ -43,6 +43,19 @@ class WorkflowChange:
     before: Any | None
     after: Any | None
 
+    def to_dict(self) -> dict[str, Any]:
+        """API 応答形式の辞書へ変換する。
+
+        Returns:
+            kind, path, before, after を含む辞書。
+        """
+        return {
+            "kind": self.kind,
+            "path": list(self.path),
+            "before": self.before,
+            "after": self.after,
+        }
+
 
 @dataclass(frozen=True, slots=True)
 class WorkflowDiffResult:
@@ -54,6 +67,21 @@ class WorkflowDiffResult:
     changes: tuple[WorkflowChange, ...]
     yaml_unified_diff: str
     validation_report: WorkflowValidationReport
+
+    def to_dict(self) -> dict[str, Any]:
+        """API 応答形式の辞書へ変換する。
+
+        Returns:
+            差分情報と検証レポートを含む辞書。
+        """
+        return {
+            "base_revision": self.base_revision,
+            "candidate_revision": self.candidate_revision,
+            "summary": self.summary,
+            "changes": [change.to_dict() for change in self.changes],
+            "yaml_unified_diff": self.yaml_unified_diff,
+            "validation_report": self.validation_report.to_dict(),
+        }
 
 
 def resolve_ui_state_path(

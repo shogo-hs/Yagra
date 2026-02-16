@@ -224,6 +224,8 @@ __marimo__/
 .worktrees/
 .yagra
 workflows/
+prompts/
+.claude/
 
 # Internal planning docs
 docs/task-designs/

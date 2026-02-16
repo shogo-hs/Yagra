@@ -26,6 +26,14 @@ class WorkflowValidationIssue:
     message: str
     location: Location = ()
 
+    def to_dict(self) -> dict[str, Any]:
+        """API 応答形式の辞書へ変換する。
+
+        Returns:
+            code, message, location を含む辞書。
+        """
+        return {"code": self.code, "message": self.message, "location": list(self.location)}
+
 
 @dataclass(slots=True)
 class WorkflowValidationReport:
@@ -37,6 +45,17 @@ class WorkflowValidationReport:
     def is_valid(self) -> bool:
         """問題が存在しないかを返す。"""
         return not self.issues
+
+    def to_dict(self) -> dict[str, Any]:
+        """API 応答形式の辞書へ変換する。
+
+        Returns:
+            is_valid と issues を含む辞書。
+        """
+        return {
+            "is_valid": self.is_valid,
+            "issues": [issue.to_dict() for issue in self.issues],
+        }
 
 
 class WorkflowValidationFailedError(ValueError):
