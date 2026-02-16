@@ -4,50 +4,112 @@ All notable changes to Yagra are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-For the complete changelog, see [CHANGELOG.md](https://github.com/shogo-hs/Yagra/blob/main/CHANGELOG.md) in the repository.
+For the canonical changelog (Japanese), see [CHANGELOG.md](https://github.com/shogo-hs/Yagra/blob/main/CHANGELOG.md) in the repository root.
 
 ## [Unreleased]
 
+No changes yet.
+
+## [0.2.0] - 2026-02-17
+
 ### Added
-- Comprehensive English documentation for README and Sphinx
+- Comprehensive English documentation for README and Sphinx (11 pages: Getting Started, User Guide, CLI Reference, Examples, etc.)
 - CONTRIBUTING.md for development guidelines
-- Multilingual documentation support (English primary, Japanese secondary)
-
-## [0.1.9] - 2026-01-XX
-
-### Added
-- Template library (`yagra init` command)
-- JSON Schema export (`yagra schema` command)
-- Structured validation output (`yagra validate --format json`)
+- Multilingual documentation support via Sphinx i18n (English primary, Japanese secondary)
+- POT/PO file generation and Japanese translation environment
 
 ### Changed
-- Removed `model_ref` in favor of inline model definitions
-- Improved Studio UI with enhanced visual design
+- Switched README.md from Japanese to English as the primary language
+- Optimized documentation structure (README = landing page, Sphinx = detailed docs)
+- Aligned with Pydantic/Click best practices
 
-## [0.1.8] - 2026-01-XX
+## [0.1.9] - 2026-02-16
 
-### Added
-- Studio WebUI for visual workflow editing
-- Drag-and-drop node/edge management
-- Diff preview and backup/rollback support
+### Fixed
+- Fixed `prompt_ref` resolution failure when `bundle_root` was not specified in library usage; now searches parent directories to resolve `prompts/...` paths.
 
-## [0.1.7] - 2026-01-XX
-
-### Added
-- `yagra visualize` command for read-only HTML generation
-- Prompt reference resolution with `prompt_ref`
+## [0.1.8] - 2026-02-16
 
 ### Changed
-- Removed inline `params.prompt` in favor of external `prompt_ref`
+- Switched Studio frontend dependencies (Vue / Vue Flow) from CDN to bundled local assets, enabling offline usage.
+- Changed `yagra visualize` output HTML to bundle Mermaid locally for offline rendering.
 
-## [0.1.0] - 2025-XX-XX
+### Fixed
+- Fixed Studio `prompt yaml` dropdown resetting selection unexpectedly during candidate reload; Node Properties now preserves selection state.
+- Prevented race condition in `loadStudioFiles()` where stale responses could overwrite newer state.
+
+## [0.1.7] - 2026-02-15
+
+### Fixed
+- Unified Studio `prompt_ref` path resolution to workspace root basis, fixing incorrect resolution of `prompts/...` as `workflows/prompts/...`.
+- When `bundle_root` is not specified with `studio --workflow`, workspace root is now used as default, aligning save/load and runtime reference resolution.
+
+## [0.1.6] - 2026-02-15
+
+### Changed
+- Changed Studio `prompt yaml` auto-generation target from workflow sibling directory to `prompts/` under workspace root (project root).
+- Adjusted `studio --workflow` default `workspace_root` to prefer project root (current directory) when workflow is under the current directory.
+
+## [0.1.5] - 2026-02-14
+
+### Fixed
+- Fixed JavaScript syntax error during Studio Launcher initialization that prevented `Open Existing Workflow` list from displaying.
+- Added regression tests for backslash normalization logic in HTML responses.
+
+## [0.1.4] - 2026-02-14
+
+### Fixed
+- Fixed `prompt_ref` saving workspace-relative paths instead of workflow-relative paths when editing workflows in subdirectories via Studio.
+  - Save: Normalize `prompt_ref` to workflow-relative path.
+  - Load: Convert workflow-relative `prompt_ref` to workspace-relative for Studio file API compatibility.
+
+## [0.1.3] - 2026-02-14
 
 ### Added
-- Initial release
-- YAML-based workflow definitions
-- Pydantic schema validation
-- Registry pattern for handler resolution
-- Conditional branching and loops
+- Added `prompt_entries` to `POST /api/studio/file/read` to reflect prompt content directly in Node Properties.
+- Added `prompt key` input to Node Properties, enabling `prompt_ref=<path>#<key>` creation from the UI.
+
+### Changed
+- Fully removed `model_ref`; unified model configuration to inline `nodes[].params.model` definitions.
+- Consolidated Studio prompt workflow into Node Properties; removed `Workflow Settings.prompt_catalog` and `Prompt File` sections.
+- Unified `prompt_ref` resolution to path-based (`<path>` / `<path>#<key>`).
+- Changed prompt YAML auto-generation target from workspace root to `prompts/` under the workflow YAML directory.
+
+## [0.1.2] - 2026-02-14
+
+### Added
+- Added Workflow Studio launcher flow (existing workflow selection / new workflow creation).
+- Added save-time backup and rollback safety for Studio initial operations.
+- Added edge connection port (source/target handle) persistence.
+
+### Changed
+- Redesigned Studio Node Properties as dedicated forms for editing `system prompt` / `user prompt` and model settings.
+- Organized `prompt_ref` / `model_ref` catalog reference flow and Studio API documentation.
+- Updated validation to allow `edges: []` for single-node workflows.
+- Improved Studio inbound port separation and quickstart/API documentation.
+
+### Fixed
+- Added runtime parameter normalization for `prompt_ref` / `model_ref` usage, unifying ref/inline input runtime representations.
+
+## [0.1.1] - 2026-02-14
+
+### Changed
+- Renamed package and import name from `graphyml` to `yagra`; unified public API primary name to `Yagra`.
+- Added tag name (`vX.Y.Z`) and `pyproject.toml` version consistency check to publish workflow.
+
+## [0.1.0] - 2026-02-13
+
+### Added
+- Implemented Yagra YAML schema (Pydantic) and validation logic.
+- Implemented Registry pattern (port + in-memory adapter).
+- Implemented builder to construct LangGraph StateGraph from workflow YAML.
+- Added `Yagra.from_workflow(...)` / `invoke(...)` public API.
+- Added example YAMLs with branching, loops, and split references in `examples/`.
+- Set up quality gates (ruff/mypy/pytest, pre-commit/pre-push).
+
+### Changed
+- Added Zero-Boilerplate usage examples and sample navigation to README.
+- Updated `docs/product/*` goals, milestones, and progress.
 
 ## Links
 

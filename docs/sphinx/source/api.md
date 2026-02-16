@@ -1,7 +1,7 @@
 # API Reference
 
-Yagra の Python API は、通常 `Yagra.from_workflow(...)` でインスタンスを構築し、`invoke(...)` で実行します。  
-CLI 入口は `main()`（`yagra` コマンド）です。
+Yagra's Python API typically builds an instance with `Yagra.from_workflow(...)` and executes it with `invoke(...)`.
+The CLI entry point is `main()` (the `yagra` command).
 
 ```{eval-rst}
 .. automodule:: yagra
