@@ -1,378 +1,62 @@
 # Examples
 
-This page showcases practical examples of Yagra workflows for common use cases.
+This page showcases the example workflows included in the Yagra repository.
 
-## Example 1: Customer Support Router
+## Example 1: Conditional Branching (`branch-inline`)
 
-Route customer queries to specialized handlers based on intent.
+Route execution to different handlers based on runtime classification.
 
 ### Workflow Structure
 
-- **Classifier**: Determines if query is FAQ, support, or sales
-- **Specialized handlers**: FAQ bot, support bot, sales bot
-- **Finish**: Collects final answer
+- **Router**: Determines whether the query needs planning or can be answered directly
+- **Planner**: Generates a plan (only when routed via `needs_plan`)
+- **Finish**: Collects the final answer
 
 ### Files
 
-**`workflows/support_router.yaml`**:
+**`examples/workflows/branch-inline.yaml`**:
 
 ```yaml
 version: "1.0"
-start_at: "classifier"
+start_at: "router"
 end_at:
   - "finish"
-
+params:
+  workflow_name: "branch-inline"
 nodes:
-  - id: "classifier"
-    handler: "classify_query"
-  - id: "faq_handler"
-    handler: "handle_faq"
+  - id: "router"
+    handler: "router_handler"
+  - id: "planner"
+    handler: "planner_handler"
     params:
-      prompt_ref: "../prompts/support_prompts.yaml#faq"
-      model:
-        provider: "openai"
-        name: "gpt-4.1-mini"
-        kwargs:
-          temperature: 0.3
-  - id: "support_handler"
-    handler: "handle_support"
-    params:
-      prompt_ref: "../prompts/support_prompts.yaml#support"
-      model:
-        provider: "openai"
-        name: "gpt-4.1-mini"
-        kwargs:
-          temperature: 0.5
-  - id: "sales_handler"
-    handler: "handle_sales"
-    params:
-      prompt_ref: "../prompts/support_prompts.yaml#sales"
-      model:
-        provider: "anthropic"
-        name: "claude-3-haiku"
-  - id: "finish"
-    handler: "finalize_answer"
-
-edges:
-  - source: "classifier"
-    target: "faq_handler"
-    condition: "faq"
-  - source: "classifier"
-    target: "support_handler"
-    condition: "support"
-  - source: "classifier"
-    target: "sales_handler"
-    condition: "sales"
-  - source: "faq_handler"
-    target: "finish"
-  - source: "support_handler"
-    target: "finish"
-  - source: "sales_handler"
-    target: "finish"
-```
-
-**`prompts/support_prompts.yaml`**:
-
-```yaml
-faq:
-  system: |
-    You are a FAQ assistant. Answer common questions about pricing, features, and policies concisely.
-  user: |
-    Question: {query}
-
-support:
-  system: |
-    You are a technical support specialist. Help users troubleshoot issues and provide detailed solutions.
-  user: |
-    Issue: {query}
-
-sales:
-  system: |
-    You are a sales assistant. Help customers understand products, pricing, and purchasing options.
-  user: |
-    Inquiry: {query}
-```
-
-**`run_support_router.py`**:
-
-```python
-from typing import TypedDict
-from yagra import Yagra
-
-
-class AgentState(TypedDict, total=False):
-    query: str
-    intent: str
-    answer: str
-    __next__: str
-
-
-def classify_query(state: AgentState, params: dict) -> dict:
-    query = state.get("query", "").lower()
-    if "price" in query or "cost" in query or "料金" in query:
-        intent = "faq"
-    elif "help" in query or "issue" in query or "問題" in query:
-        intent = "support"
-    elif "buy" in query or "purchase" in query or "見積" in query:
-        intent = "sales"
-    else:
-        intent = "faq"
-    return {"intent": intent, "__next__": intent}
-
-
-def handle_faq(state: AgentState, params: dict) -> dict:
-    prompt = params.get("prompt", {})
-    # In real implementation, call LLM with prompt and query
-    return {"answer": f"FAQ: {state['query']}"}
-
-
-def handle_support(state: AgentState, params: dict) -> dict:
-    prompt = params.get("prompt", {})
-    return {"answer": f"SUPPORT: {state['query']}"}
-
-
-def handle_sales(state: AgentState, params: dict) -> dict:
-    prompt = params.get("prompt", {})
-    return {"answer": f"SALES: {state['query']}"}
-
-
-def finalize_answer(state: AgentState, params: dict) -> dict:
-    return {"answer": state.get("answer", "No answer")}
-
-
-registry = {
-    "classify_query": classify_query,
-    "handle_faq": handle_faq,
-    "handle_support": handle_support,
-    "handle_sales": handle_sales,
-    "finalize_answer": finalize_answer,
-}
-
-app = Yagra.from_workflow(
-    workflow_path="workflows/support_router.yaml",
-    registry=registry,
-    state_schema=AgentState,
-)
-
-# Test different queries
-queries = [
-    "What's the pricing for enterprise plans?",
-    "I'm having trouble logging in",
-    "I want to purchase a subscription",
-]
-
-for query in queries:
-    result = app.invoke({"query": query})
-    print(f"Query: {query}")
-    print(f"Answer: {result['answer']}")
-    print()
-```
-
-## Example 2: Iterative Content Generation
-
-Generate content, evaluate quality, and refine until acceptable.
-
-### Workflow Structure
-
-- **Generator**: Produces content based on requirements
-- **Evaluator**: Checks quality and provides feedback
-- **Loop**: Refine until quality threshold is met
-
-### Files
-
-**`workflows/content_generation.yaml`**:
-
-```yaml
-version: "1.0"
-start_at: "generator"
-end_at:
-  - "finalize"
-
-nodes:
-  - id: "generator"
-    handler: "generate_content"
-    params:
-      prompt_ref: "../prompts/content_prompts.yaml#generator"
-      model:
-        provider: "openai"
-        name: "gpt-4.1-mini"
-        kwargs:
-          temperature: 0.8
-  - id: "evaluator"
-    handler: "evaluate_quality"
-    params:
-      prompt_ref: "../prompts/content_prompts.yaml#evaluator"
+      prompt_ref: "../prompts/branch_prompts.yaml#planner"
       model:
         provider: "openai"
         name: "gpt-4.1-mini"
         kwargs:
           temperature: 0.2
-      max_iterations: 3
-  - id: "finalize"
-    handler: "finalize_content"
-
+  - id: "finish"
+    handler: "finish_handler"
 edges:
-  - source: "generator"
-    target: "evaluator"
-  - source: "evaluator"
-    target: "generator"
-    condition: "retry"
-  - source: "evaluator"
-    target: "finalize"
-    condition: "done"
+  - source: "router"
+    target: "planner"
+    condition: "needs_plan"
+  - source: "router"
+    target: "finish"
+    condition: "direct_answer"
+  - source: "planner"
+    target: "finish"
 ```
 
-**`prompts/content_prompts.yaml`**:
+**`examples/prompts/branch_prompts.yaml`**:
 
 ```yaml
-generator:
-  system: |
-    You are a content writer. Generate high-quality content based on the requirements.
-    If feedback is provided, improve the content accordingly.
-  user: |
-    Requirements: {requirements}
-    Feedback: {feedback}
-
-evaluator:
-  system: |
-    You are a content evaluator. Assess the quality of the content and provide feedback.
-    Check for clarity, completeness, and engagement.
-  user: |
-    Content: {content}
+planner:
+  system: "You are planner."
+  user: "Plan for: {goal}"
 ```
 
-**`run_content_generation.py`**:
-
-```python
-from typing import TypedDict
-from yagra import Yagra
-
-
-class AgentState(TypedDict, total=False):
-    requirements: str
-    content: str
-    feedback: str
-    iteration: int
-    __next__: str
-
-
-def generate_content(state: AgentState, params: dict) -> dict:
-    iteration = state.get("iteration", 0)
-    # In real implementation, call LLM with prompt
-    content = f"Generated content v{iteration + 1}"
-    return {
-        "content": content,
-        "iteration": iteration + 1,
-    }
-
-
-def evaluate_quality(state: AgentState, params: dict) -> dict:
-    iteration = state.get("iteration", 0)
-    max_iterations = params.get("max_iterations", 3)
-
-    # Simple quality check (in real implementation, use LLM)
-    is_good = iteration >= 2
-
-    if is_good or iteration >= max_iterations:
-        return {"__next__": "done"}
-    else:
-        feedback = "Content needs more detail and examples"
-        return {
-            "feedback": feedback,
-            "__next__": "retry",
-        }
-
-
-def finalize_content(state: AgentState, params: dict) -> dict:
-    return {"content": state.get("content", "")}
-
-
-registry = {
-    "generate_content": generate_content,
-    "evaluate_quality": evaluate_quality,
-    "finalize_content": finalize_content,
-}
-
-app = Yagra.from_workflow(
-    workflow_path="workflows/content_generation.yaml",
-    registry=registry,
-    state_schema=AgentState,
-)
-
-result = app.invoke({"requirements": "Write a blog post about AI agents"})
-print(f"Final content: {result['content']}")
-print(f"Iterations: {result['iteration']}")
-```
-
-## Example 3: RAG Pipeline
-
-Retrieve documents, rerank by relevance, and generate an answer.
-
-### Workflow Structure
-
-- **Retriever**: Fetch relevant documents from vector DB
-- **Reranker**: Score and rerank documents
-- **Generator**: Generate answer using top documents
-
-### Files
-
-**`workflows/rag.yaml`**:
-
-```yaml
-version: "1.0"
-start_at: "retriever"
-end_at:
-  - "generator"
-
-nodes:
-  - id: "retriever"
-    handler: "retrieve_documents"
-    params:
-      top_k: 10
-  - id: "reranker"
-    handler: "rerank_documents"
-    params:
-      prompt_ref: "../prompts/rag_prompts.yaml#reranker"
-      top_k: 3
-  - id: "generator"
-    handler: "generate_answer"
-    params:
-      prompt_ref: "../prompts/rag_prompts.yaml#generator"
-      model:
-        provider: "anthropic"
-        name: "claude-3-sonnet"
-        kwargs:
-          temperature: 0.4
-          max_tokens: 1000
-
-edges:
-  - source: "retriever"
-    target: "reranker"
-  - source: "reranker"
-    target: "generator"
-```
-
-**`prompts/rag_prompts.yaml`**:
-
-```yaml
-reranker:
-  system: |
-    Rerank the following documents by relevance to the query.
-    Return the top documents in order.
-  user: |
-    Query: {query}
-    Documents: {documents}
-
-generator:
-  system: |
-    Generate a comprehensive answer to the query using the provided context.
-    Cite sources when applicable.
-  user: |
-    Query: {query}
-    Context: {context}
-```
-
-**`run_rag.py`**:
+**Handler implementation**:
 
 ```python
 from typing import TypedDict
@@ -381,47 +65,173 @@ from yagra import Yagra
 
 class AgentState(TypedDict, total=False):
     query: str
-    documents: list[dict]
-    context: str
+    plan: str
     answer: str
+    __next__: str
 
 
-def retrieve_documents(state: AgentState, params: dict) -> dict:
-    top_k = params.get("top_k", 10)
-    # In real implementation, query vector DB
-    documents = [{"id": i, "text": f"Doc {i}"} for i in range(top_k)]
-    return {"documents": documents}
+def router_handler(state: AgentState, params: dict) -> dict:
+    query = state.get("query", "").lower()
+    if "plan" in query or "complex" in query:
+        return {"__next__": "needs_plan"}
+    return {"__next__": "direct_answer"}
 
 
-def rerank_documents(state: AgentState, params: dict) -> dict:
-    top_k = params.get("top_k", 3)
-    documents = state.get("documents", [])
-    # In real implementation, use reranking model
-    reranked = documents[:top_k]
-    context = "\n".join([doc["text"] for doc in reranked])
-    return {"context": context}
+def planner_handler(state: AgentState, params: dict) -> dict:
+    prompt = params.get("prompt", {})
+    # In real implementation, call LLM with prompt
+    return {"plan": f"Plan for: {state.get('query', '')}"}
 
 
-def generate_answer(state: AgentState, params: dict) -> dict:
-    # In real implementation, call LLM with prompt and context
-    answer = f"Answer based on context: {state.get('context', '')}"
-    return {"answer": answer}
+def finish_handler(state: AgentState, params: dict) -> dict:
+    plan = state.get("plan", "")
+    return {"answer": plan if plan else state.get("query", "")}
 
 
 registry = {
-    "retrieve_documents": retrieve_documents,
-    "rerank_documents": rerank_documents,
-    "generate_answer": generate_answer,
+    "router_handler": router_handler,
+    "planner_handler": planner_handler,
+    "finish_handler": finish_handler,
 }
 
 app = Yagra.from_workflow(
-    workflow_path="workflows/rag.yaml",
+    workflow_path="examples/workflows/branch-inline.yaml",
     registry=registry,
     state_schema=AgentState,
 )
 
-result = app.invoke({"query": "What is LangGraph?"})
+result = app.invoke({"query": "Plan a complex project"})
 print(f"Answer: {result['answer']}")
+```
+
+---
+
+## Example 2: Planner-Evaluator Loop (`loop-split`)
+
+Generate a plan, evaluate its quality, and loop back for refinement until acceptable.
+
+### Workflow Structure
+
+- **Planner**: Generates or refines a plan
+- **Evaluator**: Checks plan quality; returns `retry` or `done`
+- **Finish**: Finalizes the output
+
+### Files
+
+**`examples/workflows/loop-split.yaml`**:
+
+```yaml
+version: "1.0"
+start_at: "planner"
+end_at:
+  - "finish"
+nodes:
+  - id: "planner"
+    handler: "planner_loop_handler"
+    params:
+      prompt_ref: "../prompts/support_prompts.yaml#planner"
+      model:
+        provider: "openai"
+        name: "gpt-4.1-mini"
+        kwargs:
+          temperature: 0.1
+          max_tokens: 256
+  - id: "evaluator"
+    handler: "evaluator_loop_handler"
+    params:
+      prompt_ref: "../prompts/support_prompts.yaml#evaluator"
+      model:
+        provider: "openai"
+        name: "gpt-4.1-mini"
+        kwargs:
+          temperature: 0.1
+          max_tokens: 256
+  - id: "finish"
+    handler: "finish_handler"
+    params:
+      prompt_ref: "../prompts/support_prompts.yaml#finish"
+      model:
+        provider: "openai"
+        name: "gpt-4.1-mini"
+        kwargs:
+          temperature: 0.1
+          max_tokens: 256
+edges:
+  - source: "planner"
+    target: "evaluator"
+  - source: "evaluator"
+    target: "planner"
+    condition: "retry"
+  - source: "evaluator"
+    target: "finish"
+    condition: "done"
+```
+
+**`examples/prompts/support_prompts.yaml`**:
+
+```yaml
+planner:
+  system: "You are planner."
+  user: "Create a concise plan."
+evaluator:
+  system: "You are evaluator."
+  user: "Return retry or done."
+finish:
+  system: "You are finisher."
+  user: "Summarize final answer."
+```
+
+**Handler implementation**:
+
+```python
+from typing import TypedDict
+from yagra import Yagra
+
+
+class AgentState(TypedDict, total=False):
+    task: str
+    plan: str
+    iteration: int
+    answer: str
+    __next__: str
+
+
+def planner_loop_handler(state: AgentState, params: dict) -> dict:
+    iteration = state.get("iteration", 0)
+    # In real implementation, call LLM with prompt
+    plan = f"Plan v{iteration + 1}"
+    return {"plan": plan, "iteration": iteration + 1}
+
+
+def evaluator_loop_handler(state: AgentState, params: dict) -> dict:
+    iteration = state.get("iteration", 0)
+    max_iterations = 3
+
+    # Simple quality check (in real implementation, use LLM)
+    if iteration >= 2:
+        return {"__next__": "done"}
+    return {"__next__": "retry"}
+
+
+def finish_handler(state: AgentState, params: dict) -> dict:
+    return {"answer": state.get("plan", "")}
+
+
+registry = {
+    "planner_loop_handler": planner_loop_handler,
+    "evaluator_loop_handler": evaluator_loop_handler,
+    "finish_handler": finish_handler,
+}
+
+app = Yagra.from_workflow(
+    workflow_path="examples/workflows/loop-split.yaml",
+    registry=registry,
+    state_schema=AgentState,
+)
+
+result = app.invoke({"task": "Write a blog post about AI agents"})
+print(f"Final plan: {result['plan']}")
+print(f"Iterations: {result['iteration']}")
 ```
 
 ## Running Examples
@@ -433,21 +243,27 @@ git clone https://github.com/shogo-hs/Yagra.git
 cd Yagra/examples
 ```
 
-Run an example:
-
-```bash
-python run_support_router.py
-```
-
 ## Visualizing Examples
 
 Generate HTML visualizations:
 
 ```bash
-yagra visualize --workflow workflows/support_router.yaml --output support.html
-yagra visualize --workflow workflows/content_generation.yaml --output content.html
-yagra visualize --workflow workflows/rag.yaml --output rag.html
+yagra visualize --workflow examples/workflows/branch-inline.yaml --output branch.html
+yagra visualize --workflow examples/workflows/loop-split.yaml --output loop.html
 ```
+
+## Using Templates
+
+Yagra also provides templates for common patterns. Templates include both workflow YAML and prompt files, ready to use:
+
+```bash
+yagra init --list
+yagra init --template branch --output my-workflow
+yagra init --template loop --output my-loop
+yagra init --template rag --output my-rag
+```
+
+See [Templates](user_guide/templates.md) for details.
 
 ## Next Steps
 
