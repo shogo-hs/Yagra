@@ -14,16 +14,10 @@ from yagra.application.services.workflow_file_store import (
     WorkflowFileStore,
 )
 from yagra.application.use_cases.workflow_edit_session import (
-    WorkflowChange,
-    WorkflowDiffResult,
     build_workflow_diff,
     load_workflow_edit_session,
 )
 from yagra.application.use_cases.workflow_form_model import (
-    WorkflowCatalogPreview,
-    WorkflowEdgeFormItem,
-    WorkflowFormView,
-    WorkflowNodeFormItem,
     build_workflow_catalog_preview,
     build_workflow_form_view,
 )
@@ -35,7 +29,6 @@ from yagra.application.use_cases.workflow_persistence import (
 )
 from yagra.application.use_cases.workflow_validation_reporter import (
     WorkflowValidationFailedError,
-    WorkflowValidationReport,
 )
 from yagra.ports.inbound import (
     StudioBadRequestError,
@@ -61,36 +54,36 @@ class StudioSessionConfig:
     lock: Lock = field(default_factory=Lock)
 
 
-def _resolve_workflow_path_in_workspace(raw_path: str, workspace_root: Path) -> Path:
-    """ワークスペース内の workflow パスを絶対パスへ解決する。"""
+def _resolve_path_in_workspace(
+    raw_path: str,
+    workspace_root: Path,
+    *,
+    label: str = "path",
+) -> Path:
+    """ワークスペース内の YAML パスを絶対パスへ解決する。
+
+    Args:
+        raw_path: ユーザー入力のパス文字列。
+        workspace_root: ワークスペースルートの絶対パス。
+        label: エラーメッセージに使うパラメータ名。
+
+    Returns:
+        解決済みの絶対パス。
+
+    Raises:
+        ValueError: パスが空・ワークスペース外・非 YAML 拡張子の場合。
+    """
     text = raw_path.strip()
     if not text:
-        raise ValueError("workflow_path must be a non-empty string")
+        raise ValueError(f"{label} must be a non-empty string")
     source = Path(text).expanduser()
     candidate = source.resolve() if source.is_absolute() else (workspace_root / source).resolve()
     try:
         candidate.relative_to(workspace_root)
     except ValueError as exc:
-        raise ValueError("workflow_path must be inside workspace_root") from exc
-
+        raise ValueError(f"{label} must be inside workspace_root") from exc
     if candidate.suffix.lower() not in _WORKFLOW_EXTENSIONS:
-        raise ValueError("workflow_path must end with .yaml or .yml")
-    return candidate
-
-
-def _resolve_yaml_path_in_workspace(raw_path: str, workspace_root: Path) -> Path:
-    """ワークスペース内の YAML パスを絶対パスへ解決する。"""
-    text = raw_path.strip()
-    if not text:
-        raise ValueError("path must be a non-empty string")
-    source = Path(text).expanduser()
-    candidate = source.resolve() if source.is_absolute() else (workspace_root / source).resolve()
-    try:
-        candidate.relative_to(workspace_root)
-    except ValueError as exc:
-        raise ValueError("path must be inside workspace_root") from exc
-    if candidate.suffix.lower() not in _WORKFLOW_EXTENSIONS:
-        raise ValueError("path must end with .yaml or .yml")
+        raise ValueError(f"{label} must end with .yaml or .yml")
     return candidate
 
 
@@ -111,11 +104,6 @@ def _list_workflow_candidates(workspace_root: Path) -> list[str]:
             continue
         candidates.append(path.relative_to(workspace_root).as_posix())
     return candidates
-
-
-def _list_yaml_candidates(workspace_root: Path) -> list[str]:
-    """ワークスペース配下の YAML 候補一覧を返す。"""
-    return _list_workflow_candidates(workspace_root)
 
 
 def _to_workspace_relative_path(path: Path, workspace_root: Path) -> str:
@@ -205,7 +193,7 @@ class StudioService(StudioPort):
         with self._config.lock:
             workspace_root = self._config.workspace_root
             workflows = _list_workflow_candidates(workspace_root)
-            yaml_files = _list_yaml_candidates(workspace_root)
+            yaml_files = _list_workflow_candidates(workspace_root)
         return {
             "workspace_root": str(workspace_root),
             "workflows": workflows,
@@ -221,7 +209,7 @@ class StudioService(StudioPort):
         with self._config.lock:
             workspace_root = self._config.workspace_root
             try:
-                yaml_path = _resolve_yaml_path_in_workspace(
+                yaml_path = _resolve_path_in_workspace(
                     raw_path=raw_path,
                     workspace_root=workspace_root,
                 )
@@ -284,7 +272,7 @@ class StudioService(StudioPort):
         with self._config.lock:
             workspace_root = self._config.workspace_root
             try:
-                yaml_path = _resolve_yaml_path_in_workspace(
+                yaml_path = _resolve_path_in_workspace(
                     raw_path=raw_path,
                     workspace_root=workspace_root,
                 )
@@ -334,9 +322,10 @@ class StudioService(StudioPort):
 
         with self._config.lock:
             try:
-                workflow_path = _resolve_workflow_path_in_workspace(
+                workflow_path = _resolve_path_in_workspace(
                     raw_path=workflow_path_raw,
                     workspace_root=self._config.workspace_root,
+                    label="workflow_path",
                 )
             except ValueError as exc:
                 raise StudioBadRequestError(
@@ -373,9 +362,10 @@ class StudioService(StudioPort):
 
         with self._config.lock:
             try:
-                workflow_path = _resolve_workflow_path_in_workspace(
+                workflow_path = _resolve_path_in_workspace(
                     raw_path=workflow_path_raw,
                     workspace_root=self._config.workspace_root,
+                    label="workflow_path",
                 )
             except ValueError as exc:
                 raise StudioBadRequestError(
@@ -432,7 +422,7 @@ class StudioService(StudioPort):
             "workflow": session.workflow,
             "ui_state": session.ui_state,
             "revision": session.revision,
-            "validation_report": _validation_report_to_dict(session.validation_report),
+            "validation_report": session.validation_report.to_dict(),
         }
 
     def get_form(self) -> dict[str, Any]:
@@ -462,11 +452,11 @@ class StudioService(StudioPort):
                     message=str(exc),
                 ) from exc
 
-        payload = _form_view_to_dict(form_view)
+        payload = form_view.to_dict()
         payload["workflow"] = session.workflow
         payload["ui_state"] = session.ui_state
-        payload["catalog_preview"] = _catalog_preview_to_dict(catalog_preview)
-        payload["validation_report"] = _validation_report_to_dict(session.validation_report)
+        payload["catalog_preview"] = catalog_preview.to_dict()
+        payload["validation_report"] = session.validation_report.to_dict()
         return payload
 
     def diff(self, body: dict[str, Any]) -> dict[str, Any]:
@@ -519,7 +509,7 @@ class StudioService(StudioPort):
                     message=str(exc),
                 ) from exc
 
-        return _diff_result_to_dict(diff_result)
+        return diff_result.to_dict()
 
     def form_preview(self, body: dict[str, Any]) -> dict[str, Any]:
         """フォーム編集入力から差分プレビューを返す。"""
@@ -591,7 +581,7 @@ class StudioService(StudioPort):
                     message=str(exc),
                 ) from exc
 
-        response_payload = _diff_result_to_dict(diff_result)
+        response_payload = diff_result.to_dict()
         response_payload["candidate_workflow"] = candidate_workflow
         response_payload["candidate_ui_state"] = candidate_ui_state
         return response_payload
@@ -616,7 +606,7 @@ class StudioService(StudioPort):
                     message=str(exc),
                 ) from exc
 
-        return _catalog_preview_to_dict(catalog_preview)
+        return catalog_preview.to_dict()
 
     def save(self, body: dict[str, Any]) -> dict[str, Any]:
         """編集案を保存する。"""
@@ -653,7 +643,7 @@ class StudioService(StudioPort):
             except WorkflowValidationFailedError as exc:
                 raise StudioUnprocessableEntityError(
                     error="validation_failed",
-                    details={"report": _validation_report_to_dict(exc.report)},
+                    details={"report": exc.report.to_dict()},
                 ) from exc
             except ValueError as exc:
                 raise StudioBadRequestError(
@@ -710,78 +700,3 @@ class StudioService(StudioPort):
             error="studio_target_required",
             message="workflow target is not selected",
         )
-
-
-def _diff_result_to_dict(result: WorkflowDiffResult) -> dict[str, Any]:
-    """差分結果を API 応答形式へ変換する。"""
-    return {
-        "base_revision": result.base_revision,
-        "candidate_revision": result.candidate_revision,
-        "summary": result.summary,
-        "changes": [_change_to_dict(change) for change in result.changes],
-        "yaml_unified_diff": result.yaml_unified_diff,
-        "validation_report": _validation_report_to_dict(result.validation_report),
-    }
-
-
-def _form_view_to_dict(view: WorkflowFormView) -> dict[str, Any]:
-    """フォーム表示モデルを API 応答形式へ変換する。"""
-    return {
-        "revision": view.revision,
-        "nodes": [_node_form_item_to_dict(node) for node in view.nodes],
-        "edges": [_edge_form_item_to_dict(edge) for edge in view.edges],
-        "prompt_catalog_keys": list(view.prompt_catalog_keys),
-    }
-
-
-def _node_form_item_to_dict(item: WorkflowNodeFormItem) -> dict[str, Any]:
-    """ノードフォーム項目を API 応答形式へ変換する。"""
-    return {
-        "id": item.id,
-        "handler": item.handler,
-        "prompt_ref": item.prompt_ref,
-        "model": item.model,
-    }
-
-
-def _edge_form_item_to_dict(item: WorkflowEdgeFormItem) -> dict[str, Any]:
-    """エッジフォーム項目を API 応答形式へ変換する。"""
-    return {
-        "index": item.index,
-        "source": item.source,
-        "target": item.target,
-        "condition": item.condition,
-    }
-
-
-def _change_to_dict(change: WorkflowChange) -> dict[str, Any]:
-    """変更イベントを API 応答形式へ変換する。"""
-    return {
-        "kind": change.kind,
-        "path": list(change.path),
-        "before": change.before,
-        "after": change.after,
-    }
-
-
-def _validation_report_to_dict(report: WorkflowValidationReport) -> dict[str, Any]:
-    """検証レポートを API 応答形式へ変換する。"""
-    return {
-        "is_valid": report.is_valid,
-        "issues": [
-            {"code": issue.code, "message": issue.message, "location": list(issue.location)}
-            for issue in report.issues
-        ],
-    }
-
-
-def _catalog_preview_to_dict(preview: WorkflowCatalogPreview) -> dict[str, Any]:
-    """Catalog プレビュー結果を API 応答形式へ変換する。"""
-    return {
-        "prompt_catalog_path": preview.prompt_catalog_path,
-        "prompt_catalog_keys": list(preview.prompt_catalog_keys),
-        "issues": [
-            {"code": issue.code, "message": issue.message, "location": list(issue.location)}
-            for issue in preview.issues
-        ],
-    }

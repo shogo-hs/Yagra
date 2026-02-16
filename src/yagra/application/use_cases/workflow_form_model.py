@@ -23,6 +23,19 @@ class WorkflowNodeFormItem:
     prompt_ref: str | None
     model: dict[str, Any] | None
 
+    def to_dict(self) -> dict[str, Any]:
+        """API 応答形式の辞書へ変換する。
+
+        Returns:
+            id, handler, prompt_ref, model を含む辞書。
+        """
+        return {
+            "id": self.id,
+            "handler": self.handler,
+            "prompt_ref": self.prompt_ref,
+            "model": self.model,
+        }
+
 
 @dataclass(frozen=True, slots=True)
 class WorkflowEdgeFormItem:
@@ -32,6 +45,19 @@ class WorkflowEdgeFormItem:
     source: str
     target: str
     condition: str | None
+
+    def to_dict(self) -> dict[str, Any]:
+        """API 応答形式の辞書へ変換する。
+
+        Returns:
+            index, source, target, condition を含む辞書。
+        """
+        return {
+            "index": self.index,
+            "source": self.source,
+            "target": self.target,
+            "condition": self.condition,
+        }
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,6 +69,19 @@ class WorkflowFormView:
     edges: tuple[WorkflowEdgeFormItem, ...]
     prompt_catalog_keys: tuple[str, ...]
 
+    def to_dict(self) -> dict[str, Any]:
+        """API 応答形式の辞書へ変換する。
+
+        Returns:
+            revision, nodes, edges, prompt_catalog_keys を含む辞書。
+        """
+        return {
+            "revision": self.revision,
+            "nodes": [node.to_dict() for node in self.nodes],
+            "edges": [edge.to_dict() for edge in self.edges],
+            "prompt_catalog_keys": list(self.prompt_catalog_keys),
+        }
+
 
 @dataclass(frozen=True, slots=True)
 class WorkflowCatalogIssue:
@@ -52,6 +91,14 @@ class WorkflowCatalogIssue:
     message: str
     location: tuple[str | int, ...]
 
+    def to_dict(self) -> dict[str, Any]:
+        """API 応答形式の辞書へ変換する。
+
+        Returns:
+            code, message, location を含む辞書。
+        """
+        return {"code": self.code, "message": self.message, "location": list(self.location)}
+
 
 @dataclass(frozen=True, slots=True)
 class WorkflowCatalogPreview:
@@ -60,6 +107,18 @@ class WorkflowCatalogPreview:
     prompt_catalog_path: str | None
     prompt_catalog_keys: tuple[str, ...]
     issues: tuple[WorkflowCatalogIssue, ...]
+
+    def to_dict(self) -> dict[str, Any]:
+        """API 応答形式の辞書へ変換する。
+
+        Returns:
+            prompt_catalog_path, prompt_catalog_keys, issues を含む辞書。
+        """
+        return {
+            "prompt_catalog_path": self.prompt_catalog_path,
+            "prompt_catalog_keys": list(self.prompt_catalog_keys),
+            "issues": [issue.to_dict() for issue in self.issues],
+        }
 
 
 def build_workflow_form_view(

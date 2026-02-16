@@ -159,6 +159,27 @@ def _build_handler_class(
     Returns:
         `BaseHTTPRequestHandler` 派生クラス。
     """
+    # ── ルーティングテーブル ──────────────────────────────────
+    # GET: パス → 引数なしのサービスメソッド名
+    _get_routes: dict[str, str] = {
+        "/api/studio/target": "get_studio_target",
+        "/api/studio/files": "get_studio_files",
+        "/api/workflow/form": "get_form",
+        "/api/workflow": "get_workflow",
+    }
+
+    # POST: パス → body を受け取るサービスメソッド名
+    _post_routes: dict[str, str] = {
+        "/api/workflow/diff": "diff",
+        "/api/workflow/form/preview": "form_preview",
+        "/api/workflow/catalogs/preview": "catalog_preview",
+        "/api/workflow/save": "save",
+        "/api/workflow/rollback": "rollback",
+        "/api/studio/open": "open_studio_target",
+        "/api/studio/create": "create_studio_target",
+        "/api/studio/file/read": "read_studio_yaml_file",
+        "/api/studio/file/save": "save_studio_yaml_file",
+    }
 
     class WorkflowStudioHandler(BaseHTTPRequestHandler):
         """Workflow Studio API のリクエストを処理する。"""
@@ -178,18 +199,15 @@ def _build_handler_class(
             if path.startswith("/assets/"):
                 self._handle_get_asset(path)
                 return
-            if path == "/api/studio/target":
-                self._handle_get_studio_target()
+
+            method_name = _get_routes.get(path)
+            if method_name is not None:
+                operation = getattr(self._studio, method_name)
+                payload = self._execute_studio_call(operation)
+                if payload is not None:
+                    self._write_json(200, payload)
                 return
-            if path == "/api/studio/files":
-                self._handle_get_studio_files()
-                return
-            if path == "/api/workflow/form":
-                self._handle_get_form()
-                return
-            if path == "/api/workflow":
-                self._handle_get_workflow()
-                return
+
             self._write_json(404, {"error": "not_found"})
 
         def do_POST(self) -> None:  # noqa: N802
@@ -201,47 +219,15 @@ def _build_handler_class(
                 self._write_json(400, {"error": "invalid_json", "message": str(exc)})
                 return
 
-            if path == "/api/workflow/diff":
-                self._handle_diff(body)
-                return
-            if path == "/api/workflow/form/preview":
-                self._handle_form_preview(body)
-                return
-            if path == "/api/workflow/catalogs/preview":
-                self._handle_catalog_preview(body)
-                return
-            if path == "/api/workflow/save":
-                self._handle_save(body)
-                return
-            if path == "/api/workflow/rollback":
-                self._handle_rollback(body)
-                return
-            if path == "/api/studio/open":
-                self._handle_open_studio_target(body)
-                return
-            if path == "/api/studio/create":
-                self._handle_create_studio_target(body)
-                return
-            if path == "/api/studio/file/read":
-                self._handle_read_studio_yaml_file(body)
-                return
-            if path == "/api/studio/file/save":
-                self._handle_save_studio_yaml_file(body)
+            method_name = _post_routes.get(path)
+            if method_name is not None:
+                method = getattr(self._studio, method_name)
+                payload = self._execute_studio_call(lambda: method(body))
+                if payload is not None:
+                    self._write_json(200, payload)
                 return
 
             self._write_json(404, {"error": "not_found"})
-
-        def _handle_get_studio_target(self) -> None:
-            """Studio の現在ターゲット情報を返す。"""
-            payload = self._execute_studio_call(self._studio.get_studio_target)
-            if payload is not None:
-                self._write_json(200, payload)
-
-        def _handle_get_studio_files(self) -> None:
-            """ワークスペース配下の workflow 候補一覧を返す。"""
-            payload = self._execute_studio_call(self._studio.get_studio_files)
-            if payload is not None:
-                self._write_json(200, payload)
 
         def _handle_get_asset(self, path: str) -> None:
             """同梱静的アセットを返す。"""
@@ -256,72 +242,6 @@ def _build_handler_class(
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
-
-        def _handle_open_studio_target(self, body: dict[str, Any]) -> None:
-            """既存 workflow を Studio 編集対象として開く。"""
-            payload = self._execute_studio_call(lambda: self._studio.open_studio_target(body))
-            if payload is not None:
-                self._write_json(200, payload)
-
-        def _handle_create_studio_target(self, body: dict[str, Any]) -> None:
-            """新規 workflow を作成して Studio 編集対象として開く。"""
-            payload = self._execute_studio_call(lambda: self._studio.create_studio_target(body))
-            if payload is not None:
-                self._write_json(200, payload)
-
-        def _handle_read_studio_yaml_file(self, body: dict[str, Any]) -> None:
-            """ワークスペース配下の YAML ファイル内容を返す。"""
-            payload = self._execute_studio_call(lambda: self._studio.read_studio_yaml_file(body))
-            if payload is not None:
-                self._write_json(200, payload)
-
-        def _handle_save_studio_yaml_file(self, body: dict[str, Any]) -> None:
-            """ワークスペース配下の YAML ファイルを作成・更新する。"""
-            payload = self._execute_studio_call(lambda: self._studio.save_studio_yaml_file(body))
-            if payload is not None:
-                self._write_json(200, payload)
-
-        def _handle_get_workflow(self) -> None:
-            """現在の workflow を返す。"""
-            payload = self._execute_studio_call(self._studio.get_workflow)
-            if payload is not None:
-                self._write_json(200, payload)
-
-        def _handle_get_form(self) -> None:
-            """フォーム編集向けの workflow 表示情報を返す。"""
-            payload = self._execute_studio_call(self._studio.get_form)
-            if payload is not None:
-                self._write_json(200, payload)
-
-        def _handle_diff(self, body: dict[str, Any]) -> None:
-            """編集案の差分を返す。"""
-            payload = self._execute_studio_call(lambda: self._studio.diff(body))
-            if payload is not None:
-                self._write_json(200, payload)
-
-        def _handle_form_preview(self, body: dict[str, Any]) -> None:
-            """フォーム編集入力から差分プレビューを返す。"""
-            payload = self._execute_studio_call(lambda: self._studio.form_preview(body))
-            if payload is not None:
-                self._write_json(200, payload)
-
-        def _handle_catalog_preview(self, body: dict[str, Any]) -> None:
-            """Workflow の catalog 設定プレビューを返す。"""
-            payload = self._execute_studio_call(lambda: self._studio.catalog_preview(body))
-            if payload is not None:
-                self._write_json(200, payload)
-
-        def _handle_save(self, body: dict[str, Any]) -> None:
-            """編集案を保存する。"""
-            payload = self._execute_studio_call(lambda: self._studio.save(body))
-            if payload is not None:
-                self._write_json(200, payload)
-
-        def _handle_rollback(self, body: dict[str, Any]) -> None:
-            """バックアップIDを指定して復元する。"""
-            payload = self._execute_studio_call(lambda: self._studio.rollback(body))
-            if payload is not None:
-                self._write_json(200, payload)
 
         def _execute_studio_call(
             self,
