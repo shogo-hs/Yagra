@@ -1,0 +1,42 @@
+version: "1.0"
+start_at: "retrieve"
+end_at:
+  - "generate"
+
+params:
+  workflow_name: "rag-example"
+
+nodes:
+  - id: "retrieve"
+    handler: "retrieve_handler"
+    params:
+      prompt_ref: "prompts/rag_prompts.yaml#retrieve"
+      model:
+        provider: "openai"
+        name: "text-embedding-3-small"
+  - id: "rerank"
+    handler: "rerank_handler"
+    params:
+      prompt_ref: "prompts/rag_prompts.yaml#rerank"
+      model:
+        provider: "openai"
+        name: "gpt-4o-mini"
+        kwargs:
+          temperature: 0.0
+          max_tokens: 128
+  - id: "generate"
+    handler: "generate_handler"
+    params:
+      prompt_ref: "prompts/rag_prompts.yaml#generate"
+      model:
+        provider: "openai"
+        name: "gpt-4o-mini"
+        kwargs:
+          temperature: 0.7
+          max_tokens: 512
+
+edges:
+  - source: "retrieve"
+    target: "rerank"
+  - source: "rerank"
+    target: "generate"

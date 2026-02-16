@@ -15,6 +15,12 @@ from langgraph.graph.state import CompiledStateGraph
 
 from yagra.adapters.inbound import create_workflow_studio_server
 from yagra.adapters.outbound import InMemoryNodeRegistry
+from yagra.application.services.template_initializer import (
+    FileAlreadyExistsError,
+    TemplateNotFoundError,
+    initialize_from_template,
+    list_templates,
+)
 from yagra.application.use_cases import (
     build_from_workflow_path,
     format_validation_report,
@@ -92,6 +98,9 @@ def main() -> None:
     parser = _build_cli_parser()
     args = parser.parse_args()
 
+    if args.command == "init":
+        exit_code = _run_init_command(args)
+        raise SystemExit(exit_code)
     if args.command == "schema":
         exit_code = _run_schema_command(args)
         raise SystemExit(exit_code)
@@ -126,6 +135,69 @@ def _normalize_registry(registry: NodeRegistryPort | Mapping[str, NodeHandler]) 
     raise TypeError("registry must be NodeRegistryPort or mapping[str, NodeHandler]")
 
 
+def _run_init_command(args: argparse.Namespace) -> int:
+    """`init` サブコマンドを実行する。
+
+    Args:
+        args: 解析済みの CLI 引数。
+
+    Returns:
+        終了コード。成功時は 0。
+    """
+    # テンプレート一覧表示
+    if args.list:
+        templates = list_templates()
+        if not templates:
+            print("利用可能なテンプレートがありません。")
+            return 1
+        print("利用可能なテンプレート:")
+        for template in templates:
+            print(f"  - {template}")
+        return 0
+
+    # テンプレート名が指定されていない場合はエラー
+    if args.template is None:
+        print(
+            "エラー: --template または --list のいずれかを指定してください。",
+            file=sys.stderr,
+        )
+        return 2
+
+    output_dir = Path(args.output).expanduser().resolve()
+
+    try:
+        initialize_from_template(
+            template_name=args.template,
+            output_dir=output_dir,
+            force=args.force,
+        )
+    except TemplateNotFoundError as e:
+        print(str(e), file=sys.stderr)
+        return 1
+    except FileAlreadyExistsError as e:
+        print(str(e), file=sys.stderr)
+        return 1
+
+    print(f"テンプレート '{args.template}' から初期化しました: {output_dir}")
+
+    # 生成されたワークフローを検証
+    workflow_path = output_dir / "workflow.yaml"
+    if workflow_path.exists():
+        print(f"\nワークフローを検証しています: {workflow_path}")
+        report = validate_workflow_for_ui(
+            workflow_path=str(workflow_path),
+            bundle_root=None,
+        )
+        if report.is_valid:
+            print("✓ ワークフローは valid です。")
+        else:
+            print("✗ ワークフローに問題があります:", file=sys.stderr)
+            print(format_validation_report(report), file=sys.stderr)
+            return 1
+
+    return 0
+
+
 def _build_cli_parser() -> argparse.ArgumentParser:
     """CLI パーサーを構築する。
 
@@ -134,6 +206,31 @@ def _build_cli_parser() -> argparse.ArgumentParser:
     """
     parser = argparse.ArgumentParser(prog="yagra")
     subparsers = parser.add_subparsers(dest="command", required=True)
+
+    init = subparsers.add_parser(
+        "init",
+        help="テンプレートからワークフローを初期化する",
+    )
+    init.add_argument(
+        "--template",
+        default=None,
+        help="使用するテンプレート名（例: branch, loop, rag）",
+    )
+    init.add_argument(
+        "--list",
+        action="store_true",
+        help="利用可能なテンプレート一覧を表示する",
+    )
+    init.add_argument(
+        "--force",
+        action="store_true",
+        help="既存ファイルを上書きする",
+    )
+    init.add_argument(
+        "--output",
+        default=".",
+        help="出力先ディレクトリ（デフォルト: カレントディレクトリ）",
+    )
 
     schema = subparsers.add_parser(
         "schema",

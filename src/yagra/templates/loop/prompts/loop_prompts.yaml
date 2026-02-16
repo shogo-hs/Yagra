@@ -1,0 +1,11 @@
+planner:
+  system: "You are a planner assistant."
+  user: "Create a concise plan for the task."
+
+evaluator:
+  system: "You are an evaluator assistant."
+  user: "Evaluate the plan. Return 'retry' if it needs improvement, or 'done' if it's complete."
+
+finish:
+  system: "You are a finisher assistant."
+  user: "Summarize the final answer."

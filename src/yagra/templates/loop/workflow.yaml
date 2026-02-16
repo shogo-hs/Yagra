@@ -1,0 +1,46 @@
+version: "1.0"
+start_at: "planner"
+end_at:
+  - "finish"
+
+nodes:
+  - id: "planner"
+    handler: "planner_loop_handler"
+    params:
+      prompt_ref: "prompts/loop_prompts.yaml#planner"
+      model:
+        provider: "openai"
+        name: "gpt-4o-mini"
+        kwargs:
+          temperature: 0.1
+          max_tokens: 256
+  - id: "evaluator"
+    handler: "evaluator_loop_handler"
+    params:
+      prompt_ref: "prompts/loop_prompts.yaml#evaluator"
+      model:
+        provider: "openai"
+        name: "gpt-4o-mini"
+        kwargs:
+          temperature: 0.1
+          max_tokens: 256
+  - id: "finish"
+    handler: "finish_handler"
+    params:
+      prompt_ref: "prompts/loop_prompts.yaml#finish"
+      model:
+        provider: "openai"
+        name: "gpt-4o-mini"
+        kwargs:
+          temperature: 0.1
+          max_tokens: 256
+
+edges:
+  - source: "planner"
+    target: "evaluator"
+  - source: "evaluator"
+    target: "planner"
+    condition: "retry"
+  - source: "evaluator"
+    target: "finish"
+    condition: "done"
