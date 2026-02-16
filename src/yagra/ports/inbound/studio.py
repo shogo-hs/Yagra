@@ -25,19 +25,19 @@ class StudioError(Exception):
 
 
 class StudioBadRequestError(StudioError):
-    """入力値が不正な場合のエラー。"""
+    """Error when the input value is invalid."""
 
 
 class StudioNotFoundError(StudioError):
-    """対象リソースが見つからない場合のエラー。"""
+    """Error when the target resource is not found."""
 
 
 class StudioConflictError(StudioError):
-    """競合が発生した場合のエラー。"""
+    """Error when a conflict occurs."""
 
 
 class StudioUnprocessableEntityError(StudioError):
-    """構文は正しいが処理不能な場合のエラー。"""
+    """Error when the syntax is correct but processing is not possible."""
 
 
 class StudioPort(ABC):
@@ -45,43 +45,43 @@ class StudioPort(ABC):
 
     @abstractmethod
     def get_studio_target(self) -> dict[str, Any]:
-        """現在の Studio ターゲット情報を返す。"""
+        """Returns the current Studio target information."""
 
     @abstractmethod
     def get_studio_files(self) -> dict[str, Any]:
-        """ワークスペース配下の workflow / YAML 候補一覧を返す。"""
+        """Returns a list of workflow / YAML candidates under the workspace."""
 
     @abstractmethod
     def read_studio_yaml_file(self, body: dict[str, Any]) -> dict[str, Any]:
-        """ワークスペース配下の YAML ファイル内容を返す。"""
+        """Returns the YAML file contents under the workspace."""
 
     @abstractmethod
     def save_studio_yaml_file(self, body: dict[str, Any]) -> dict[str, Any]:
-        """ワークスペース配下の YAML ファイルを作成・更新する。"""
+        """Creates or updates a YAML file under the workspace."""
 
     @abstractmethod
     def open_studio_target(self, body: dict[str, Any]) -> dict[str, Any]:
-        """既存 workflow を Studio ターゲットとして開く。"""
+        """Opens an existing workflow as a Studio target."""
 
     @abstractmethod
     def create_studio_target(self, body: dict[str, Any]) -> dict[str, Any]:
-        """新規 workflow を作成して Studio ターゲットとして開く。"""
+        """Creates a new workflow and opens it as a Studio target."""
 
     @abstractmethod
     def get_workflow(self) -> dict[str, Any]:
-        """現在の workflow と UI state を返す。"""
+        """Returns the current workflow and UI state."""
 
     @abstractmethod
     def get_form(self) -> dict[str, Any]:
-        """フォーム編集向け workflow 表示情報を返す。"""
+        """Returns workflow display information for form editing."""
 
     @abstractmethod
     def diff(self, body: dict[str, Any]) -> dict[str, Any]:
-        """編集案の差分を返す。"""
+        """Returns the diff of the editing proposal."""
 
     @abstractmethod
     def form_preview(self, body: dict[str, Any]) -> dict[str, Any]:
-        """フォーム編集入力から差分プレビューを返す。"""
+        """Returns a diff preview from form editing input."""
 
     @abstractmethod
     def catalog_preview(self, body: dict[str, Any]) -> dict[str, Any]:
@@ -89,8 +89,8 @@ class StudioPort(ABC):
 
     @abstractmethod
     def save(self, body: dict[str, Any]) -> dict[str, Any]:
-        """編集案を保存する。"""
+        """Saves the editing proposal."""
 
     @abstractmethod
     def rollback(self, body: dict[str, Any]) -> dict[str, Any]:
-        """バックアップ ID を指定して復元する。"""
+        """Restores using the specified backup ID."""

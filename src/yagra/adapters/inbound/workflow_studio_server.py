@@ -26,7 +26,7 @@ from yagra.ports.inbound import (
 
 
 def _load_web_asset(asset_path: str) -> tuple[bytes, str] | None:
-    """同梱 Web アセットを読み込む。
+    """Loads bundled web assets.
 
     Args:
         asset_path: `/assets/` 以降の相対パス。
@@ -151,7 +151,7 @@ def create_workflow_studio_server(
 def _build_handler_class(
     studio: StudioPort,
 ) -> type[BaseHTTPRequestHandler]:
-    """設定を閉じ込めた HTTP Handler クラスを生成する。
+    """Creates an HTTP Handler class encapsulating configuration.
 
     Args:
         studio: Studio inbound port 実装。
@@ -187,7 +187,7 @@ def _build_handler_class(
         _studio = studio
 
         def log_message(self, format: str, *args: Any) -> None:  # noqa: A003
-            """標準出力ログを抑制する。"""
+            """Suppresses standard output logging."""
             _ = (format, args)
 
         def do_GET(self) -> None:  # noqa: N802
@@ -230,7 +230,7 @@ def _build_handler_class(
             self._write_json(404, {"error": "not_found"})
 
         def _handle_get_asset(self, path: str) -> None:
-            """同梱静的アセットを返す。"""
+            """Returns bundled static assets."""
             asset_path = unquote(path.removeprefix("/assets/"))
             loaded = _load_web_asset(asset_path)
             if loaded is None:
@@ -261,7 +261,7 @@ def _build_handler_class(
             return None
 
         def _read_json_body(self) -> dict[str, Any]:
-            """リクエストボディを JSON 辞書として読み込む。"""
+            """Reads the request body as a JSON dictionary."""
             raw_length = self.headers.get("Content-Length")
             if raw_length is None:
                 return {}

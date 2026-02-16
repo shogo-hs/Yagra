@@ -27,7 +27,7 @@ class WorkflowRevisionConflictError(ValueError):
     """workflow 保存時に revision が競合した場合の例外。"""
 
     def __init__(self, expected_revision: str, actual_revision: str) -> None:
-        """競合情報を保持して初期化する。
+        """Initializes with conflict information.
 
         Args:
             expected_revision: クライアントが想定した revision。
@@ -147,7 +147,7 @@ def rollback_workflow_from_backup(
     ui_state_path: str | PathLike[str] | None = None,
     backup_dir: str | PathLike[str] = ".yagra/backups",
 ) -> WorkflowRollbackResult:
-    """指定バックアップから workflow を復元する。
+    """Restores workflow from the specified backup.
 
     Args:
         workflow_path: 復元対象 workflow パス。
@@ -213,7 +213,7 @@ __all__ = [
 
 
 def _ensure_mapping(payload: Mapping[str, Any], label: str) -> dict[str, Any]:
-    """入力が辞書互換であることを検証して辞書化する。
+    """Validates that the input is dict-compatible and converts it to a dict.
 
     Args:
         payload: 検証対象データ。

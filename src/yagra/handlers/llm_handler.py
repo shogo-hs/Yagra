@@ -1,7 +1,7 @@
 """LLM handler implementation using litellm.
 
-このモジュールは、litellmを使った汎用LLM呼び出しハンドラーを提供します。
-100以上のLLMプロバイダーに対応し、統一的なAPIで呼び出しが可能です。
+This module provides a generic LLM invocation handler using litellm.
+It supports over 100 LLM providers through a unified API.
 """
 
 import time
@@ -16,19 +16,19 @@ else:
 
 
 class LLMHandlerError(Exception):
-    """LLMハンドラー実行時のエラー基底クラス."""
+    """Base exception class for LLM handler execution errors."""
 
     pass
 
 
 class LLMHandlerConfigError(LLMHandlerError):
-    """LLMハンドラーの設定エラー."""
+    """Configuration error for LLM handler."""
 
     pass
 
 
 class LLMHandlerCallError(LLMHandlerError):
-    """LLM呼び出し時のエラー."""
+    """Error during LLM invocation."""
 
     pass
 
@@ -37,37 +37,37 @@ def create_llm_handler(
     retry: int = 3,
     timeout: int = 30,
 ) -> NodeHandler:
-    """LLM呼び出しハンドラーを生成する.
+    """Creates an LLM invocation handler.
 
-    litellmを使って100以上のLLMプロバイダーに対応したハンドラーを生成します。
-    YAML定義で `prompt_ref`, `model`, `input_keys`, `output_key` を指定するだけで
-    LLM呼び出しが可能になります。
+    Generates a handler that supports over 100 LLM providers using litellm.
+    Simply specify `prompt_ref`, `model`, `input_keys`, and `output_key` in the YAML
+    definition to enable LLM invocation.
 
     Args:
-        retry: APIエラー時のリトライ回数（デフォルト: 3）
-        timeout: タイムアウト秒数（デフォルト: 30）
+        retry: Number of retries on API errors (default: 3).
+        timeout: Timeout in seconds (default: 30).
 
     Returns:
-        NodeHandler: (state, params) → dict を受け取るハンドラー関数
+        NodeHandler: Handler function that takes (state, params) and returns a dict.
 
     Raises:
-        ImportError: litellmがインストールされていない場合
+        ImportError: If litellm is not installed.
 
     Examples:
-        基本的な使い方:
+        Basic usage:
 
         >>> handler = create_llm_handler(retry=3, timeout=30)
-        >>> state = {"query": "こんにちは"}
+        >>> state = {"query": "Hello"}
         >>> params = {
-        ...     "prompt": {"system": "あなたは親切なアシスタントです", "user": "{query}"},
+        ...     "prompt": {"system": "You are a helpful assistant", "user": "{query}"},
         ...     "model": {"provider": "openai", "name": "gpt-4", "kwargs": {"temperature": 0.7}},
         ...     "input_keys": ["query"],
         ...     "output_key": "response",
         ... }
         >>> result = handler(state, params)
-        >>> print(result["response"])  # LLMからのレスポンス
+        >>> print(result["response"])  # LLM response
 
-        YAMLでの定義例:
+        YAML definition example:
 
         .. code-block:: yaml
 
@@ -97,18 +97,18 @@ def create_llm_handler(
             raise ImportError(msg) from e
 
     def handler(state: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
-        """LLMを呼び出してレスポンスを返す.
+        """Invokes the LLM and returns the response.
 
         Args:
-            state: ワークフローの状態辞書
-            params: ノードパラメータ（prompt, model, input_keys, output_key）
+            state: Workflow state dictionary.
+            params: Node parameters (prompt, model, input_keys, output_key).
 
         Returns:
-            dict: {output_key: response_text} の形式
+            dict: Response in the format {output_key: response_text}.
 
         Raises:
-            LLMHandlerConfigError: 必須パラメータが不足している場合
-            LLMHandlerCallError: LLM呼び出しが失敗した場合
+            LLMHandlerConfigError: If required parameters are missing.
+            LLMHandlerCallError: If LLM invocation fails.
         """
         # 1. パラメータ抽出と検証
         prompt = params.get("prompt")

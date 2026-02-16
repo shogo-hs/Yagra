@@ -26,7 +26,7 @@ UI_STATE_SUFFIX = ".workflow-ui.json"
 
 @dataclass(frozen=True, slots=True)
 class WorkflowEditSession:
-    """編集セッションの現在状態を保持する。"""
+    """Holds the current state of the editing session."""
 
     workflow: dict[str, Any]
     ui_state: dict[str, Any]
@@ -36,7 +36,7 @@ class WorkflowEditSession:
 
 @dataclass(frozen=True, slots=True)
 class WorkflowChange:
-    """単一変更イベントを表す。"""
+    """Represents a single change event."""
 
     kind: Literal["add", "remove", "update"]
     path: Location
@@ -59,7 +59,7 @@ class WorkflowChange:
 
 @dataclass(frozen=True, slots=True)
 class WorkflowDiffResult:
-    """差分計算結果を表す。"""
+    """Represents the diff calculation result."""
 
     base_revision: str
     candidate_revision: str
@@ -270,7 +270,7 @@ def _load_ui_state_mapping(path: Path) -> dict[str, Any]:
 
 
 def _ensure_mapping(payload: Any, label: str) -> dict[str, Any]:
-    """辞書形式であることを検証して返す。
+    """Validates that the format is dict and returns it.
 
     Args:
         payload: 検証対象データ。
@@ -382,7 +382,7 @@ def _collect_changes(before: Any, after: Any, path: Location) -> list[WorkflowCh
 
 
 def _build_summary(changes: list[WorkflowChange]) -> dict[str, int]:
-    """変更イベントをカテゴリ別件数へ集計する。
+    """Aggregates change events into category counts.
 
     Args:
         changes: 集計対象の変更イベント一覧。
@@ -439,7 +439,7 @@ def _build_yaml_unified_diff(before: dict[str, Any], after: dict[str, Any]) -> s
 
 
 def _path_token(value: Any) -> str | int:
-    """辞書キーを変更パスのトークンへ正規化する。
+    """Normalizes dict keys to change path tokens.
 
     Args:
         value: 変換対象の辞書キー。

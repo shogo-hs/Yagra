@@ -11,14 +11,14 @@ type Location = tuple[str | int, ...]
 
 @dataclass(frozen=True, slots=True)
 class EdgeRuleIssue:
-    """エッジ定義ルール検証で検知した単一問題。"""
+    """A single issue detected during edge definition rule validation."""
 
     message: str
     location: Location
 
 
 def collect_edge_rule_issues(spec: GraphSpec) -> list[EdgeRuleIssue]:
-    """エッジ定義に関するルール違反を収集する。
+    """Collects rule violations related to edge definitions.
 
     Args:
         spec: 検証対象の workflow 定義。

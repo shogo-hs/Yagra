@@ -43,7 +43,7 @@ class WorkflowValidationReport:
 
     @property
     def is_valid(self) -> bool:
-        """問題が存在しないかを返す。"""
+        """Returns whether no issues exist."""
         return not self.issues
 
     def to_dict(self) -> dict[str, Any]:
@@ -62,7 +62,7 @@ class WorkflowValidationFailedError(ValueError):
     """Workflow 検証失敗を保持する例外。"""
 
     def __init__(self, report: WorkflowValidationReport) -> None:
-        """検証失敗例外を初期化する。
+        """Initializes the validation failure exception.
 
         Args:
             report: 検証失敗内容を含むレポート。
@@ -242,7 +242,7 @@ def _load_yaml_mapping_for_ui(
 
 
 def format_validation_report(report: WorkflowValidationReport) -> str:
-    """検証レポートを可読なメッセージへ整形する。
+    """Formats the validation report into a readable message.
 
     Args:
         report: 整形対象の検証レポート。
@@ -259,7 +259,7 @@ def _validate_graph_spec_for_ui(
     resolved_payload: dict[str, Any],
     report: WorkflowValidationReport,
 ) -> GraphSpec | None:
-    """解決済み payload を GraphSpec として検証する。
+    """Validates the resolved payload as GraphSpec.
 
     Args:
         resolved_payload: 参照解決済みの workflow データ。
@@ -329,7 +329,7 @@ def _normalize_location(raw_loc: Any) -> Location:
 
 
 def _format_validation_issues(issues: list[WorkflowValidationIssue]) -> str:
-    """検証問題一覧を改行区切り文字列へ変換する。
+    """Converts the validation issue list into a newline-separated string.
 
     Args:
         issues: 変換対象の問題一覧。

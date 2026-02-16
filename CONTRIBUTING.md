@@ -276,7 +276,7 @@ GitHub Actions will automatically build and publish to PyPI.
 ### Docstrings
 
 - Use Google style
-- Write in **Japanese** (日本語で書く)
+- Write in **Japanese**
 - Include `Args`, `Returns`, `Raises` sections
 - Explain purpose and intent, not just implementation
 

@@ -1,4 +1,4 @@
-"""テンプレートからワークフローを初期化するサービス。"""
+"""Service for initializing workflows from templates."""
 
 from __future__ import annotations
 
@@ -11,10 +11,10 @@ if TYPE_CHECKING:
 
 
 class TemplateNotFoundError(ValueError):
-    """指定されたテンプレートが存在しない場合の例外。"""
+    """Exception raised when the specified template does not exist."""
 
     def __init__(self, template_name: str, available_templates: Sequence[str]) -> None:
-        """例外を初期化する。
+        """Initializes the exception.
 
         Args:
             template_name: 指定されたテンプレート名。
@@ -30,10 +30,10 @@ class TemplateNotFoundError(ValueError):
 
 
 class FileAlreadyExistsError(FileExistsError):
-    """出力先にファイルが既に存在する場合の例外。"""
+    """Exception raised when a file already exists at the output destination."""
 
     def __init__(self, existing_files: Sequence[Path]) -> None:
-        """例外を初期化する。
+        """Initializes the exception.
 
         Args:
             existing_files: 既に存在するファイルのリスト。
@@ -47,7 +47,7 @@ class FileAlreadyExistsError(FileExistsError):
 
 
 def list_templates() -> list[str]:
-    """利用可能なテンプレート一覧を返す。
+    """Returns a list of available templates.
 
     Returns:
         テンプレート名のリスト。
@@ -69,7 +69,7 @@ def initialize_from_template(
     output_dir: Path,
     force: bool = False,
 ) -> None:
-    """指定されたテンプレートからワークフローを初期化する。
+    """Initializes a workflow from the specified template.
 
     Args:
         template_name: テンプレート名（例: "branch", "loop", "rag"）。
@@ -99,7 +99,7 @@ def initialize_from_template(
 
 
 def _get_templates_root() -> Path:
-    """テンプレートルートディレクトリのパスを返す。
+    """Returns the path to the template root directory.
 
     Returns:
         テンプレートルートディレクトリの絶対パス。
@@ -108,7 +108,7 @@ def _get_templates_root() -> Path:
 
 
 def _check_existing_files(template_dir: Path, output_dir: Path) -> list[Path]:
-    """出力先に既に存在するファイルをチェックする。
+    """Checks for files that already exist at the output destination.
 
     Args:
         template_dir: テンプレートディレクトリ。
@@ -130,7 +130,7 @@ def _check_existing_files(template_dir: Path, output_dir: Path) -> list[Path]:
 
 
 def _copy_template_files(template_dir: Path, output_dir: Path) -> None:
-    """テンプレートファイルを出力先にコピーする。
+    """Copies template files to the output destination.
 
     Args:
         template_dir: テンプレートディレクトリ。

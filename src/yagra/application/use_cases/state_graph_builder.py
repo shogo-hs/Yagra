@@ -30,7 +30,7 @@ def build_state_graph(
     Args:
         spec: 検証済みの workflow 定義。
         registry: handler 名を callable へ解決するレジストリ。
-        state_schema: LangGraph の状態スキーマ。既定は `dict`。
+        state_schema: LangGraph state schema. Defaults to `dict`.
 
     Returns:
         コンパイル済みの `CompiledStateGraph`。
@@ -79,7 +79,7 @@ def build_from_workflow_path(
         workflow_path: 入口 workflow ファイルのパス。
         registry: handler 名を callable へ解決するレジストリ。
         bundle_root: 分割参照時の基準ディレクトリ。未指定時は workflow 親を使う。
-        state_schema: LangGraph の状態スキーマ。既定は `dict`。
+        state_schema: LangGraph state schema. Defaults to `dict`.
 
     Returns:
         コンパイル済みの `CompiledStateGraph`。
@@ -89,7 +89,7 @@ def build_from_workflow_path(
 
 
 def _split_edges(spec: GraphSpec) -> tuple[dict[str, dict[str, str]], dict[str, list[str]]]:
-    """エッジを条件付き/通常遷移に分類する。"""
+    """Classifies edges into conditional/normal transitions."""
     conditional_by_source: dict[str, dict[str, str]] = {}
     unconditional_by_source: dict[str, list[str]] = {}
 
@@ -112,7 +112,7 @@ def _validate_edge_source_conflicts(
     conditional_by_source: Mapping[str, Any],
     unconditional_by_source: Mapping[str, Any],
 ) -> None:
-    """同一 source で条件付き/通常遷移が混在していないか確認する。"""
+    """Verifies that conditional and normal transitions are not mixed for the same source."""
     conflict_sources = sorted(set(conditional_by_source) & set(unconditional_by_source))
     if conflict_sources:
         labels = ", ".join(conflict_sources)
@@ -120,7 +120,7 @@ def _validate_edge_source_conflicts(
 
 
 def _build_node_runner(handler: NodeHandler, node_params: Mapping[str, Any]) -> NodeHandler:
-    """ノード実行用のラッパー callable を返す。"""
+    """Returns a wrapper callable for node execution."""
     frozen_params = _normalize_runtime_params(node_params)
 
     def _run(state: Mapping[str, Any]) -> dict[str, Any]:
@@ -135,7 +135,7 @@ def _build_node_runner(handler: NodeHandler, node_params: Mapping[str, Any]) -> 
 
 
 def _normalize_runtime_params(node_params: Mapping[str, Any]) -> dict[str, Any]:
-    """実行時に handler へ渡す node params を正規化する。"""
+    """Normalizes node params passed to the handler at execution time."""
     normalized = deepcopy(dict(node_params))
     normalized.pop("prompt_ref", None)
     return normalized

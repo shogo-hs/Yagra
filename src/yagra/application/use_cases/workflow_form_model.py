@@ -16,7 +16,7 @@ from yagra.application.use_cases.workflow_edit_session import compute_workflow_r
 
 @dataclass(frozen=True, slots=True)
 class WorkflowNodeFormItem:
-    """フォーム編集用のノード表示情報を保持する。"""
+    """Holds node display information for form editing."""
 
     id: str
     handler: str
@@ -39,7 +39,7 @@ class WorkflowNodeFormItem:
 
 @dataclass(frozen=True, slots=True)
 class WorkflowEdgeFormItem:
-    """フォーム編集用のエッジ表示情報を保持する。"""
+    """Holds edge display information for form editing."""
 
     index: int
     source: str
@@ -62,7 +62,7 @@ class WorkflowEdgeFormItem:
 
 @dataclass(frozen=True, slots=True)
 class WorkflowFormView:
-    """フォーム編集画面の表示モデルを保持する。"""
+    """Holds the display model for the form editing screen."""
 
     revision: str
     nodes: tuple[WorkflowNodeFormItem, ...]
@@ -269,7 +269,7 @@ def _resolve_catalog_setting(
     params: Mapping[str, Any],
     catalog_name: str,
 ) -> tuple[str | None, tuple[str, ...], list[WorkflowCatalogIssue]]:
-    """単一 catalog 設定を解決し、キー候補と問題を返す。"""
+    """Resolves a single catalog configuration and returns key candidates and issues."""
     location = ("params", catalog_name)
     catalog_path_raw = params.get(catalog_name)
     if catalog_path_raw is None:
@@ -363,7 +363,7 @@ def _resolve_catalog_path(
 
 
 def _collect_key_paths(payload: dict[str, Any], prefix: str) -> list[str]:
-    """辞書を再帰走査し `a.b.c` 形式のキー一覧を返す。
+    """Recursively traverses a dict and returns a list of keys in `a.b.c` format.
 
     Args:
         payload: 走査対象の辞書。
@@ -384,7 +384,7 @@ def _collect_key_paths(payload: dict[str, Any], prefix: str) -> list[str]:
 
 
 def _as_optional_mapping(value: Any) -> dict[str, Any] | None:
-    """値を任意辞書として正規化する。
+    """Normalizes the value as an arbitrary dict.
 
     Args:
         value: 変換対象値。
@@ -398,7 +398,7 @@ def _as_optional_mapping(value: Any) -> dict[str, Any] | None:
 
 
 def _as_optional_string(value: Any) -> str | None:
-    """値を任意文字列として正規化する。
+    """Normalizes the value as an arbitrary string.
 
     Args:
         value: 変換対象値。
@@ -415,7 +415,7 @@ def _as_optional_string(value: Any) -> str | None:
 
 
 def _ensure_mapping(payload: Mapping[str, Any], label: str) -> dict[str, Any]:
-    """入力が辞書互換であることを検証して辞書化する。
+    """Validates that the input is dict-compatible and converts it to a dict.
 
     Args:
         payload: 検証対象データ。

@@ -6,6 +6,15 @@
 
 なし
 
+## [0.3.1] - 2026-02-17
+
+### Changed
+- 📝 **Docstring Internationalization**: すべてのPython docstringを日本語から英語に翻訳
+  - Google style docstringフォーマットを維持
+  - 型ヒントと実装との整合性を確保
+  - Sphinxドキュメント生成での英語化サポート
+  - 英語圏ユーザーへのAPIドキュメント提供を改善
+
 ## [0.2.0] - 2026-02-17
 
 ### Added

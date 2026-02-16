@@ -16,7 +16,7 @@ class WorkflowReferenceError(ValueError):
     """workflow 内の分割参照解決に失敗した場合の例外。"""
 
     def __init__(self, message: str, location: Sequence[str | int] | None = None) -> None:
-        """例外メッセージと問題位置を初期化する。
+        """Initializes with exception message and issue location.
 
         Args:
             message: 失敗理由を表すメッセージ。
@@ -109,7 +109,7 @@ def _resolve_reference(
     ref_label: str,
     location: Location = (),
 ) -> Any:
-    """単一参照を読み込み・解決する。
+    """Loads and resolves a single reference.
 
     Args:
         reference: 解決対象の参照文字列。
@@ -165,7 +165,7 @@ def _resolve_reference(
 
 
 def _resolve_catalog_path(catalog_path: str, workflow_path: Path, bundle_root: Path | None) -> Path:
-    """参照先 YAML の実パスを解決する。"""
+    """Resolves the real path of the referenced YAML."""
     raw = Path(catalog_path)
     if raw.is_absolute():
         return raw.resolve()
@@ -247,7 +247,7 @@ def _lookup_key_path(
 
 
 def _as_optional_string(value: Any, location: Location = ()) -> str | None:
-    """値を任意文字列として正規化する。
+    """Normalizes the value as an arbitrary string.
 
     Args:
         value: 変換対象の値。

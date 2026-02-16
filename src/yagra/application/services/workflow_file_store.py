@@ -17,12 +17,12 @@ import yaml
 
 
 class WorkflowBackupNotFoundError(FileNotFoundError):
-    """指定されたバックアップが見つからない場合の例外。"""
+    """Exception raised when the specified backup is not found."""
 
 
 @dataclass(frozen=True, slots=True)
 class WorkflowBackupRecord:
-    """バックアップ作成結果を保持する。"""
+    """Holds the backup creation result."""
 
     backup_id: str
     workflow_backup_path: Path
@@ -33,7 +33,7 @@ class WorkflowFileStore:
     """workflow と UI サイドカーの永続化処理を担当する。"""
 
     def __init__(self, backup_root: str | PathLike[str]) -> None:
-        """保存先設定を初期化する。
+        """Initializes the save destination configuration.
 
         Args:
             backup_root: バックアップ格納ルートディレクトリ。
@@ -114,7 +114,7 @@ class WorkflowFileStore:
         self._atomic_write_text(Path(ui_state_path).expanduser().resolve(), text)
 
     def write_text_atomic(self, path: str | PathLike[str], text: str) -> None:
-        """任意テキストを atomic write で保存する。
+        """Saves arbitrary text with an atomic write.
 
         Args:
             path: 保存対象パス。
@@ -172,7 +172,7 @@ class WorkflowFileStore:
         ui_state_path: str | PathLike[str],
         backup_id: str,
     ) -> None:
-        """指定バックアップから workflow と UI サイドカーを復元する。
+        """Restores workflow and UI sidecar from the specified backup.
 
         Args:
             workflow_path: 復元先 workflow パス。
@@ -199,7 +199,7 @@ class WorkflowFileStore:
         self._atomic_write_text(ui_state_abspath, ui_state_text)
 
     def backup_exists(self, workflow_path: str | PathLike[str], backup_id: str) -> bool:
-        """指定バックアップIDが存在するかを返す。
+        """Returns whether the specified backup ID exists.
 
         Args:
             workflow_path: 対象 workflow パス。
@@ -215,7 +215,7 @@ class WorkflowFileStore:
         return workflow_backup_path.exists() and ui_state_backup_path.exists()
 
     def _atomic_write_text(self, path: Path, text: str) -> None:
-        """同一ファイルシステム内で atomic write を行う。
+        """Performs an atomic write within the same filesystem.
 
         Args:
             path: 書き込み先パス。
@@ -240,7 +240,7 @@ class WorkflowFileStore:
             raise
 
     def _prune_backups(self, backup_dir: Path, keep_last: int = 30) -> None:
-        """バックアップ世代数を制限する。
+        """Limits the number of backup generations.
 
         Args:
             backup_dir: 対象バックアップディレクトリ。

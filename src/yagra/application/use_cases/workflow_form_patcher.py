@@ -15,7 +15,7 @@ def apply_form_edits(
     edge_rewires: Sequence[Mapping[str, Any]] | None = None,
     edge_edits: Sequence[Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    """フォーム編集内容を workflow へ適用して新しいデータを返す。
+    """Applies form editing content to the workflow and returns new data.
 
     Args:
         workflow: 変更対象 workflow データ。
@@ -50,7 +50,7 @@ def apply_form_edits(
 
 
 def _apply_node_creates(nodes: list[Any], node_creates: Sequence[Mapping[str, Any]]) -> None:
-    """ノード追加一覧を workflow.nodes へ適用する。
+    """Applies the node creation list to workflow.nodes.
 
     Args:
         nodes: workflow のノード配列。
@@ -85,7 +85,7 @@ def _apply_node_creates(nodes: list[Any], node_creates: Sequence[Mapping[str, An
 
 
 def _apply_node_edits(nodes: list[Any], node_edits: Sequence[Mapping[str, Any]]) -> None:
-    """ノード編集一覧を workflow.nodes へ適用する。
+    """Applies the node editing list to workflow.nodes.
 
     Args:
         nodes: workflow のノード配列。
@@ -118,7 +118,7 @@ def _apply_node_edits(nodes: list[Any], node_edits: Sequence[Mapping[str, Any]])
 
 
 def _apply_edge_edits(edges: list[Any], edge_edits: Sequence[Mapping[str, Any]]) -> None:
-    """エッジ編集一覧を workflow.edges へ適用する。
+    """Applies the edge editing list to workflow.edges.
 
     Args:
         edges: workflow のエッジ配列。
@@ -156,7 +156,7 @@ def _apply_edge_creates(
     edges: list[Any],
     edge_creates: Sequence[Mapping[str, Any]],
 ) -> None:
-    """エッジ追加一覧を workflow.edges へ適用する。
+    """Applies the edge creation list to workflow.edges.
 
     Args:
         nodes: workflow のノード配列。
@@ -196,7 +196,7 @@ def _apply_edge_rewires(
     edges: list[Any],
     edge_rewires: Sequence[Mapping[str, Any]],
 ) -> None:
-    """エッジ再接続一覧を workflow.edges へ適用する。
+    """Applies the edge rewiring list to workflow.edges.
 
     Args:
         nodes: workflow のノード配列。
@@ -256,7 +256,7 @@ def _apply_optional_string_field(
     params: dict[str, Any],
     field_name: str,
 ) -> None:
-    """任意文字列フィールドを params に適用する。
+    """Applies arbitrary string fields to params.
 
     Args:
         edit: 変更入力。
@@ -286,7 +286,7 @@ def _apply_optional_mapping_field(
     params: dict[str, Any],
     field_name: str,
 ) -> None:
-    """任意辞書フィールドを params に適用する。
+    """Applies arbitrary dict fields to params.
 
     Args:
         edit: 変更入力。
@@ -308,7 +308,7 @@ def _apply_optional_mapping_field(
 
 
 def _build_node_index(nodes: list[Any]) -> dict[str, int]:
-    """ノードIDから配列indexを引く辞書を作る。
+    """Creates a dict mapping node IDs to array indices.
 
     Args:
         nodes: workflow のノード配列。
@@ -338,7 +338,7 @@ def _required_node_reference(
     field_name: str,
     known_node_ids: set[str],
 ) -> str:
-    """ノード参照文字列を検証して正規化する。
+    """Validates and normalizes node reference strings.
 
     Args:
         value: 入力値。
@@ -381,7 +381,7 @@ def _normalize_optional_condition(value: Any, edge_index: int) -> str | None:
 
 
 def _ensure_mapping(payload: Any, label: str) -> dict[str, Any]:
-    """入力が辞書互換であることを検証して辞書化する。
+    """Validates that the input is dict-compatible and converts it to a dict.
 
     Args:
         payload: 検証対象データ。

@@ -1,4 +1,4 @@
-"""Yagra YAML の基本スキーマを定義する。"""
+"""Defines the base schema for Yagra YAML."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class NodeSpec(BaseModel):
-    """グラフ内ノードの定義を表すモデル。"""
+    """Represents a node definition in the graph."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -18,7 +18,7 @@ class NodeSpec(BaseModel):
 
 
 class EdgeSpec(BaseModel):
-    """ノード間の遷移定義を表すモデル。"""
+    """Represents an edge definition for transitions between nodes."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -28,7 +28,7 @@ class EdgeSpec(BaseModel):
 
 
 class GraphSpec(BaseModel):
-    """Yagra 全体の YAML 定義を表すモデル。"""
+    """Represents the complete Yagra YAML definition."""
 
     model_config = ConfigDict(extra="forbid")
 

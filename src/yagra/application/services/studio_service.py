@@ -1,4 +1,4 @@
-"""Workflow Studio の入力境界実装を提供する。"""
+"""Provides the input boundary implementation for Workflow Studio."""
 
 from __future__ import annotations
 
@@ -43,7 +43,7 @@ _WORKFLOW_EXTENSIONS = {".yaml", ".yml"}
 
 @dataclass(slots=True)
 class StudioSessionConfig:
-    """Studio サービスの可変セッション設定。"""
+    """Mutable session configuration for the Studio service."""
 
     workflow_path: Path | None
     bundle_root: Path | None
@@ -60,18 +60,18 @@ def _resolve_path_in_workspace(
     *,
     label: str = "path",
 ) -> Path:
-    """ワークスペース内の YAML パスを絶対パスへ解決する。
+    """Resolves a YAML path within the workspace to an absolute path.
 
     Args:
-        raw_path: ユーザー入力のパス文字列。
-        workspace_root: ワークスペースルートの絶対パス。
-        label: エラーメッセージに使うパラメータ名。
+        raw_path: User input path string.
+        workspace_root: Absolute path to the workspace root.
+        label: Parameter name used in error messages.
 
     Returns:
-        解決済みの絶対パス。
+        Resolved absolute path.
 
     Raises:
-        ValueError: パスが空・ワークスペース外・非 YAML 拡張子の場合。
+        ValueError: If the path is empty, outside workspace, or does not have a YAML extension.
     """
     text = raw_path.strip()
     if not text:
@@ -88,14 +88,14 @@ def _resolve_path_in_workspace(
 
 
 def _resolve_ui_state_for_target(workflow_path: Path, ui_state_override: Path | None) -> Path:
-    """対象 workflow に対応する UI サイドカーパスを返す。"""
+    """Returns the UI sidecar path corresponding to the target workflow."""
     if ui_state_override is not None:
         return ui_state_override
     return workflow_path.with_suffix(".workflow-ui.json")
 
 
 def _list_workflow_candidates(workspace_root: Path) -> list[str]:
-    """ワークスペース配下の workflow 候補一覧を返す。"""
+    """Returns a list of workflow candidates under the workspace."""
     candidates: list[str] = []
     for path in sorted(workspace_root.rglob("*")):
         if not path.is_file():
@@ -107,7 +107,7 @@ def _list_workflow_candidates(workspace_root: Path) -> list[str]:
 
 
 def _to_workspace_relative_path(path: Path, workspace_root: Path) -> str:
-    """絶対パスを workspace_root 基準の相対パスへ変換する。"""
+    """Converts an absolute path to a relative path based on workspace_root."""
     return path.relative_to(workspace_root).as_posix()
 
 
@@ -149,7 +149,7 @@ def _collect_prompt_entries(payload: Any, prefix: str = "") -> list[dict[str, st
 
 
 def _build_initial_workflow_payload() -> dict[str, Any]:
-    """新規作成時に使う最小 workflow payload を返す。"""
+    """Returns the minimal workflow payload to use when creating new workflows."""
     return {
         "version": "1.0",
         "start_at": "start",
@@ -164,13 +164,13 @@ def _build_initial_workflow_payload() -> dict[str, Any]:
 
 
 class StudioService(StudioPort):
-    """Workflow Studio API が利用するアプリケーションサービス。"""
+    """Application service used by the Workflow Studio API."""
 
     def __init__(self, config: StudioSessionConfig) -> None:
-        """サービスを初期化する。
+        """Initializes the service.
 
         Args:
-            config: Studio セッションの状態を保持する設定。
+            config: Configuration holding the state of the Studio session.
         """
         self._config = config
 
@@ -189,7 +189,7 @@ class StudioService(StudioPort):
         }
 
     def get_studio_files(self) -> dict[str, Any]:
-        """ワークスペース配下の workflow/YAML 候補一覧を返す。"""
+        """Returns a list of workflow/YAML candidates under the workspace."""
         with self._config.lock:
             workspace_root = self._config.workspace_root
             workflows = _list_workflow_candidates(workspace_root)
@@ -201,7 +201,7 @@ class StudioService(StudioPort):
         }
 
     def read_studio_yaml_file(self, body: dict[str, Any]) -> dict[str, Any]:
-        """ワークスペース配下の YAML ファイル内容を返す。"""
+        """Returns the YAML file contents under the workspace."""
         raw_path = body.get("path")
         if not isinstance(raw_path, str):
             raise StudioBadRequestError(error="path must be a string")
@@ -258,7 +258,7 @@ class StudioService(StudioPort):
         }
 
     def save_studio_yaml_file(self, body: dict[str, Any]) -> dict[str, Any]:
-        """ワークスペース配下の YAML ファイルを作成・更新する。"""
+        """Creates or updates a YAML file under the workspace."""
         raw_path = body.get("path")
         content = body.get("content")
         overwrite = body.get("overwrite", False)
@@ -315,7 +315,7 @@ class StudioService(StudioPort):
         }
 
     def open_studio_target(self, body: dict[str, Any]) -> dict[str, Any]:
-        """既存 workflow を Studio 編集対象として開く。"""
+        """Opens an existing workflow as a Studio editing target."""
         workflow_path_raw = body.get("workflow_path")
         if not isinstance(workflow_path_raw, str):
             raise StudioBadRequestError(error="workflow_path must be a string")
@@ -352,7 +352,7 @@ class StudioService(StudioPort):
         }
 
     def create_studio_target(self, body: dict[str, Any]) -> dict[str, Any]:
-        """新規 workflow を作成して Studio 編集対象として開く。"""
+        """Creates a new workflow and opens it as a Studio editing target."""
         workflow_path_raw = body.get("workflow_path")
         overwrite = body.get("overwrite", False)
         if not isinstance(workflow_path_raw, str):
@@ -403,7 +403,7 @@ class StudioService(StudioPort):
         }
 
     def get_workflow(self) -> dict[str, Any]:
-        """現在の workflow を返す。"""
+        """Returns the current workflow."""
         with self._config.lock:
             workflow_path, ui_state_path = self._require_active_target_paths()
             try:
@@ -426,7 +426,7 @@ class StudioService(StudioPort):
         }
 
     def get_form(self) -> dict[str, Any]:
-        """フォーム編集向けの workflow 表示情報を返す。"""
+        """Returns workflow display information for form editing."""
         with self._config.lock:
             workflow_path, ui_state_path = self._require_active_target_paths()
             try:
@@ -460,7 +460,7 @@ class StudioService(StudioPort):
         return payload
 
     def diff(self, body: dict[str, Any]) -> dict[str, Any]:
-        """編集案の差分を返す。"""
+        """Returns the diff of the editing proposal."""
         candidate_workflow = body.get("workflow")
         candidate_ui_state = body.get("ui_state", {})
         base_revision = body.get("base_revision")
@@ -512,7 +512,7 @@ class StudioService(StudioPort):
         return diff_result.to_dict()
 
     def form_preview(self, body: dict[str, Any]) -> dict[str, Any]:
-        """フォーム編集入力から差分プレビューを返す。"""
+        """Returns a diff preview from form editing input."""
         base_revision = body.get("base_revision")
         node_creates = body.get("node_creates")
         node_edits = body.get("node_edits")
@@ -587,7 +587,7 @@ class StudioService(StudioPort):
         return response_payload
 
     def catalog_preview(self, body: dict[str, Any]) -> dict[str, Any]:
-        """Workflow の catalog 設定プレビューを返す。"""
+        """Returns a preview of the workflow's catalog configuration."""
         candidate_workflow = body.get("workflow")
         if not isinstance(candidate_workflow, dict):
             raise StudioBadRequestError(error="workflow must be a mapping")
@@ -609,7 +609,7 @@ class StudioService(StudioPort):
         return catalog_preview.to_dict()
 
     def save(self, body: dict[str, Any]) -> dict[str, Any]:
-        """編集案を保存する。"""
+        """Saves the editing proposal."""
         candidate_workflow = body.get("workflow")
         candidate_ui_state = body.get("ui_state", {})
         base_revision = body.get("base_revision")
@@ -657,7 +657,7 @@ class StudioService(StudioPort):
         }
 
     def rollback(self, body: dict[str, Any]) -> dict[str, Any]:
-        """バックアップ ID を指定して復元する。"""
+        """Restores using the specified backup ID."""
         backup_id = body.get("backup_id")
         if not isinstance(backup_id, str) or not backup_id.strip():
             raise StudioBadRequestError(error="backup_id must be a non-empty string")
@@ -684,7 +684,7 @@ class StudioService(StudioPort):
         }
 
     def _active_target_paths(self) -> tuple[Path, Path] | None:
-        """現在選択中の workflow/ui_state パスを返す。未選択時は `None`。"""
+        """Returns the currently selected workflow/ui_state paths. Returns `None` if not selected."""
         workflow_path = self._config.workflow_path
         ui_state_path = self._config.ui_state_path
         if workflow_path is None or ui_state_path is None:
@@ -692,7 +692,7 @@ class StudioService(StudioPort):
         return workflow_path, ui_state_path
 
     def _require_active_target_paths(self) -> tuple[Path, Path]:
-        """現在選択中ターゲットを必須取得する。未選択時はエラーを送出する。"""
+        """Requires and retrieves the currently selected target. Raises an error if not selected."""
         target_paths = self._active_target_paths()
         if target_paths is not None:
             return target_paths

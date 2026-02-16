@@ -19,7 +19,7 @@ from yagra.application.use_cases.workflow_validation_reporter import (
 
 @dataclass(frozen=True, slots=True)
 class WorkflowNodeView:
-    """可視化画面で表示するノード情報。"""
+    """Node information displayed in the visualization screen."""
 
     id: str
     handler: str
@@ -28,7 +28,7 @@ class WorkflowNodeView:
 
 @dataclass(frozen=True, slots=True)
 class WorkflowEdgeView:
-    """可視化画面で表示するエッジ情報。"""
+    """Edge information displayed in the visualization screen."""
 
     source: str
     target: str
@@ -37,7 +37,7 @@ class WorkflowEdgeView:
 
 @dataclass(frozen=True, slots=True)
 class WorkflowVisualizationView:
-    """可視化画面の表示モデル。"""
+    """Display model for the visualization screen."""
 
     title: str
     workflow_path: str
@@ -121,7 +121,7 @@ def build_workflow_visualization_view(
 
 
 def _render_html(view: WorkflowVisualizationView) -> str:
-    """可視化表示モデルを HTML へ変換する。"""
+    """Converts the visualization display model to HTML."""
     mermaid_graph = _build_mermaid_graph(view)
     mermaid_bundle = _load_mermaid_bundle_source()
     node_cards = "\n".join(_render_node_card(node) for node in view.nodes)
@@ -221,7 +221,7 @@ def _render_html(view: WorkflowVisualizationView) -> str:
 
 @lru_cache(maxsize=1)
 def _load_mermaid_bundle_source() -> str:
-    """同梱 Mermaid バンドルを読み込む。"""
+    """Loads the bundled Mermaid bundle."""
     bundle = resources.files("yagra.web_assets").joinpath("vendor/mermaid/11.12.2/mermaid.min.js")
     return bundle.read_text(encoding="utf-8").replace("</script>", "<\\/script>")
 
@@ -258,7 +258,7 @@ def _safe_mermaid_id(node_id: str) -> str:
 
 
 def _render_node_card(node: WorkflowNodeView) -> str:
-    """ノード詳細カードを HTML へ変換する。"""
+    """Converts node detail cards to HTML."""
     return f"""
     <section class=\"node-card\">
       <div class=\"node-title\">{html.escape(node.id)}</div>
@@ -269,7 +269,7 @@ def _render_node_card(node: WorkflowNodeView) -> str:
 
 
 def _render_edge_row(edge: WorkflowEdgeView) -> str:
-    """エッジ行を HTML へ変換する。"""
+    """Converts edge rows to HTML."""
     condition = "-" if edge.condition is None else html.escape(edge.condition)
     cond_class = "" if edge.condition is None else ' class="cond"'
     return (
