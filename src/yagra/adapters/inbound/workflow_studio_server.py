@@ -357,6 +357,27 @@ def _studio_html() -> str:
       --info: #1976d2;
       --info-bg: #e3f2fd;
       --ok: #2e7d32; /* 互換性のため残す */
+      --warn: #e65100;
+
+      /* Diff表示用 */
+      --diff-add: #e6ffed;
+      --diff-add-text: #1b5e20;
+      --diff-del: #ffeef0;
+      --diff-del-text: #b71c1c;
+      --diff-meta: #f0f4ff;
+      --diff-meta-text: #1565c0;
+
+      /* Toast通知用 */
+      --toast-success: #2e7d32;
+      --toast-error: #c62828;
+
+      /* サブセクション用 */
+      --subsection-bg: #f8fafd;
+      --subsection-border: #e4ecf5;
+
+      /* 保存ボタン用 */
+      --save-bg: #d32f2f;
+      --save-border: #b71c1c;
 
       /* ===== 余白スケール ===== */
       --spacing-xs: 4px;
@@ -478,7 +499,7 @@ def _studio_html() -> str:
       outline-offset: 2px;
     }
     button:disabled {
-      opacity: 0.5;
+      opacity: 0.55;
       cursor: not-allowed;
     }
     button.secondary {
@@ -491,6 +512,21 @@ def _studio_html() -> str:
     }
     button.secondary:active {
       background: var(--line);
+    }
+    button.save-btn {
+      background: var(--save-bg);
+      border-color: var(--save-border);
+      color: #fff;
+    }
+    .btn-group {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    .btn-group + .btn-group {
+      margin-left: 4px;
+      padding-left: 10px;
+      border-left: 1px solid var(--line);
     }
     input[type="text"], select, textarea {
       border: 1px solid var(--line);
@@ -641,6 +677,148 @@ def _studio_html() -> str:
       color: var(--ok);
       font-weight: 700;
     }
+    .toast-container {
+      position: fixed;
+      top: 14px;
+      right: 14px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+    .toast-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #fff;
+      background: var(--toast-success);
+      box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+      pointer-events: auto;
+      animation: toastIn 220ms ease;
+      max-width: 480px;
+      word-break: break-word;
+    }
+    .toast-item.is-error {
+      background: var(--toast-error);
+    }
+    .toast-item.is-fading {
+      opacity: 0;
+      transition: opacity 350ms ease;
+    }
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateX(20px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+    .validation-list {
+      display: grid;
+      gap: 6px;
+      margin: 8px 0 0;
+    }
+    .validation-pass {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      background: #e8f5e9;
+      color: var(--ok);
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .validation-issue {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+      padding: 8px 10px;
+      border-radius: 8px;
+      background: var(--diff-del);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    .issue-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: var(--danger);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.03em;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .issue-msg {
+      color: var(--text);
+    }
+    .issue-location {
+      font-family: "Menlo", "Monaco", "Consolas", monospace;
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .diff-display {
+      width: 100%;
+      min-height: 170px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px;
+      font-family: "Menlo", "Monaco", "Consolas", monospace;
+      font-size: 12px;
+      line-height: 1.55;
+      background: #fff;
+      overflow: auto;
+      margin: 8px 0 0;
+    }
+    .diff-line-add {
+      background: var(--diff-add);
+      color: var(--diff-add-text);
+      display: block;
+      padding: 0 4px;
+      border-radius: 2px;
+    }
+    .diff-line-del {
+      background: var(--diff-del);
+      color: var(--diff-del-text);
+      display: block;
+      padding: 0 4px;
+      border-radius: 2px;
+    }
+    .diff-line-meta {
+      background: var(--diff-meta);
+      color: var(--diff-meta-text);
+      display: block;
+      padding: 0 4px;
+      border-radius: 2px;
+      font-weight: 700;
+    }
+    .diff-line-ctx {
+      display: block;
+      padding: 0 4px;
+      color: var(--muted);
+    }
+    .subsection-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 6px 0 2px;
+      border-top: 1px solid var(--subsection-border);
+      margin-top: 4px;
+    }
+    .subsection-label:first-child {
+      border-top: none;
+      margin-top: 0;
+      padding-top: 0;
+    }
     .workflow-node {
       position: relative;
       min-width: 180px;
@@ -763,22 +941,37 @@ def _studio_html() -> str:
 </head>
 <body>
   <div id="app" class="page" :class="{ 'is-connecting': isConnecting }">
+    <div class="toast-container">
+      <div
+        v-for="toast in toasts"
+        :key="toast.id"
+        class="toast-item"
+        :class="{ 'is-error': toast.isError, 'is-fading': toast.fading }"
+      >{{ toast.message }}</div>
+    </div>
     <section class="header">
       <h1>Yagra Workflow Studio</h1>
-      <div class="muted">Vue 3 + Vue Flow (CDN / ES Modules / no-build)</div>
       <div class="toolbar">
         <template v-if="hasTarget">
-          <button type="button" @click="loadWorkflow">Load</button>
-          <button type="button" class="secondary" @click="previewDiff">Preview Diff</button>
-          <button type="button" @click="saveWorkflow">Save</button>
-          <input
-            v-model.trim="backupId"
-            type="text"
-            placeholder="rollback backup_id"
-            style="max-width: 360px;"
-          />
-          <button type="button" class="secondary" @click="rollbackWorkflow">Rollback</button>
-          <button type="button" class="secondary" @click="openLauncher">Change Target</button>
+          <div class="btn-group">
+            <button type="button" :disabled="isBusy" @click="loadWorkflow">Load</button>
+            <button type="button" class="secondary" :disabled="isBusy" @click="previewDiff">Preview Diff</button>
+          </div>
+          <div class="btn-group">
+            <button type="button" class="save-btn" :disabled="isBusy" @click="saveWorkflow">{{ isBusy ? 'Saving...' : 'Save' }}</button>
+          </div>
+          <div class="btn-group">
+            <input
+              v-model.trim="backupId"
+              type="text"
+              placeholder="backup_id"
+              style="max-width: 280px;"
+            />
+            <button type="button" class="secondary" :disabled="isBusy" @click="rollbackWorkflow">Rollback</button>
+          </div>
+          <div class="btn-group">
+            <button type="button" class="secondary" :disabled="isBusy" @click="openLauncher">Change Target</button>
+          </div>
         </template>
         <template v-else>
           <button type="button" @click="refreshStudioFiles">Refresh Files</button>
@@ -787,7 +980,6 @@ def _studio_html() -> str:
       <div class="meta-line">
         <span class="muted">target: {{ studioTargetPath || "-" }}</span>
         <span class="muted">revision: {{ revision || "-" }}</span>
-        <span :class="statusClass">status: {{ status.message }}</span>
       </div>
     </section>
 
@@ -824,7 +1016,7 @@ def _studio_html() -> str:
           </div>
           <label class="check-item">
             <input v-model="launcher.overwrite" type="checkbox" />
-            <span>既存 workflow を上書きする（overwrite）</span>
+            <span>Overwrite existing workflow</span>
           </label>
           <div class="toolbar">
             <button type="button" @click="createStudioTarget">Create And Open</button>
@@ -842,7 +1034,7 @@ def _studio_html() -> str:
           <div class="section-head">
             <h2>Graph Canvas</h2>
             <div class="hint">
-              ノードをクリックすると右サイドバーに編集フォームが表示されます。通常は右→左、戻りループは下→上ハンドルで接続できます。
+              Click a node to edit properties in the sidebar. Connect nodes via right/left handles; loop edges use bottom/top handles.
             </div>
           </div>
           <div class="flow-shell">
@@ -902,7 +1094,7 @@ def _studio_html() -> str:
             <div class="field">
               <label>end_at</label>
               <div v-if="nodeIdOptions.length === 0" class="hint">
-                先にノードを追加してください。
+                Add nodes first.
               </div>
               <div v-else class="check-list">
                 <label v-for="nodeId in nodeIdOptions" :key="'end-' + nodeId" class="check-item">
@@ -916,7 +1108,7 @@ def _studio_html() -> str:
                 </label>
               </div>
             </div>
-            <div class="hint">`start_at` と `end_at` は保存時に workflow へ反映されます。</div>
+            <div class="hint"><code>start_at</code> and <code>end_at</code> are applied to the workflow on save.</div>
           </section>
 
           <section class="side-section">
@@ -932,16 +1124,18 @@ def _studio_html() -> str:
               </div>
             </div>
             <button type="button" class="secondary" @click="addNode">Add Node</button>
-            <div class="hint">追加後の位置は自動配置されます。必要に応じてキャンバス上でドラッグしてください。</div>
+            <div class="hint">Nodes are auto-positioned. Drag on canvas to reposition.</div>
           </section>
 
           <section class="side-section">
             <h2>Node Properties</h2>
             <div v-if="!selectedNode" class="hint">
-              ノードを選択してください。
+              Select a node to edit its properties.
             </div>
             <template v-else>
               <div class="mono">selected: {{ selectedNode.id }}</div>
+
+              <div class="subsection-label">Basic Info</div>
               <div class="field">
                 <label for="nodeIdInput">node id</label>
                 <input id="nodeIdInput" v-model.trim="nodeEditor.id" type="text" />
@@ -950,6 +1144,8 @@ def _studio_html() -> str:
                 <label for="nodeHandlerInput">handler</label>
                 <input id="nodeHandlerInput" v-model="nodeEditor.handler" type="text" />
               </div>
+
+              <div class="subsection-label">Prompt Settings</div>
               <div class="field">
                 <label for="nodePromptFileSelect">prompt yaml</label>
                 <select
@@ -974,12 +1170,10 @@ def _studio_html() -> str:
                   @change="onNodePromptKeyChange"
                 />
               </div>
-              <div class="inline-row">
-                <div class="field">
-                  <label>prompt_ref (auto)</label>
-                  <div class="mono hint" style="padding: 4px 0; min-height: 1.4em; word-break: break-all;">
-                    {{ nodeEditor.promptRef || "(auto create on Apply)" }}
-                  </div>
+              <div class="field">
+                <label>prompt_ref (auto)</label>
+                <div class="mono hint" style="padding: 4px 0; min-height: 1.4em; word-break: break-all;">
+                  {{ nodeEditor.promptRef || "(auto create on Apply)" }}
                 </div>
               </div>
               <div v-if="nodeEditor.promptFileParseError" class="hint danger">
@@ -1001,57 +1195,67 @@ def _studio_html() -> str:
                   placeholder="{{input}}"
                 ></textarea>
               </div>
-              <div class="field">
-                <label>Model Settings</label>
-                <div class="inline-row">
+
+              <div class="subsection-label">Model Settings</div>
+              <div class="inline-row">
+                <div class="field">
+                  <label for="nodeModelProviderInput">provider</label>
                   <input
                     id="nodeModelProviderInput"
                     v-model.trim="nodeEditor.modelProvider"
                     type="text"
-                    placeholder="provider (e.g. openai)"
+                    placeholder="e.g. openai"
                   />
+                </div>
+                <div class="field">
+                  <label for="nodeModelNameInput">model name</label>
                   <input
                     id="nodeModelNameInput"
                     v-model.trim="nodeEditor.modelName"
                     type="text"
-                    placeholder="name (e.g. gpt-4.1-mini)"
+                    placeholder="e.g. gpt-4.1-mini"
                   />
                 </div>
               </div>
-              <div class="field">
-                <label>Model Runtime Params</label>
-                <div class="inline-row">
+              <div class="inline-row">
+                <div class="field">
+                  <label for="nodeModelTemperatureInput">temperature</label>
                   <input
                     id="nodeModelTemperatureInput"
                     v-model.trim="nodeEditor.temperature"
                     type="text"
-                    placeholder="temperature (e.g. 0.2)"
+                    placeholder="e.g. 0.2"
                   />
+                </div>
+                <div class="field">
+                  <label for="nodeModelTopPInput">top_p</label>
                   <input
                     id="nodeModelTopPInput"
                     v-model.trim="nodeEditor.topP"
                     type="text"
-                    placeholder="top_p (e.g. 0.9)"
-                  />
-                </div>
-                <div class="field">
-                  <input
-                    id="nodeModelMaxTokensInput"
-                    v-model.trim="nodeEditor.maxTokens"
-                    type="text"
-                    placeholder="max_tokens (e.g. 512)"
+                    placeholder="e.g. 0.9"
                   />
                 </div>
               </div>
-              <button type="button" class="secondary" @click="applyNodeEdit">Apply Node Edit</button>
-              <div class="hint">node id は空文字/重複不可です。prompt yaml 未選択で Apply すると prompts/ 配下へ自動作成されます。既存ファイル選択時は Apply でファイル内容を上書き更新します。prompt key を指定すると path#key で保存されます。</div>
+              <div class="field">
+                <label for="nodeModelMaxTokensInput">max_tokens</label>
+                <input
+                  id="nodeModelMaxTokensInput"
+                  v-model.trim="nodeEditor.maxTokens"
+                  type="text"
+                  placeholder="e.g. 512"
+                />
+              </div>
+
+              <button type="button" class="secondary" :disabled="isBusy" @click="applyNodeEdit">Apply Node Edit</button>
+              <div class="hint">Node id must be unique and non-empty. If no prompt yaml is selected, a file is auto-created under prompts/ on Apply. Use prompt key for path#key references.</div>
             </template>
           </section>
 
           <section class="side-section">
             <h2>Edge Properties</h2>
             <div v-if="!selectedEdge" class="hint">
-              エッジを選択すると condition を編集できます。エッジ端点をドラッグすると再接続できます。
+              Select an edge to edit its condition. Drag edge endpoints to rewire connections.
             </div>
             <template v-else>
               <div class="mono">
@@ -1062,7 +1266,7 @@ def _studio_html() -> str:
                 <label for="edgeConditionInput">condition</label>
                 <input id="edgeConditionInput" v-model="edgeEditor.condition" type="text" placeholder="retry / done" />
               </div>
-              <button type="button" class="secondary" @click="applyEdgeEdit">Apply Edge Edit</button>
+              <button type="button" class="secondary" :disabled="isBusy" @click="applyEdgeEdit">Apply Edge Edit</button>
             </template>
           </section>
 
@@ -1072,11 +1276,32 @@ def _studio_html() -> str:
       <section class="lower">
         <article class="panel">
           <h2>Validation</h2>
-          <pre>{{ validationText }}</pre>
+          <div v-if="validationData.isValid" class="validation-list">
+            <div class="validation-pass">Validation passed</div>
+          </div>
+          <div v-else-if="validationData.issues.length > 0" class="validation-list">
+            <div v-for="(issue, idx) in validationData.issues" :key="'vi-' + idx" class="validation-issue">
+              <span class="issue-badge">{{ issue.code }}</span>
+              <span class="issue-msg">{{ issue.message }}</span>
+              <span v-if="issue.location" class="issue-location">@ {{ issue.location }}</span>
+            </div>
+          </div>
+          <div v-else class="validation-list">
+            <div class="hint">No validation data yet. Load or preview to validate.</div>
+          </div>
         </article>
         <article class="panel">
           <h2>Diff</h2>
-          <pre>{{ diffText }}</pre>
+          <div v-if="diffLines.length > 0" class="diff-display">
+            <span
+              v-for="(line, idx) in diffLines"
+              :key="'dl-' + idx"
+              :class="line.cls"
+            >{{ line.text }}</span>
+          </div>
+          <div v-else class="diff-display" style="color: var(--muted);">
+            Click "Preview Diff" to see changes.
+          </div>
         </article>
       </section>
     </template>
@@ -1750,6 +1975,21 @@ def _studio_html() -> str:
       return lines.join("\\n");
     }
 
+    function parseValidationReport(report) {
+      if (!report) {
+        return { isValid: false, issues: [], empty: true };
+      }
+      if (report.is_valid) {
+        return { isValid: true, issues: [], empty: false };
+      }
+      const issues = (report.issues || []).map(issue => ({
+        code: issue.code || "UNKNOWN",
+        message: issue.message || "",
+        location: issue.location ? JSON.stringify(issue.location) : "",
+      }));
+      return { isValid: false, issues, empty: false };
+    }
+
     function buildDiffText(data) {
       const summary = isRecord(data.summary) ? data.summary : {};
       return [
@@ -1758,6 +1998,28 @@ def _studio_html() -> str:
         "yaml diff:",
         data.yaml_unified_diff || "(no yaml changes)",
       ].join("\\n");
+    }
+
+    function parseDiffLines(data) {
+      const summary = isRecord(data.summary) ? data.summary : {};
+      const headerLine = `summary: total=${summary.total || 0}, nodes=${summary.nodes || 0}, edges=${summary.edges || 0}, params=${summary.params || 0}`;
+      const rawDiff = data.yaml_unified_diff || "";
+      const lines = [
+        { text: headerLine + "\\n", cls: "diff-line-meta" },
+        { text: "\\n", cls: "diff-line-ctx" },
+      ];
+      if (!rawDiff) {
+        lines.push({ text: "(no yaml changes)\\n", cls: "diff-line-ctx" });
+        return lines;
+      }
+      for (const line of rawDiff.split("\\n")) {
+        let cls = "diff-line-ctx";
+        if (line.startsWith("+")) cls = "diff-line-add";
+        else if (line.startsWith("-")) cls = "diff-line-del";
+        else if (line.startsWith("@@")) cls = "diff-line-meta";
+        lines.push({ text: line + "\\n", cls });
+      }
+      return lines;
     }
 
     createApp({
@@ -1774,6 +2036,11 @@ def _studio_html() -> str:
         const status = reactive({ message: "idle", isError: false });
         const validationText = ref("-");
         const diffText = ref("");
+        const isBusy = ref(false);
+        const toasts = ref([]);
+        let toastCounter = 0;
+        const validationData = reactive({ isValid: false, issues: [], empty: true });
+        const diffLines = ref([]);
         const hasTarget = ref(false);
         const showLauncher = ref(false);
         const studioTargetPath = ref("");
@@ -1952,6 +2219,22 @@ def _studio_html() -> str:
         function setStatus(message, isError = false) {
           status.message = message;
           status.isError = isError;
+          if (message && message !== "idle") {
+            showToast(message, isError);
+          }
+        }
+
+        function showToast(message, isError = false) {
+          toastCounter += 1;
+          const id = toastCounter;
+          const toast = reactive({ id, message, isError, fading: false });
+          toasts.value = [...toasts.value, toast];
+          setTimeout(() => {
+            toast.fading = true;
+            setTimeout(() => {
+              toasts.value = toasts.value.filter(t => t.id !== id);
+            }, 400);
+          }, 3000);
         }
 
         function parseOptionalNumber(raw, label) {
@@ -3216,21 +3499,26 @@ def _studio_html() -> str:
             setStatus("open target is required", true);
             return;
           }
+          isBusy.value = true;
           setStatus(`opening: ${workflowPath} ...`);
-          const { response, data } = await requestJson("/api/studio/open", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ workflow_path: workflowPath }),
-          });
-          if (!response.ok) {
-            setStatus(data.message || data.error || "open failed", true);
-            return;
+          try {
+            const { response, data } = await requestJson("/api/studio/open", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ workflow_path: workflowPath }),
+            });
+            if (!response.ok) {
+              setStatus(data.message || data.error || "open failed", true);
+              return;
+            }
+            await loadStudioTarget();
+            await loadStudioFiles();
+            showLauncher.value = false;
+            await loadWorkflow();
+            setStatus(`opened: ${workflowPath}`);
+          } finally {
+            isBusy.value = false;
           }
-          await loadStudioTarget();
-          await loadStudioFiles();
-          showLauncher.value = false;
-          await loadWorkflow();
-          setStatus(`opened: ${workflowPath}`);
         }
 
         async function createStudioTarget() {
@@ -3239,62 +3527,77 @@ def _studio_html() -> str:
             setStatus("create target path is required", true);
             return;
           }
+          isBusy.value = true;
           setStatus(`creating: ${workflowPath} ...`);
-          const { response, data } = await requestJson("/api/studio/create", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              workflow_path: workflowPath,
-              overwrite: Boolean(launcher.overwrite),
-            }),
-          });
-          if (!response.ok) {
-            setStatus(data.message || data.error || "create failed", true);
-            return;
+          try {
+            const { response, data } = await requestJson("/api/studio/create", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                workflow_path: workflowPath,
+                overwrite: Boolean(launcher.overwrite),
+              }),
+            });
+            if (!response.ok) {
+              setStatus(data.message || data.error || "create failed", true);
+              return;
+            }
+            launcher.openWorkflowPath = workflowPath;
+            await loadStudioTarget();
+            await loadStudioFiles();
+            showLauncher.value = false;
+            await loadWorkflow();
+            setStatus(`created: ${workflowPath}`);
+          } finally {
+            isBusy.value = false;
           }
-          launcher.openWorkflowPath = workflowPath;
-          await loadStudioTarget();
-          await loadStudioFiles();
-          showLauncher.value = false;
-          await loadWorkflow();
-          setStatus(`created: ${workflowPath}`);
         }
 
         async function loadWorkflow() {
+          isBusy.value = true;
           setStatus("loading...");
-          const { response, data } = await requestJson("/api/workflow/form");
-          if (response.status === 409 && data.error === "studio_target_required") {
-            resetEditorState();
-            hasTarget.value = false;
-            showLauncher.value = true;
-            await loadStudioTarget();
-            await loadStudioFiles();
-            setStatus("workflow target を選択してください");
-            return;
-          }
-          if (!response.ok) {
-            setStatus(data.message || data.error || "load failed", true);
-            return;
-          }
-          hasTarget.value = true;
-          showLauncher.value = false;
+          try {
+            const { response, data } = await requestJson("/api/workflow/form");
+            if (response.status === 409 && data.error === "studio_target_required") {
+              resetEditorState();
+              hasTarget.value = false;
+              showLauncher.value = true;
+              await loadStudioTarget();
+              await loadStudioFiles();
+              setStatus("Select a workflow target");
+              return;
+            }
+            if (!response.ok) {
+              setStatus(data.message || data.error || "load failed", true);
+              return;
+            }
+            hasTarget.value = true;
+            showLauncher.value = false;
 
-          revision.value = typeof data.revision === "string" ? data.revision : null;
-          originalWorkflow.value = isRecord(data.workflow) ? deepClone(data.workflow) : {};
-          baseUiState.value = isRecord(data.ui_state) ? deepClone(data.ui_state) : {};
+            revision.value = typeof data.revision === "string" ? data.revision : null;
+            originalWorkflow.value = isRecord(data.workflow) ? deepClone(data.workflow) : {};
+            baseUiState.value = isRecord(data.ui_state) ? deepClone(data.ui_state) : {};
 
-          nodes.value = buildNodesFromPayload(data.workflow, data.ui_state, data.nodes);
-          workflowMeta.version = normalizeText(data.workflow?.version) || "1.0";
-          workflowMeta.startAt = resolveWorkflowStartAt(data.workflow?.start_at);
-          workflowMeta.endAt = normalizeNodeIdList(data.workflow?.end_at);
-          onWorkflowMetaChange();
-          edges.value = buildEdgesFromPayload(data.workflow, data.ui_state, data.edges, nodes.value);
-          refreshEdgeMetadata();
-          selectedNodeId.value = null;
-          selectedEdgeId.value = null;
-          validationText.value = buildValidationText(data.validation_report);
-          diffText.value = "";
-          setStatus("loaded");
+            nodes.value = buildNodesFromPayload(data.workflow, data.ui_state, data.nodes);
+            workflowMeta.version = normalizeText(data.workflow?.version) || "1.0";
+            workflowMeta.startAt = resolveWorkflowStartAt(data.workflow?.start_at);
+            workflowMeta.endAt = normalizeNodeIdList(data.workflow?.end_at);
+            onWorkflowMetaChange();
+            edges.value = buildEdgesFromPayload(data.workflow, data.ui_state, data.edges, nodes.value);
+            refreshEdgeMetadata();
+            selectedNodeId.value = null;
+            selectedEdgeId.value = null;
+            validationText.value = buildValidationText(data.validation_report);
+            const vd = parseValidationReport(data.validation_report);
+            validationData.isValid = vd.isValid;
+            validationData.issues = vd.issues;
+            validationData.empty = vd.empty;
+            diffText.value = "";
+            diffLines.value = [];
+            setStatus("loaded");
+          } finally {
+            isBusy.value = false;
+          }
         }
 
         async function previewDiff() {
@@ -3302,37 +3605,47 @@ def _studio_html() -> str:
             setStatus("load first", true);
             return;
           }
+          isBusy.value = true;
           setStatus("previewing...");
-          const response = await fetch("/api/workflow/diff", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              workflow: buildWorkflowPayload(),
-              ui_state: buildUiStatePayload(),
-              base_revision: revision.value,
-            }),
-          });
-          const data = await response.json();
-          if (response.status === 409) {
-            if (data.error === "studio_target_required") {
-              resetEditorState();
-              hasTarget.value = false;
-              showLauncher.value = true;
-              await loadStudioTarget();
-              await loadStudioFiles();
-              setStatus("workflow target を選択してください");
+          try {
+            const response = await fetch("/api/workflow/diff", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                workflow: buildWorkflowPayload(),
+                ui_state: buildUiStatePayload(),
+                base_revision: revision.value,
+              }),
+            });
+            const data = await response.json();
+            if (response.status === 409) {
+              if (data.error === "studio_target_required") {
+                resetEditorState();
+                hasTarget.value = false;
+                showLauncher.value = true;
+                await loadStudioTarget();
+                await loadStudioFiles();
+                setStatus("Select a workflow target");
+                return;
+              }
+              setStatus("revision conflict. reload required", true);
               return;
             }
-            setStatus("revision conflict. reload required", true);
-            return;
+            if (!response.ok) {
+              setStatus(data.message || data.error || "diff failed", true);
+              return;
+            }
+            validationText.value = buildValidationText(data.validation_report);
+            const vd = parseValidationReport(data.validation_report);
+            validationData.isValid = vd.isValid;
+            validationData.issues = vd.issues;
+            validationData.empty = vd.empty;
+            diffText.value = buildDiffText(data);
+            diffLines.value = parseDiffLines(data);
+            setStatus("diff ready");
+          } finally {
+            isBusy.value = false;
           }
-          if (!response.ok) {
-            setStatus(data.message || data.error || "diff failed", true);
-            return;
-          }
-          validationText.value = buildValidationText(data.validation_report);
-          diffText.value = buildDiffText(data);
-          setStatus("diff ready");
         }
 
         async function saveWorkflow() {
@@ -3340,43 +3653,52 @@ def _studio_html() -> str:
             setStatus("load first", true);
             return;
           }
+          isBusy.value = true;
           setStatus("saving...");
-          const response = await fetch("/api/workflow/save", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              workflow: buildWorkflowPayload(),
-              ui_state: buildUiStatePayload(),
-              base_revision: revision.value,
-            }),
-          });
-          const data = await response.json();
-          if (response.status === 409) {
-            if (data.error === "studio_target_required") {
-              resetEditorState();
-              hasTarget.value = false;
-              showLauncher.value = true;
-              await loadStudioTarget();
-              await loadStudioFiles();
-              setStatus("workflow target を選択してください");
+          try {
+            const response = await fetch("/api/workflow/save", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                workflow: buildWorkflowPayload(),
+                ui_state: buildUiStatePayload(),
+                base_revision: revision.value,
+              }),
+            });
+            const data = await response.json();
+            if (response.status === 409) {
+              if (data.error === "studio_target_required") {
+                resetEditorState();
+                hasTarget.value = false;
+                showLauncher.value = true;
+                await loadStudioTarget();
+                await loadStudioFiles();
+                setStatus("Select a workflow target");
+                return;
+              }
+              setStatus("revision conflict. reload required", true);
               return;
             }
-            setStatus("revision conflict. reload required", true);
-            return;
+            if (response.status === 422) {
+              validationText.value = buildValidationText(data.report);
+              const vd = parseValidationReport(data.report);
+              validationData.isValid = vd.isValid;
+              validationData.issues = vd.issues;
+              validationData.empty = vd.empty;
+              setStatus("validation failed", true);
+              return;
+            }
+            if (!response.ok) {
+              setStatus(data.message || data.error || "save failed", true);
+              return;
+            }
+            revision.value = data.saved_revision;
+            backupId.value = data.backup_id || "";
+            await loadWorkflow();
+            setStatus(`saved (backup: ${data.backup_id})`);
+          } finally {
+            isBusy.value = false;
           }
-          if (response.status === 422) {
-            validationText.value = buildValidationText(data.report);
-            setStatus("validation failed", true);
-            return;
-          }
-          if (!response.ok) {
-            setStatus(data.message || data.error || "save failed", true);
-            return;
-          }
-          revision.value = data.saved_revision;
-          backupId.value = data.backup_id || "";
-          await loadWorkflow();
-          setStatus(`saved (backup: ${data.backup_id})`);
         }
 
         async function rollbackWorkflow() {
@@ -3386,43 +3708,48 @@ def _studio_html() -> str:
             return;
           }
           const shouldProceed = window.confirm(
-            "rollback を実行すると現在状態が復元先へ置き換わります。続行しますか？",
+            "Rollback will replace the current state with the backup. Continue?",
           );
           if (!shouldProceed) {
             setStatus("rollback cancelled");
             return;
           }
+          isBusy.value = true;
           setStatus("rolling back...");
-          const response = await fetch("/api/workflow/rollback", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ backup_id: targetBackupId }),
-          });
-          const data = await response.json();
-          if (response.status === 409 && data.error === "studio_target_required") {
-            resetEditorState();
-            hasTarget.value = false;
-            showLauncher.value = true;
-            await loadStudioTarget();
-            await loadStudioFiles();
-            setStatus("workflow target を選択してください");
-            return;
+          try {
+            const response = await fetch("/api/workflow/rollback", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ backup_id: targetBackupId }),
+            });
+            const data = await response.json();
+            if (response.status === 409 && data.error === "studio_target_required") {
+              resetEditorState();
+              hasTarget.value = false;
+              showLauncher.value = true;
+              await loadStudioTarget();
+              await loadStudioFiles();
+              setStatus("Select a workflow target");
+              return;
+            }
+            if (!response.ok) {
+              setStatus(data.message || data.error || "rollback failed", true);
+              return;
+            }
+            revision.value = data.restored_revision;
+            const safetyBackupId = normalizeText(data.safety_backup_id);
+            if (safetyBackupId) {
+              backupId.value = safetyBackupId;
+            }
+            await loadWorkflow();
+            if (safetyBackupId) {
+              setStatus(`rolled back (${targetBackupId}), safety backup: ${safetyBackupId}`);
+              return;
+            }
+            setStatus(`rolled back (${targetBackupId})`);
+          } finally {
+            isBusy.value = false;
           }
-          if (!response.ok) {
-            setStatus(data.message || data.error || "rollback failed", true);
-            return;
-          }
-          revision.value = data.restored_revision;
-          const safetyBackupId = normalizeText(data.safety_backup_id);
-          if (safetyBackupId) {
-            backupId.value = safetyBackupId;
-          }
-          await loadWorkflow();
-          if (safetyBackupId) {
-            setStatus(`rolled back (${targetBackupId}), safety backup: ${safetyBackupId}`);
-            return;
-          }
-          setStatus(`rolled back (${targetBackupId})`);
         }
 
         onMounted(async () => {
@@ -3438,7 +3765,7 @@ def _studio_html() -> str:
           }
           resetEditorState();
           showLauncher.value = true;
-          setStatus("workflow target を選択してください");
+          setStatus("Select a workflow target");
         });
 
         return {
@@ -3448,6 +3775,10 @@ def _studio_html() -> str:
           statusClass,
           validationText,
           diffText,
+          isBusy,
+          toasts,
+          validationData,
+          diffLines,
           hasTarget,
           showLauncher,
           studioTargetPath,
