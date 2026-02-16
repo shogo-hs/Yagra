@@ -35,7 +35,49 @@ Built with **AI-Native principles**: JSON Schema export and validation CLI enabl
 
 ```bash
 pip install yagra
+
+# With LLM handler utilities (optional)
+pip install 'yagra[llm]'
 ```
+
+### LLM Handler Utilities (Beta)
+
+Yagra provides handler utilities to reduce boilerplate code for LLM nodes:
+
+```python
+from yagra.handlers import create_llm_handler
+
+# Create a generic LLM handler
+llm = create_llm_handler(retry=3, timeout=30)
+
+# Register and use in workflow
+registry = {"llm": llm}
+app = Yagra.from_workflow("workflow.yaml", registry)
+```
+
+**YAML Definition:**
+```yaml
+nodes:
+  - id: "chat"
+    handler: "llm"
+    params:
+      prompt_ref: "prompts/chat.yaml#system"
+      model:
+        provider: "openai"
+        name: "gpt-4"
+        kwargs:
+          temperature: 0.7
+      input_keys: ["query"]
+      output_key: "response"
+```
+
+The handler automatically:
+- Extracts and interpolates prompts
+- Calls LLM via [litellm](https://github.com/BerriAI/litellm) (100+ providers)
+- Handles retries and timeouts
+- Returns structured output
+
+**Coming Soon**: Structured output (Pydantic), Streaming support
 
 ## 🚀 Quick Start
 
