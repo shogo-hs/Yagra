@@ -92,14 +92,14 @@
 
 | Item ID | やるべきこと | 状態 | 根拠 |
 | --- | --- | --- | --- |
-| G06-I01 | `yagra schema export` コマンドを実装する | Todo | `docs/product/milestones.md` (M-12) |
-| G06-I02 | `yagra validate` コマンドを実装し `--format json` オプションを追加する | Todo | `docs/product/milestones.md` (M-12) |
+| G06-I01 | `yagra schema export` コマンドを実装する | Done | `src/yagra/__init__.py` (`_run_schema_command`) |
+| G06-I02 | `yagra validate` コマンドを実装し `--format json` オプションを追加する | Done | `src/yagra/__init__.py` (`_run_validate_command`) |
 | G06-I03 | テンプレート YAML を整備する（branch, loop, rag 等） | Todo | `docs/product/milestones.md` (M-13) |
 | G06-I04 | `yagra init --template` コマンドを実装する | Todo | `docs/product/milestones.md` (M-13) |
 
-- 完了済み: なし
-- 未完了: G06-I01, G06-I02, G06-I03, G06-I04
-- 現在地: G-06 は新規ゴール。M-12（JSON Schema 公開 + validate CLI）から着手予定。
+- 完了済み: G06-I01, G06-I02
+- 未完了: G06-I03, G06-I04
+- 現在地: M-12（JSON Schema 公開 + validate CLI）完了。`yagra schema` で GraphSpec の JSON Schema を出力でき、`yagra validate --format json` で構造化エラーを返却できる。テスト 6 件追加済み。次は M-13（テンプレートライブラリ）に着手する。
 
 ## 補足（2026-02-16）
 
