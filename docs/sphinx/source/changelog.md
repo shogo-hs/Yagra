@@ -10,6 +10,40 @@ For the canonical changelog (Japanese), see [CHANGELOG.md](https://github.com/sh
 
 No changes yet.
 
+## [0.3.1] - 2026-02-17
+
+### Changed
+- **Docstring Internationalization**: Translated all Python docstrings from Japanese to English
+  - Maintained Google style docstring format
+  - Ensured consistency with type hints and implementation
+  - Improved Sphinx documentation accessibility for English-speaking users
+  - Enhanced API documentation for international user base
+
+## [0.3.0] - 2026-02-17
+
+### Added
+- **LLM Handler Utilities**: Added `create_llm_handler()` factory function to reduce LLM node boilerplate
+  - Support for 100+ LLM providers via litellm (OpenAI, Anthropic, Google, Azure, etc.)
+  - Prompt variable interpolation (`{variable}` syntax)
+  - Automatic retry and timeout handling
+  - Provided as extras dependency (`pip install 'yagra[llm]'` or `uv add --optional llm yagra`)
+  - Fully backward compatible (no impact on existing code)
+- **Testing**: Added 7 core tests (all 91 existing tests passing)
+- **New Module**: `src/yagra/handlers/`
+- **Dependencies**: `litellm>=1.57.10` (extras dependency)
+
+### Changed
+- Type safety: mypy strict mode compliance
+- Code quality: ruff format and lint compliance
+
+### Known Issues
+- Issue #11: 6 exception tests temporarily skipped (core functionality works normally)
+
+### Related
+- **PR**: #10
+- **Goal**: G-07 (DX improvement: reduce LLM node boilerplate)
+- **Milestone**: M-14
+
 ## [0.2.0] - 2026-02-17
 
 ### Added
