@@ -1,6 +1,6 @@
 # 進捗スコアボード
 
-最終更新: 2026-02-14
+最終更新: 2026-02-16
 
 ## 更新ルール
 
@@ -85,6 +85,28 @@
 - 完了済み: G05-I01, G05-I02, G05-I03, G05-I04, G05-I05, G05-I06, G05-I07
 - 未完了: G05-I08
 - 現在地: M-05〜M-10 で機能到達と主要操作導線の明確化は完了。次フェーズとして M-11（レイアウト/配色/ラベル体系の改善）に着手する。
+
+### G-06: コーディングエージェントが Yagra ワークフローを正確に生成・検証できる
+
+**やるべきこと一覧**
+
+| Item ID | やるべきこと | 状態 | 根拠 |
+| --- | --- | --- | --- |
+| G06-I01 | `yagra schema export` コマンドを実装する | Done | `src/yagra/__init__.py` (`_run_schema_command`) |
+| G06-I02 | `yagra validate` コマンドを実装し `--format json` オプションを追加する | Done | `src/yagra/__init__.py` (`_run_validate_command`) |
+| G06-I03 | テンプレート YAML を整備する（branch, loop, rag 等） | Todo | `docs/product/milestones.md` (M-13) |
+| G06-I04 | `yagra init --template` コマンドを実装する | Todo | `docs/product/milestones.md` (M-13) |
+
+- 完了済み: G06-I01, G06-I02
+- 未完了: G06-I03, G06-I04
+- 現在地: M-12（JSON Schema 公開 + validate CLI）完了。`yagra schema` で GraphSpec の JSON Schema を出力でき、`yagra validate --format json` で構造化エラーを返却できる。テスト 6 件追加済み。次は M-13（テンプレートライブラリ）に着手する。
+
+## 補足（2026-02-16）
+
+- AI-Native 方針を追加し、G-06（コーディングエージェント向け生成・検証基盤）を新設した。
+- M-12（JSON Schema 公開 + validate CLI）、M-13（テンプレートライブラリ）を追加した。
+- 将来展望としてプロンプト自動最適化（DSPy, Agent Lightning 等）との統合を `docs/product/vision.md` に記載した。
+- WorkflowBuilder API は「コードで書くなら LangGraph を直接使えばよい」ため不採用と判断した。
 
 ## 補足（2026-02-14）
 

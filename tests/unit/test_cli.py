@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 from typing import Any
@@ -35,6 +36,175 @@ def _base_payload() -> dict[str, Any]:
 def _write_workflow(path: Path, payload: dict[str, Any]) -> Path:
     path.write_text(yaml.safe_dump(payload, sort_keys=False, allow_unicode=True), encoding="utf-8")
     return path
+
+
+class TestSchemaCommand:
+    """yagra schema サブコマンドのテスト。"""
+
+    def test_schema_outputs_valid_json_to_stdout(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Schema コマンドが GraphSpec の JSON Schema を標準出力すること。"""
+        monkeypatch.setattr(sys, "argv", ["yagra", "schema"])
+
+        with pytest.raises(SystemExit) as exc:
+            main()
+
+        assert exc.value.code == 0
+
+        captured = capsys.readouterr()
+        schema = json.loads(captured.out)
+        assert "properties" in schema
+        assert "nodes" in schema["properties"]
+        assert "edges" in schema["properties"]
+
+    def test_schema_writes_to_file(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Schema コマンドが --output 指定時にファイルへ書き出すこと。"""
+        output_path = tmp_path / "schema.json"
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            ["yagra", "schema", "--output", str(output_path)],
+        )
+
+        with pytest.raises(SystemExit) as exc:
+            main()
+
+        assert exc.value.code == 0
+        assert output_path.exists()
+
+        schema = json.loads(output_path.read_text(encoding="utf-8"))
+        assert "properties" in schema
+
+        captured = capsys.readouterr()
+        assert "schema exported:" in captured.out
+
+
+class TestValidateCommand:
+    """yagra validate サブコマンドのテスト。"""
+
+    def test_validate_valid_workflow_text(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """有効なワークフローで終了コード 0 と passed メッセージを返すこと。"""
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "yagra",
+                "validate",
+                "--workflow",
+                str(WORKFLOW_ROOT / "branch-inline.yaml"),
+            ],
+        )
+
+        with pytest.raises(SystemExit) as exc:
+            main()
+
+        assert exc.value.code == 0
+
+        captured = capsys.readouterr()
+        assert "passed" in captured.out
+
+    def test_validate_invalid_workflow_text(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """無効なワークフローで終了コード 1 とエラーメッセージを返すこと。"""
+        payload = _base_payload()
+        del payload["edges"]
+        invalid_path = _write_workflow(tmp_path / "invalid.yaml", payload)
+
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            ["yagra", "validate", "--workflow", str(invalid_path)],
+        )
+
+        with pytest.raises(SystemExit) as exc:
+            main()
+
+        assert exc.value.code == 1
+
+        captured = capsys.readouterr()
+        assert "workflow validation failed" in captured.err
+
+    def test_validate_valid_workflow_json(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """有効なワークフローの JSON 出力で is_valid が true であること。"""
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "yagra",
+                "validate",
+                "--workflow",
+                str(WORKFLOW_ROOT / "branch-inline.yaml"),
+                "--format",
+                "json",
+            ],
+        )
+
+        with pytest.raises(SystemExit) as exc:
+            main()
+
+        assert exc.value.code == 0
+
+        captured = capsys.readouterr()
+        result = json.loads(captured.out)
+        assert result["is_valid"] is True
+        assert result["issues"] == []
+
+    def test_validate_invalid_workflow_json(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """無効なワークフローの JSON 出力で is_valid が false かつ issues が存在すること。"""
+        payload = _base_payload()
+        del payload["edges"]
+        invalid_path = _write_workflow(tmp_path / "invalid.yaml", payload)
+
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "yagra",
+                "validate",
+                "--workflow",
+                str(invalid_path),
+                "--format",
+                "json",
+            ],
+        )
+
+        with pytest.raises(SystemExit) as exc:
+            main()
+
+        assert exc.value.code == 1
+
+        captured = capsys.readouterr()
+        result = json.loads(captured.out)
+        assert result["is_valid"] is False
+        assert len(result["issues"]) > 0
+        assert "code" in result["issues"][0]
+        assert "message" in result["issues"][0]
+        assert "location" in result["issues"][0]
 
 
 def test_main_visualize_generates_html(

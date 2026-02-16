@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import argparse
+import dataclasses
+import json
 import sys
 from collections.abc import Mapping
 from os import PathLike
@@ -19,6 +21,7 @@ from yagra.application.use_cases import (
     render_workflow_visualization_html,
     validate_workflow_for_ui,
 )
+from yagra.domain.entities import GraphSpec
 from yagra.ports.outbound import NodeHandler, NodeRegistryPort
 
 
@@ -89,6 +92,12 @@ def main() -> None:
     parser = _build_cli_parser()
     args = parser.parse_args()
 
+    if args.command == "schema":
+        exit_code = _run_schema_command(args)
+        raise SystemExit(exit_code)
+    if args.command == "validate":
+        exit_code = _run_validate_command(args)
+        raise SystemExit(exit_code)
     if args.command == "visualize":
         exit_code = _run_visualize_command(args)
         raise SystemExit(exit_code)
@@ -125,6 +134,37 @@ def _build_cli_parser() -> argparse.ArgumentParser:
     """
     parser = argparse.ArgumentParser(prog="yagra")
     subparsers = parser.add_subparsers(dest="command", required=True)
+
+    schema = subparsers.add_parser(
+        "schema",
+        help="workflow YAML の JSON Schema を出力する",
+    )
+    schema.add_argument(
+        "--output",
+        default=None,
+        help="出力ファイルパス（未指定時は標準出力）",
+    )
+
+    validate = subparsers.add_parser(
+        "validate",
+        help="workflow YAML を検証する",
+    )
+    validate.add_argument(
+        "--workflow",
+        required=True,
+        help="検証対象 workflow YAML のパス",
+    )
+    validate.add_argument(
+        "--bundle-root",
+        default=None,
+        help="分割参照解決の基準ディレクトリ",
+    )
+    validate.add_argument(
+        "--format",
+        choices=["text", "json"],
+        default="text",
+        help="出力フォーマット (デフォルト: text)",
+    )
 
     visualize = subparsers.add_parser(
         "visualize",
@@ -197,6 +237,62 @@ def _build_cli_parser() -> argparse.ArgumentParser:
     )
 
     return parser
+
+
+def _run_schema_command(args: argparse.Namespace) -> int:
+    """`schema` サブコマンドを実行する。
+
+    GraphSpec の JSON Schema を出力する。
+    コーディングエージェントが正確なワークフロー YAML を生成するためのスキーマ情報を提供する。
+
+    Args:
+        args: 解析済みの CLI 引数。
+
+    Returns:
+        終了コード。成功時は 0。
+    """
+    schema = GraphSpec.model_json_schema()
+    schema_json = json.dumps(schema, indent=2, ensure_ascii=False)
+
+    if args.output:
+        output_path = Path(args.output).expanduser().resolve()
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(schema_json + "\n", encoding="utf-8")
+        print(f"schema exported: {output_path}")
+    else:
+        print(schema_json)
+    return 0
+
+
+def _run_validate_command(args: argparse.Namespace) -> int:
+    """`validate` サブコマンドを実行する。
+
+    ワークフロー YAML を検証し、結果を text または JSON 形式で出力する。
+    JSON 形式はコーディングエージェントによるエラー修正ループに利用できる。
+
+    Args:
+        args: 解析済みの CLI 引数。
+
+    Returns:
+        終了コード。valid → 0, invalid → 1。
+    """
+    report = validate_workflow_for_ui(
+        workflow_path=args.workflow,
+        bundle_root=args.bundle_root,
+    )
+
+    if args.format == "json":
+        report_dict = {
+            "is_valid": report.is_valid,
+            "issues": [dataclasses.asdict(issue) for issue in report.issues],
+        }
+        print(json.dumps(report_dict, indent=2, ensure_ascii=False))
+    else:
+        print(
+            format_validation_report(report), file=sys.stderr if not report.is_valid else sys.stdout
+        )
+
+    return 0 if report.is_valid else 1
 
 
 def _run_visualize_command(args: argparse.Namespace) -> int:
