@@ -1,0 +1,360 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, Yagra contributors
+# This file is distributed under the same license as the Yagra package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: Yagra 0.1.9\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-02-17 00:16+0900\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: ja\n"
+"Language-Team: ja <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: ../user_guide/branching_loops.md:1
+msgid "Branching & Loops"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:3
+msgid ""
+"This guide explains how to implement conditional branching and loop "
+"patterns in Yagra workflows."
+msgstr ""
+
+#: ../user_guide/branching_loops.md:5
+msgid "Conditional Branching"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:7
+msgid ""
+"Conditional branching lets you route execution to different nodes based "
+"on runtime conditions."
+msgstr ""
+
+#: ../user_guide/branching_loops.md:9
+msgid "Basic Branching Pattern"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:11
+msgid "**Workflow Structure**:"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:12
+msgid "A **classifier node** evaluates state and decides the next path"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:13
+msgid "**Conditional edges** connect the classifier to different target nodes"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:14
+msgid "The classifier returns `__next__` with the branch label"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:16
+msgid "**Example**: FAQ vs General Query Routing"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:42
+msgid "**Handler Implementation**:"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:54
+msgid "**Key Points**:"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:55
+#, python-brace-format
+msgid "The handler must return `{\"__next__\": \"<branch_label>\"}`"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:56
+msgid "Branch labels must match `condition` values in edges"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:57
+msgid "Each branch must have a corresponding edge"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:59
+msgid "Multi-Way Branching"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:61
+msgid "You can have more than two branches:"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:108
+msgid "Loop Patterns"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:110
+msgid ""
+"Loops enable iterative workflows where execution returns to a previous "
+"node based on conditions."
+msgstr ""
+
+#: ../user_guide/branching_loops.md:112
+msgid "Basic Loop: Planner → Evaluator"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:114
+msgid "A common pattern for iterative refinement:"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:116
+msgid "**Planner** generates a plan"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:117
+msgid "**Evaluator** checks if plan is good enough"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:118
+msgid "If not good enough, return to **Planner** (loop)"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:119
+msgid "If good enough, proceed to **Finish**"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:121
+msgid "**Workflow**:"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:143
+msgid "**Handlers**:"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:170
+msgid "Loop with State Accumulation"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:172
+msgid "Track history across iterations:"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:210
+msgid "Preventing Infinite Loops"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:212
+msgid "Always include a **termination condition** to avoid infinite loops:"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:214
+msgid "**Max iterations**: Exit after N iterations"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:215
+msgid "**Quality threshold**: Exit when quality is acceptable"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:216
+msgid "**Timeout**: (Not directly supported in Yagra—implement in handler)"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:218
+msgid "Example:"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:231
+msgid "Advanced Patterns"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:233
+msgid "Nested Branching"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:235
+msgid "Combine branches within branches:"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:278
+msgid "Loop with Branch Exit"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:280
+msgid "Combine loops and branches:"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:310
+msgid "Visualizing Branching and Loops"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:312
+msgid "Use `yagra visualize` to see branching and loop structure:"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:318
+msgid "Open `loop.html` to see:"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:319
+msgid "Nodes as boxes"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:320
+msgid "Edges as arrows"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:321
+msgid "Conditional edges labeled with conditions"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:322
+msgid "Loops as circular paths"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:324
+msgid "Use `yagra studio` for interactive editing:"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:330
+msgid "Best Practices"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:332
+msgid "Branching"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:334
+msgid ""
+"**Explicit labels**: Use descriptive condition names "
+"(`\"needs_revision\"` not `\"0\"`)"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:335
+msgid ""
+"**Default fallback**: Handle unexpected cases (e.g., default to "
+"`\"general\"`)"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:336
+msgid "**Validate branches**: Ensure all conditions have corresponding edges"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:338
+msgid "Loops"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:340
+msgid "**Set max iterations**: Always include a termination condition"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:341
+msgid "**Track progress**: Use `iteration` or `attempt_count` in state"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:342
+msgid "**Provide feedback**: Pass quality feedback to improve next iteration"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:343
+msgid "**Monitor cost**: Each iteration may call expensive LLM APIs"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:345
+msgid "Debugging"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:347
+msgid "**Add logging**: Print `__next__` value in handlers"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:348
+msgid ""
+"**Validate workflow**: Use `yagra validate --format json` to catch edge "
+"errors"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:349
+msgid "**Visualize**: Generate HTML to visually verify flow"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:351
+msgid "Common Pitfalls"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:353
+msgid "Missing `__next__` in Branching Node"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:355
+msgid ""
+"**Error**: LangGraph raises an error because it doesn't know which edge "
+"to take."
+msgstr ""
+
+#: ../user_guide/branching_loops.md:357
+msgid "**Solution**: Always return `__next__` in branching nodes:"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:365
+msgid "Infinite Loop Without Exit"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:367
+msgid "**Symptom**: Workflow runs forever or times out."
+msgstr ""
+
+#: ../user_guide/branching_loops.md:369
+msgid "**Solution**: Add max iteration check:"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:377
+msgid "Mismatched Condition Labels"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:379
+msgid "**Error**: `ValidationError: condition 'xyz' has no corresponding edge`"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:381
+msgid "**Solution**: Ensure edge `condition` matches `__next__` value:"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:394
+msgid "Examples"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:396
+msgid "See `examples/workflows/` for complete examples:"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:397
+msgid "`branch-inline.yaml`: Simple branching"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:398
+msgid "`loop-split.yaml`: Loop with conditional exit"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:399
+msgid "`rag.yaml`: Multi-stage RAG pipeline"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:401
+msgid "Next Steps"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:403
+msgid "[Templates](templates.md)"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:404
+msgid "[CLI Reference](../cli_reference.md)"
+msgstr ""
+
+#: ../user_guide/branching_loops.md:405
+msgid "[Examples](../examples.md)"
+msgstr ""
+

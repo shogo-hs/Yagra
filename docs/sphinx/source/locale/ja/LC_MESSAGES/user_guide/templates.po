@@ -1,0 +1,384 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, Yagra contributors
+# This file is distributed under the same license as the Yagra package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: Yagra 0.1.9\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-02-17 00:16+0900\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: ja\n"
+"Language-Team: ja <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: ../user_guide/templates.md:1
+msgid "Template Library"
+msgstr ""
+
+#: ../user_guide/templates.md:3
+msgid ""
+"Yagra provides ready-to-use templates for common workflow patterns. "
+"Templates let you bootstrap workflows quickly without writing YAML from "
+"scratch."
+msgstr ""
+
+#: ../user_guide/templates.md:5
+msgid "Available Templates"
+msgstr ""
+
+#: ../user_guide/templates.md:7
+msgid "`branch`: Conditional Branching"
+msgstr ""
+
+#: ../user_guide/templates.md:9
+msgid "**Pattern**: Classify → Branch → Merge"
+msgstr ""
+
+#: ../user_guide/templates.md:11
+msgid "**Use Case**: Route requests based on intent (FAQ, general, support, etc.)"
+msgstr ""
+
+#: ../user_guide/templates.md:13 ../user_guide/templates.md:41
+#: ../user_guide/templates.md:70
+msgid "**Structure**:"
+msgstr ""
+
+#: ../user_guide/templates.md:14
+msgid "Classifier node determines intent"
+msgstr ""
+
+#: ../user_guide/templates.md:15
+msgid "Conditional edges route to specialized handlers"
+msgstr ""
+
+#: ../user_guide/templates.md:16
+msgid "All paths converge to finish node"
+msgstr ""
+
+#: ../user_guide/templates.md:18 ../user_guide/templates.md:47
+#: ../user_guide/templates.md:75
+msgid "**Initialize**:"
+msgstr ""
+
+#: ../user_guide/templates.md:24 ../user_guide/templates.md:53
+#: ../user_guide/templates.md:81
+msgid "**Generated Files**:"
+msgstr ""
+
+#: ../user_guide/templates.md:25
+msgid "`workflow.yaml`: Workflow with classifier → faq_bot / general_bot → finish"
+msgstr ""
+
+#: ../user_guide/templates.md:26
+msgid "`prompts/branch_prompts.yaml`: System and user prompts"
+msgstr ""
+
+#: ../user_guide/templates.md:28 ../user_guide/templates.md:57
+#: ../user_guide/templates.md:85
+msgid "**Customize**:"
+msgstr ""
+
+#: ../user_guide/templates.md:29
+msgid "Edit `classify_intent` logic in your Python code"
+msgstr ""
+
+#: ../user_guide/templates.md:30
+msgid "Adjust prompts in `prompts/branch_prompts.yaml`"
+msgstr ""
+
+#: ../user_guide/templates.md:31
+msgid "Add/remove branches by editing `edges` in `workflow.yaml`"
+msgstr ""
+
+#: ../user_guide/templates.md:35
+msgid "`loop`: Planner → Evaluator Loop"
+msgstr ""
+
+#: ../user_guide/templates.md:37
+msgid "**Pattern**: Generate → Evaluate → Retry or Done"
+msgstr ""
+
+#: ../user_guide/templates.md:39
+msgid ""
+"**Use Case**: Iterative refinement (planning, content generation, "
+"validation)"
+msgstr ""
+
+#: ../user_guide/templates.md:42
+msgid "Planner generates output"
+msgstr ""
+
+#: ../user_guide/templates.md:43
+msgid "Evaluator checks quality"
+msgstr ""
+
+#: ../user_guide/templates.md:44
+msgid "Loop back to planner if needs improvement"
+msgstr ""
+
+#: ../user_guide/templates.md:45
+msgid "Exit to finish when quality is acceptable"
+msgstr ""
+
+#: ../user_guide/templates.md:54
+msgid "`workflow.yaml`: planner → evaluator → (retry/done)"
+msgstr ""
+
+#: ../user_guide/templates.md:55
+msgid "`prompts/loop_prompts.yaml`: Planner and evaluator prompts"
+msgstr ""
+
+#: ../user_guide/templates.md:58
+msgid "Implement quality criteria in `evaluator` handler"
+msgstr ""
+
+#: ../user_guide/templates.md:59
+msgid "Set `max_iterations` in `evaluator` params"
+msgstr ""
+
+#: ../user_guide/templates.md:60
+msgid "Adjust prompts for your domain (e.g., code generation, text summarization)"
+msgstr ""
+
+#: ../user_guide/templates.md:64
+msgid "`rag`: Retrieve → Rerank → Generate"
+msgstr ""
+
+#: ../user_guide/templates.md:66
+msgid "**Pattern**: RAG (Retrieval-Augmented Generation)"
+msgstr ""
+
+#: ../user_guide/templates.md:68
+msgid "**Use Case**: Question answering with document retrieval"
+msgstr ""
+
+#: ../user_guide/templates.md:71
+msgid "Retrieve relevant documents from knowledge base"
+msgstr ""
+
+#: ../user_guide/templates.md:72
+msgid "Rerank documents by relevance"
+msgstr ""
+
+#: ../user_guide/templates.md:73
+msgid "Generate answer based on top documents"
+msgstr ""
+
+#: ../user_guide/templates.md:82
+msgid "`workflow.yaml`: retrieve → rerank → generate"
+msgstr ""
+
+#: ../user_guide/templates.md:83
+msgid "`prompts/rag_prompts.yaml`: Rerank and generation prompts"
+msgstr ""
+
+#: ../user_guide/templates.md:86
+msgid "Implement `retrieve_documents` with your vector DB"
+msgstr ""
+
+#: ../user_guide/templates.md:87
+msgid "Implement `rerank_documents` with reranking model"
+msgstr ""
+
+#: ../user_guide/templates.md:88
+msgid "Adjust `generate_answer` to format context and query"
+msgstr ""
+
+#: ../user_guide/templates.md:90
+msgid "Using Templates"
+msgstr ""
+
+#: ../user_guide/templates.md:92
+msgid "List Available Templates"
+msgstr ""
+
+#: ../user_guide/templates.md:98 ../user_guide/templates.md:133
+msgid "Output:"
+msgstr ""
+
+#: ../user_guide/templates.md:107
+msgid "Initialize from Template"
+msgstr ""
+
+#: ../user_guide/templates.md:113
+msgid "**Options**:"
+msgstr ""
+
+#: ../user_guide/templates.md:114
+msgid "`--template`: Template name (required)"
+msgstr ""
+
+#: ../user_guide/templates.md:115
+msgid "`--output`: Output directory (default: current directory)"
+msgstr ""
+
+#: ../user_guide/templates.md:116
+msgid "`--force`: Overwrite existing files"
+msgstr ""
+
+#: ../user_guide/templates.md:118
+msgid "**Example**:"
+msgstr ""
+
+#: ../user_guide/templates.md:125
+msgid "Validate Generated Workflow"
+msgstr ""
+
+#: ../user_guide/templates.md:127
+msgid ""
+"After initialization, Yagra automatically validates the generated "
+"workflow:"
+msgstr ""
+
+#: ../user_guide/templates.md:142
+msgid "If validation fails, errors are displayed for you to fix."
+msgstr ""
+
+#: ../user_guide/templates.md:144
+msgid "Run Generated Workflow"
+msgstr ""
+
+#: ../user_guide/templates.md:146
+msgid ""
+"Templates generate ready-to-run workflows. You just need to implement "
+"handlers:"
+msgstr ""
+
+#: ../user_guide/templates.md:196
+msgid "Extending Templates"
+msgstr ""
+
+#: ../user_guide/templates.md:198
+msgid "Templates are starting points. Extend them for your use case:"
+msgstr ""
+
+#: ../user_guide/templates.md:200
+msgid "Add Nodes"
+msgstr ""
+
+#: ../user_guide/templates.md:202
+msgid "Edit `workflow.yaml`:"
+msgstr ""
+
+#: ../user_guide/templates.md:213
+msgid "Register the handler:"
+msgstr ""
+
+#: ../user_guide/templates.md:223
+msgid "Add Branches"
+msgstr ""
+
+#: ../user_guide/templates.md:225
+msgid "Add conditional edges in `workflow.yaml`:"
+msgstr ""
+
+#: ../user_guide/templates.md:235
+msgid "Update classifier to return new condition:"
+msgstr ""
+
+#: ../user_guide/templates.md:244
+msgid "Combine Templates"
+msgstr ""
+
+#: ../user_guide/templates.md:246
+msgid "Mix patterns from multiple templates:"
+msgstr ""
+
+#: ../user_guide/templates.md:248
+msgid "Initialize from one template (e.g., `branch`)"
+msgstr ""
+
+#: ../user_guide/templates.md:249
+msgid "Add loop logic from `loop` template"
+msgstr ""
+
+#: ../user_guide/templates.md:250
+msgid "Integrate retrieval step from `rag` template"
+msgstr ""
+
+#: ../user_guide/templates.md:252
+msgid "Template Design Principles"
+msgstr ""
+
+#: ../user_guide/templates.md:254
+msgid "Yagra templates follow these principles:"
+msgstr ""
+
+#: ../user_guide/templates.md:256
+msgid "**Minimal but complete**: Templates are fully functional out of the box"
+msgstr ""
+
+#: ../user_guide/templates.md:257
+msgid "**Clear separation**: Workflow YAML + prompt YAML, no inline prompts"
+msgstr ""
+
+#: ../user_guide/templates.md:258
+msgid ""
+"**Best practices**: Use `prompt_ref`, inline model config, validation-"
+"ready"
+msgstr ""
+
+#: ../user_guide/templates.md:259
+msgid ""
+"**Domain-agnostic**: Templates use generic placeholders (adjust for your "
+"domain)"
+msgstr ""
+
+#: ../user_guide/templates.md:261
+msgid "Creating Custom Templates"
+msgstr ""
+
+#: ../user_guide/templates.md:263
+msgid ""
+"Want to contribute a new template? See [Contributing](../contributing.md)"
+" for guidelines."
+msgstr ""
+
+#: ../user_guide/templates.md:265
+msgid "**Template requirements**:"
+msgstr ""
+
+#: ../user_guide/templates.md:266
+msgid "Must include `workflow.yaml` and `prompts/<template>_prompts.yaml`"
+msgstr ""
+
+#: ../user_guide/templates.md:267
+msgid "Must pass `yagra validate` without errors"
+msgstr ""
+
+#: ../user_guide/templates.md:268
+msgid "Should demonstrate a common pattern (not overly specific)"
+msgstr ""
+
+#: ../user_guide/templates.md:269
+msgid "Should include clear documentation"
+msgstr ""
+
+#: ../user_guide/templates.md:271
+msgid "Next Steps"
+msgstr ""
+
+#: ../user_guide/templates.md:273
+msgid "[Workflow YAML Reference](workflow_yaml.md)"
+msgstr ""
+
+#: ../user_guide/templates.md:274
+msgid "[Branching & Loops](branching_loops.md)"
+msgstr ""
+
+#: ../user_guide/templates.md:275
+msgid "[CLI Reference](../cli_reference.md)"
+msgstr ""
+
+#: ../user_guide/templates.md:276
+msgid "[Examples](../examples.md)"
+msgstr ""
+

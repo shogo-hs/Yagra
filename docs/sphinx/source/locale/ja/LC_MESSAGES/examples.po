@@ -1,0 +1,173 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, Yagra contributors
+# This file is distributed under the same license as the Yagra package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: Yagra 0.1.9\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-02-17 00:16+0900\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: ja\n"
+"Language-Team: ja <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: ../examples.md:1
+msgid "Examples"
+msgstr ""
+
+#: ../examples.md:3
+msgid ""
+"This page showcases practical examples of Yagra workflows for common use "
+"cases."
+msgstr ""
+
+#: ../examples.md:5
+msgid "Example 1: Customer Support Router"
+msgstr ""
+
+#: ../examples.md:7
+msgid "Route customer queries to specialized handlers based on intent."
+msgstr ""
+
+#: ../examples.md:9 ../examples.md:175 ../examples.md:311
+msgid "Workflow Structure"
+msgstr ""
+
+#: ../examples.md:11
+msgid "**Classifier**: Determines if query is FAQ, support, or sales"
+msgstr ""
+
+#: ../examples.md:12
+msgid "**Specialized handlers**: FAQ bot, support bot, sales bot"
+msgstr ""
+
+#: ../examples.md:13
+msgid "**Finish**: Collects final answer"
+msgstr ""
+
+#: ../examples.md:15 ../examples.md:181 ../examples.md:317
+msgid "Files"
+msgstr ""
+
+#: ../examples.md:17
+msgid "**`workflows/support_router.yaml`**:"
+msgstr ""
+
+#: ../examples.md:74
+msgid "**`prompts/support_prompts.yaml`**:"
+msgstr ""
+
+#: ../examples.md:96
+msgid "**`run_support_router.py`**:"
+msgstr ""
+
+#: ../examples.md:171
+msgid "Example 2: Iterative Content Generation"
+msgstr ""
+
+#: ../examples.md:173
+msgid "Generate content, evaluate quality, and refine until acceptable."
+msgstr ""
+
+#: ../examples.md:177
+msgid "**Generator**: Produces content based on requirements"
+msgstr ""
+
+#: ../examples.md:178
+msgid "**Evaluator**: Checks quality and provides feedback"
+msgstr ""
+
+#: ../examples.md:179
+msgid "**Loop**: Refine until quality threshold is met"
+msgstr ""
+
+#: ../examples.md:183
+msgid "**`workflows/content_generation.yaml`**:"
+msgstr ""
+
+#: ../examples.md:225
+msgid "**`prompts/content_prompts.yaml`**:"
+msgstr ""
+
+#: ../examples.md:244
+msgid "**`run_content_generation.py`**:"
+msgstr ""
+
+#: ../examples.md:307
+msgid "Example 3: RAG Pipeline"
+msgstr ""
+
+#: ../examples.md:309
+msgid "Retrieve documents, rerank by relevance, and generate an answer."
+msgstr ""
+
+#: ../examples.md:313
+msgid "**Retriever**: Fetch relevant documents from vector DB"
+msgstr ""
+
+#: ../examples.md:314
+msgid "**Reranker**: Score and rerank documents"
+msgstr ""
+
+#: ../examples.md:315
+msgid "**Generator**: Generate answer using top documents"
+msgstr ""
+
+#: ../examples.md:319
+msgid "**`workflows/rag.yaml`**:"
+msgstr ""
+
+#: ../examples.md:355
+msgid "**`prompts/rag_prompts.yaml`**:"
+msgstr ""
+
+#: ../examples.md:375
+msgid "**`run_rag.py`**:"
+msgstr ""
+
+#: ../examples.md:427
+msgid "Running Examples"
+msgstr ""
+
+#: ../examples.md:429
+msgid ""
+"All examples are available in the `examples/` directory of the Yagra "
+"repository:"
+msgstr ""
+
+#: ../examples.md:436
+msgid "Run an example:"
+msgstr ""
+
+#: ../examples.md:442
+msgid "Visualizing Examples"
+msgstr ""
+
+#: ../examples.md:444
+msgid "Generate HTML visualizations:"
+msgstr ""
+
+#: ../examples.md:452
+msgid "Next Steps"
+msgstr ""
+
+#: ../examples.md:454
+msgid "[User Guide](user_guide/workflow_yaml.md)"
+msgstr ""
+
+#: ../examples.md:455
+msgid "[CLI Reference](cli_reference.md)"
+msgstr ""
+
+#: ../examples.md:456
+msgid "[API Reference](api.md)"
+msgstr ""
+
