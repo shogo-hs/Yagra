@@ -36,6 +36,7 @@ Declarative LangGraph Builder を中核に、
 - AI-Ready Schema: JSON Schema を公開し、コーディングエージェントが正確なワークフロー YAML を生成できる基盤を提供する。
 - Validate Feedback Loop: 構造化されたバリデーション結果を返し、エージェントが自律的にエラー修正ループを回せる。
 - Template Library: 典型パターン（分岐・ループ・RAG 等）のテンプレートを提供し、エージェントおよび開発者の生成精度と立ち上がり速度を向上させる。
+- Human-in-the-Loop: YAML 宣言だけでワークフローの中断・再開ポイントを定義でき、LangGraph の checkpointer と連携して人間のレビュー・承認・修正を実行フローに組み込める。
 
 ## 5. 成功状態
 
@@ -46,11 +47,12 @@ Declarative LangGraph Builder を中核に、
 - 非エンジニアが WebUI 上で主要操作（ノード追加・接続変更・保存）を補助なしで完了できる（UX 高度化フェーズ）。
 - コーディングエージェントが JSON Schema を参照して有効なワークフロー YAML を生成できる（AI-Native フェーズ）。
 - 生成された YAML を `yagra validate` で検証し、エラーがあれば構造化フィードバックで修正ループを回せる（AI-Native フェーズ）。
+- YAML に `interrupt_before` / `interrupt_after` を記述するだけで、ワークフロー実行中に人間の判断を挟み、修正を反映して再開できる（HITL フェーズ）。
 
 ## 6. 将来展望
 
 - プロンプト自動最適化（DSPy, Agent Lightning 等）との統合を視野に入れる。Yagra の `prompt_ref` による プロンプト分離構造は、外部オプティマイザーとの統合に適した設計であり、Optimizer Port のインターフェース設計を将来課題とする。
-- 「AI がワークフローを生成し、AI がプロンプトを最適化し、人間がレビュー・承認する」サイクルを YAML + Git ベースで実現することを長期目標とする。
+- 「AI がワークフローを生成し、AI がプロンプトを最適化し、人間がレビュー・承認する」サイクルを YAML + Git ベースで実現することを長期目標とする。HITL 機能（`interrupt_before` / `interrupt_after` + checkpointer）はこのサイクルにおける「人間がレビュー・承認する」部分の実行基盤となる。
 
 ## 7. Vision の再設定ルール
 

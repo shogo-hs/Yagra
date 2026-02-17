@@ -35,6 +35,9 @@
 | M-18 | G-08 | WebUI handler type セレクトを実装する | handler 入力が type セレクト（llm/structured_llm/streaming_llm/custom）になり、組み込み型選択時は handler 名が自動入力される | Done |
 | M-19 | G-08 | input_keys を廃止しプロンプト変数を自動検出する | プロンプトテンプレート内の `{変数名}` を自動抽出して state から取得する。`input_keys` パラメータの明示指定が不要になる | Done |
 | M-20 | G-08 | WebUI で output_key を設定できるようにする | ノードプロパティパネルに output_key テキスト入力を追加し、I/O が WebUI から完結する | Done |
+| M-21 | G-09 | YAML スキーマと検証に HITL フィールドを追加する | `GraphSpec` に `interrupt_before` / `interrupt_after` を追加し、未定義ノード参照をバリデーションで検知できる | Open |
+| M-22 | G-09 | StateGraph ビルダーに checkpointer と interrupt を統合する | `build_state_graph()` が checkpointer と interrupt リストを `compile()` に渡し、checkpointer 未設定時に明確なエラーを返す | Open |
+| M-23 | G-09 | Yagra API に HITL 実行サイクルを追加する | `from_workflow(checkpointer=)` / `invoke(thread_id=)` / `resume()` で中断・再開のサイクルが動作する | Open |
 
 ## Goal 別の実装項目
 
@@ -114,6 +117,17 @@
 | G08-I03 | 全組み込み handler で `input_keys` 自動検出に対応する（`llm` / `structured_llm` / `streaming_llm`） | Done | `src/yagra/handlers/*.py` (M-19) |
 | G08-I04 | `input_keys` 廃止の後方互換を確保する（指定されていた場合は従来通り動作） | Done | `src/yagra/handlers/*.py` (M-19) |
 | G08-I05 | WebUI のノードプロパティパネルに output_key テキスト入力を追加する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` (M-20) |
+
+### G-09: ワークフロー実行中に人間の確認・承認・修正を挟める
+
+| Item ID | やるべきこと | 状態 | 根拠 |
+| --- | --- | --- | --- |
+| G09-I01 | `GraphSpec` に `interrupt_before` / `interrupt_after` フィールドを追加する | Open | `src/yagra/domain/entities/graph_schema.py` |
+| G09-I02 | HITL フィールドの参照整合性バリデーションを追加する | Open | `src/yagra/domain/services/schema_validator.py` |
+| G09-I03 | バリデーションパイプラインに HITL 検証を統合する | Open | `src/yagra/application/use_cases/workflow_validation_reporter.py` |
+| G09-I04 | `build_state_graph()` に `checkpointer` パラメータを追加し interrupt リストを `compile()` に転送する | Open | `src/yagra/application/use_cases/state_graph_builder.py` |
+| G09-I05 | `Yagra` クラスに `checkpointer` / `thread_id` / `resume()` を追加する | Open | `src/yagra/__init__.py` |
+| G09-I06 | HITL 実行サイクルの統合テストを整備する | Open | `tests/integration/test_yagra_hitl.py` |
 
 ## 運用ルール
 
