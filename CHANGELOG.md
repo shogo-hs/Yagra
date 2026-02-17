@@ -4,6 +4,8 @@
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-02-17
+
 ### Added
 - ✨ **WebUI Handler Type Forms**: ノードプロパティパネルで handler タイプ別フォームを表示するように変更
   - `llm` / `structured_llm` / `streaming_llm` 選択時のみ Prompt Settings / Model Settings を表示

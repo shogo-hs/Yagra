@@ -8,6 +8,8 @@ For the canonical changelog (Japanese), see [CHANGELOG.md](https://github.com/sh
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-02-17
+
 ### Added
 - **WebUI Handler Type Forms**: Node properties panel now shows handler type-specific form sections
   - Prompt Settings / Model Settings only shown for `llm`, `structured_llm`, and `streaming_llm` handlers
