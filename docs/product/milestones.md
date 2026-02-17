@@ -136,8 +136,8 @@
 
 | Item ID | やるべきこと | 状態 | 根拠 |
 | --- | --- | --- | --- |
-| G10-I01 | ノードの `rawNode.params` から入力変数（プロンプトテンプレートの `{変数名}` または `input_keys`）を抽出する JavaScript ヘルパーを実装する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` (WorkflowNode 内) |
-| G10-I02 | ノードの `rawNode.params` から出力変数（`output_key`、デフォルト `"output"`）を抽出する JavaScript ヘルパーを実装する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` (WorkflowNode 内) |
+| G10-I01 | ノードの `rawNode.params` から入力変数（`prompt`(dict) または `prompt_ref`(str) があればテンプレートの `{変数名}` または `input_keys`）を抽出する JavaScript ヘルパーを実装する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` (WorkflowNode 内) |
+| G10-I02 | ノードの `rawNode.params` から出力変数（`output_key` が明示指定されている場合のみ。conditional edge の source ノードには `__next__` を追加）を抽出する JavaScript ヘルパーを実装する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` (WorkflowNode 内) |
 | G10-I03 | `buildNodesFromPayload()` で抽出した入力変数・出力変数を `node.data` に格納する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` (buildNodesFromPayload) |
 | G10-I04 | WorkflowNode コンポーネントのテンプレートに入力バッジ（IN ラベル＋変数名 pill）を追加する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` (WorkflowNode template) |
 | G10-I05 | WorkflowNode コンポーネントのテンプレートに出力バッジ（OUT ラベル＋変数名 pill）を追加する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` (WorkflowNode template) |
