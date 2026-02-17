@@ -28,8 +28,77 @@
 | M-15 | G-07 | 構造化出力ハンドラーと WebUI スキーマ編集を実装する | Pydantic model 指定で型安全な出力を得られ、WebUI でスキーマを編集できる | Done |
 | M-16 | G-07 | ストリーミングハンドラーと WebUI リアルタイム表示を実装する | ストリーミングレスポンスを受け取れ、WebUI でリアルタイム表示できる | Active |
 
+## Goal 別の実装項目
+
+各 Goal に紐づく実装項目の完了状況。
+
+### G-01: YAML だけで LangGraph フロー構成を定義できる
+
+| Item ID | やるべきこと | 状態 | 根拠 |
+| --- | --- | --- | --- |
+| G01-I01 | Yagra YAML の Pydantic スキーマを定義する | Done | `src/yagra/domain/entities/graph_schema.py` |
+| G01-I02 | 条件分岐・ループを含むサンプル YAML を作成する | Done | `examples/workflows/` |
+| G01-I03 | 不正 YAML の検証エラーをテスト化する | Done | `tests/unit/domain/test_graph_schema.py` |
+
+### G-02: YAML 定義と Python 実処理を疎結合に接続できる
+
+| Item ID | やるべきこと | 状態 | 根拠 |
+| --- | --- | --- | --- |
+| G02-I01 | Registry インターフェースを ports として定義する | Done | `src/yagra/ports/outbound/node_registry.py` |
+| G02-I02 | ノード名と callable を紐づける実装を作る | Done | `src/yagra/adapters/outbound/in_memory_node_registry.py` |
+| G02-I03 | 未登録ノード時のエラーハンドリングを整備する | Done | `tests/unit/adapters/test_in_memory_node_registry.py` |
+
+### G-03: YAML 差し替えで複数ワークフローを低コストに運用できる
+
+| Item ID | やるべきこと | 状態 | 根拠 |
+| --- | --- | --- | --- |
+| G03-I01 | YAML から StateGraph を組み立てるビルダーを実装する | Done | `src/yagra/application/use_cases/state_graph_builder.py` |
+| G03-I02 | 複数 YAML で同一実装を切り替えるサンプルを用意する | Done | `tests/fixtures/workflows/` |
+| G03-I03 | Zero-Boilerplate の利用例を README に記載する | Done | `README.md` |
+
+### G-04: 開発運用で品質ゲートを常時維持できる
+
+| Item ID | やるべきこと | 状態 | 根拠 |
+| --- | --- | --- | --- |
+| G04-I01 | `uv` ベースの品質ゲートを導入する | Done | `pyproject.toml` |
+| G04-I02 | GitHub Actions で lint/type/test を自動実行する | Done | `.github/workflows/ci.yml` |
+| G04-I03 | pre-commit / pre-push をローカルへ導入する | Done | `.pre-commit-config.yaml` |
+
+### G-05: 非エンジニアが WebUI 上でワークフローを可視化・編集し、迷わず運用できる
+
+| Item ID | やるべきこと | 状態 | 根拠 |
+| --- | --- | --- | --- |
+| G05-I01 | WebUI 可視化に必要な検証契約（エラー形式）を定義する | Done | `src/yagra/application/use_cases/workflow_validation_reporter.py` |
+| G05-I02 | YAML からノード/エッジ/条件分岐を表示する Read Only 画面を実装する | Done | `src/yagra/application/use_cases/workflow_visualization.py` |
+| G05-I03 | ノード詳細で `prompt` / `model` / `*_ref` を確認できるようにする | Done | `src/yagra/application/use_cases/workflow_visualization.py` |
+| G05-I04 | 編集保存時の差分確認とロールバック方針を整備する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` |
+| G05-I05 | prompt/model/条件をフォーム編集できるようにする | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` |
+| G05-I06 | DnD でノード追加とエッジ接続変更を行い round-trip 整合を維持する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` |
+| G05-I07 | 主要操作の情報設計と導線を見直し、初見でも操作順が分かる UI にする | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` |
+| G05-I08 | レイアウト/配色/ラベル体系を改善し、可読性と視認性を向上する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` (M-11) |
+
+### G-06: コーディングエージェントが Yagra ワークフローを正確に生成・検証できる
+
+| Item ID | やるべきこと | 状態 | 根拠 |
+| --- | --- | --- | --- |
+| G06-I01 | `yagra schema export` コマンドを実装する | Done | `src/yagra/__init__.py` (`_run_schema_command`) |
+| G06-I02 | `yagra validate` コマンドを実装し `--format json` オプションを追加する | Done | `src/yagra/__init__.py` (`_run_validate_command`) |
+| G06-I03 | テンプレート YAML を整備する（branch, loop, rag 等） | Done | `src/yagra/templates/` |
+| G06-I04 | `yagra init --template` コマンドを実装する | Done | `src/yagra/__init__.py` (`_run_init_command`) |
+
+### G-07: LLM ノードのボイラープレート削減と高度な出力制御ができる
+
+| Item ID | やるべきこと | 状態 | 根拠 |
+| --- | --- | --- | --- |
+| G07-I01 | `create_llm_handler()` ユーティリティを実装する | Done | `src/yagra/handlers/llm_handler.py` |
+| G07-I02 | YAML 定義だけで LLM 呼び出しが動作する実行可能なサンプルを整備する | Done | `examples/llm-basic/` |
+| G07-I03 | 単体テストを整備する（正常系・リトライ・kwargs 等） | Done | `tests/unit/handlers/test_llm_handler.py` |
+| G07-I04 | 構造化出力ハンドラー（Pydantic）を実装する | Done | `src/yagra/handlers/structured_llm_handler.py` |
+| G07-I05 | ストリーミングハンドラーを実装する | Planned | M-16 |
+
 ## 運用ルール
 
 - マイルストーンは時期ではなく「到達ステップ」として管理する。
 - 各マイルストーンは必ず Goal ID に紐づける。
 - 完了したマイルストーンは削除せず、状態を `Done` に更新して履歴を残す。
+- Goal 別の実装項目は、マイルストーン完了時に状態を更新する。

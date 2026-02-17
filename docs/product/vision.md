@@ -63,5 +63,4 @@ Declarative LangGraph Builder を中核に、
 ## 8. 関連ドキュメント
 
 - ユーザー到達状態ゴール: `docs/product/goals.md`
-- 到達ステップ: `docs/product/milestones.md`
-- 現在地スコアボード: `docs/product/progress.md`
+- 到達ステップと実装項目: `docs/product/milestones.md`

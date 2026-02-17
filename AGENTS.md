@@ -11,7 +11,7 @@
 - 本リポジトリの AI 運用は「正本を1箇所に集約し、生成先へ配布する」方式を採用する。
 - ルール更新時は `docs/ai/canonical/` を編集し、生成ファイルは直接編集しない。
 - タスク開始時は必ずタスク設計を作成し、承認後に実装する。
-- プロダクト方針は `docs/product/vision.md` / `docs/product/goals.md` / `docs/product/milestones.md` / `docs/product/progress.md` を正本として管理する。
+- プロダクト方針は `docs/product/vision.md` / `docs/product/goals.md` / `docs/product/milestones.md` を正本として管理する。Goal 別の実装項目は `milestones.md` の「Goal 別の実装項目」セクションで管理する。
 - 新規タスク設計書には、`関連ゴールID` と `関連マイルストーンID` を必ず記載する。
 - 既存の実装・ドキュメントとの整合を保ち、変更理由を記録する。
 - ユーザーとのコミュニケーションは日本語で行う。
