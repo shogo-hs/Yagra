@@ -2882,7 +2882,7 @@ def _studio_html() -> str:
             : (typeof promptUserFallback === "string" ? promptUserFallback : null);
           if (typeof userTemplate !== "string") return [];
           const matches = [];
-          const re = /\{(\w+)\}/g;
+          const re = /\\{(\w+)\\}/g;
           let m;
           while ((m = re.exec(userTemplate)) !== null) matches.push(m[1]);
           return matches;
