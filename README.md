@@ -107,7 +107,32 @@ The handler automatically:
 
 **See the full working example**: [`examples/llm-structured/`](examples/llm-structured/)
 
-**Coming Soon**: Streaming support
+### Streaming Handler (Beta)
+
+Stream LLM responses chunk by chunk:
+
+```python
+from yagra.handlers import create_streaming_llm_handler
+
+handler = create_streaming_llm_handler(retry=3, timeout=60)
+registry = {"streaming_llm": handler}
+
+yagra = Yagra.from_workflow("workflow.yaml", registry)
+result = yagra.invoke({"query": "Tell me about Python async"})
+
+# Incremental processing
+for chunk in result["response"]:
+    print(chunk, end="", flush=True)
+
+# Or buffered
+full_text = "".join(result["response"])
+```
+
+> **Note**: The `Generator` is single-use. Consume it once with either `for` or `"".join(...)`.
+
+**See the full working example**: [`examples/llm-streaming/`](examples/llm-streaming/)
+
+**Coming Soon**: WebUI handler type-specific forms (M-17)
 
 ## 🚀 Quick Start
 

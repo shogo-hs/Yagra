@@ -1,0 +1,19 @@
+version: "1.0"
+start_at: "stream_chat"
+end_at:
+  - "stream_chat"
+
+nodes:
+  - id: "stream_chat"
+    handler: "streaming_llm"
+    params:
+      prompt_ref: "prompts.yaml#chat"
+      model:
+        provider: "openai"
+        name: "gpt-4o"
+        kwargs:
+          temperature: 0.7
+      input_keys: ["query"]
+      output_key: "response"
+
+edges: []

@@ -26,9 +26,22 @@ Examples:
     >>>
     >>> handler = create_structured_llm_handler(schema=UserInfo)
     >>> registry = {"structured_llm": handler}
+
+    ストリーミングハンドラーの作成と登録:
+
+    >>> from yagra.handlers import create_streaming_llm_handler
+    >>>
+    >>> handler = create_streaming_llm_handler(retry=3, timeout=60)
+    >>> registry = {"streaming_llm": handler}
+    >>>
+    >>> yagra = Yagra.from_workflow("workflow.yaml", registry)
+    >>> result = yagra.invoke({"query": "Hello"})
+    >>> for chunk in result["response"]:
+    ...     print(chunk, end="", flush=True)
 """
 
 from yagra.handlers.llm_handler import create_llm_handler
+from yagra.handlers.streaming_llm_handler import create_streaming_llm_handler
 from yagra.handlers.structured_llm_handler import create_structured_llm_handler
 
-__all__ = ["create_llm_handler", "create_structured_llm_handler"]
+__all__ = ["create_llm_handler", "create_structured_llm_handler", "create_streaming_llm_handler"]

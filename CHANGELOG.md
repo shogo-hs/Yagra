@@ -5,6 +5,11 @@
 ## [Unreleased]
 
 ### Added
+- ✨ **Streaming Handler**: LLM レスポンスをストリーミングで受け取れる `create_streaming_llm_handler()` ファクトリ関数を追加
+  - 戻り値は `Generator[str, None, None]` — 逐次処理とバッファリングの両方に対応
+  - `stream=True` を自動付与（`model.kwargs` で明示 `False` を指定した場合は上書きしない）
+  - `create_llm_handler()` と同等のリトライ・タイムアウト機能（デフォルト timeout=60 秒）
+  - 完全後方互換（既存コードに影響なし）
 - ✨ **Structured Output Handler**: Pydantic モデルを指定して型安全な構造化出力を得られる `create_structured_llm_handler()` ファクトリ関数を追加
   - Pydantic モデルを `schema` 引数に指定するだけで LLM レスポンスを型安全なインスタンスに変換
   - デフォルトで JSON 出力モード（`response_format=json_object`）を有効化
@@ -12,13 +17,14 @@
   - `create_llm_handler()` と同等のリトライ・タイムアウト機能
   - JSON パース失敗・Pydantic バリデーション失敗時は `LLMHandlerCallError` を送出
   - 完全後方互換（既存コードに影響なし）
-- 🧪 **テスト**: 22 件のテストを追加（単体テスト 16 件・結合テスト 6 件）
+- 🧪 **テスト**: 40 件のテストを追加（単体テスト 15+16 件・結合テスト 3+3 件、M-14〜M-16 合計）
+- 📖 **サンプル**: `examples/llm-streaming/` に実行可能サンプルを追加（YAML + プロンプト + 実行スクリプト + README）
 - 📖 **サンプル**: `examples/llm-structured/` に実行可能サンプルを追加（YAML + プロンプト + 実行スクリプト + README）
 - 📖 **サンプル**: `examples/llm-basic/` に基本 LLM ハンドラーの実行可能サンプルを追加
 
 ### Related
 - **Goal**: G-07（DX改善: LLM ノードのボイラープレート削減）
-- **Milestone**: M-15（構造化出力ハンドラー）、M-14（基本 LLM ハンドラーサンプル）
+- **Milestone**: M-16（ストリーミングハンドラー）、M-15（構造化出力ハンドラー）、M-14（基本 LLM ハンドラーサンプル）
 
 ## [0.3.1] - 2026-02-17
 

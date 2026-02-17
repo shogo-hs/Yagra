@@ -1,0 +1,5 @@
+chat:
+  system: |
+    You are a helpful assistant. Answer clearly and concisely.
+  user: |
+    {query}

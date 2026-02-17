@@ -9,6 +9,11 @@ For the canonical changelog (Japanese), see [CHANGELOG.md](https://github.com/sh
 ## [Unreleased]
 
 ### Added
+- **Streaming Handler**: Added `create_streaming_llm_handler()` factory function for streaming LLM responses
+  - Returns `Generator[str, None, None]` — supports both incremental and buffered processing
+  - Automatically adds `stream=True` (respects explicit `stream=False` in `model.kwargs`)
+  - Same retry and timeout features as `create_llm_handler()` (default timeout=60s)
+  - Fully backward compatible
 - **Structured Output Handler**: Added `create_structured_llm_handler()` factory function for type-safe structured output using Pydantic models
   - Specify a Pydantic model as the `schema` argument to automatically parse and validate LLM responses
   - JSON output mode enabled by default (`response_format=json_object`)
@@ -16,13 +21,14 @@ For the canonical changelog (Japanese), see [CHANGELOG.md](https://github.com/sh
   - Same retry and timeout features as `create_llm_handler()`
   - Raises `LLMHandlerCallError` on JSON parse failure or Pydantic validation failure
   - Fully backward compatible
-- **Testing**: Added 22 tests (16 unit tests, 6 integration tests)
+- **Testing**: Added 40 tests total (15+16 unit tests, 3+3 integration tests for M-14–M-16)
+- **Examples**: Added `examples/llm-streaming/` with a working example (YAML + prompts + run script + README)
 - **Examples**: Added `examples/llm-structured/` with a working example (YAML + prompts + run script + README)
 - **Examples**: Added `examples/llm-basic/` with a working example for the basic LLM handler
 
 ### Related
 - **Goal**: G-07 (DX improvement: reduce LLM node boilerplate)
-- **Milestone**: M-15 (structured output handler), M-14 (basic LLM handler samples)
+- **Milestone**: M-16 (streaming handler), M-15 (structured output handler), M-14 (basic LLM handler samples)
 
 ## [0.3.1] - 2026-02-17
 
