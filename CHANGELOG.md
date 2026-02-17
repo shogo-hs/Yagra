@@ -4,6 +4,23 @@
 
 ## [Unreleased]
 
+## [0.4.3] - 2026-02-17
+
+### Added
+- ✨ **WebUI output_key 設定**: ノードプロパティパネルに Output Settings セクションを追加
+  - LLM handler ノードで `output_key` をテキスト入力から設定可能
+  - 空欄時はデフォルト（`"output"` キー）を使用
+  - Apply 時に `params.output_key` へ書き込み、YAML と WebUI が完全に同期
+
+### Fixed
+- 🐛 **WebUI prompt yaml ドロップダウン**: ドットディレクトリ（`.github`, `.venv`, `.yagra` 等）やツールディレクトリ（`node_modules`, `dist` 等）の YAML ファイルを除外し、プロジェクト関連ファイルのみ表示
+- 🐛 **WebUI ファイル候補**: `src/`・`tests/` を除外するハードコードを削除し、ユーザーのディレクトリ命名の自由度を回復
+- 🎨 **WebUI ラベル/ヒント**: `prompt_ref (auto)` ラベルを `prompt reference` に変更。ヒントテキストを英語に統一
+
+### Related
+- **Goal**: G-08（YAML で LLM ノードのデータフロー（入出力キー）を宣言的に制御でき、WebUI から設定できる）
+- **Milestone**: M-20
+
 ## [0.4.2] - 2026-02-17
 
 ### Changed

@@ -8,6 +8,23 @@ For the canonical changelog (Japanese), see [CHANGELOG.md](https://github.com/sh
 
 ## [Unreleased]
 
+## [0.4.3] - 2026-02-17
+
+### Added
+- **WebUI output_key setting**: Added Output Settings section to the Node Properties panel
+  - LLM handler nodes can now set `output_key` via text input
+  - Blank input falls back to the default (`"output"` key)
+  - On Apply, writes to `params.output_key` — WebUI and YAML are fully in sync
+
+### Fixed
+- **WebUI prompt yaml dropdown**: Excluded YAML files under dot-directories (`.github`, `.venv`, `.yagra`, etc.) and tool directories (`node_modules`, `dist`, etc.) — only project-relevant files are listed
+- **WebUI file candidates**: Removed hardcoded exclusion of `src/` and `tests/` to restore full flexibility in user directory naming
+- **WebUI labels/hints**: Renamed `prompt_ref (auto)` label to `prompt reference`; unified all hint texts to English
+
+### Related
+- **Goal**: G-08 (Declarative control of LLM node data flow via YAML, configurable from WebUI)
+- **Milestone**: M-20
+
 ## [0.4.2] - 2026-02-17
 
 ### Changed
