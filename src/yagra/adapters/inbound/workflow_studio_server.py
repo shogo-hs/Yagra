@@ -1181,7 +1181,7 @@ def _studio_html() -> str:
                 />
               </div>
               <div v-if="isLlmHandler" class="field">
-                <label>prompt_ref (auto)</label>
+                <label>prompt reference</label>
                 <div class="mono hint" style="padding: 4px 0; min-height: 1.4em; word-break: break-all;">
                   {{ nodeEditor.promptRef || "(auto create on Apply)" }}
                 </div>
@@ -1268,7 +1268,7 @@ def _studio_html() -> str:
                     style="font-family: monospace; min-height: 6em;"
                   ></textarea>
                 </div>
-                <div class="hint">Pydantic モデルのフィールド定義を YAML で記述します。Apply 時に params.schema_yaml として保存されます。</div>
+                <div class="hint">Define Pydantic model fields in YAML. Saved as params.schema_yaml on Apply.</div>
               </template>
 
               <template v-if="isStreamingLlm">
@@ -1282,7 +1282,7 @@ def _studio_html() -> str:
                   />
                   <label for="nodeStreamDisabledInput" style="margin: 0;">Disable stream (explicit false)</label>
                 </div>
-                <div class="hint">チェック OFF（デフォルト）でストリーミングが有効。チェック ON で model.kwargs.stream: false を YAML に明記します。</div>
+                <div class="hint">Leave unchecked (default) to enable streaming. Check to explicitly set model.kwargs.stream: false in YAML.</div>
               </template>
 
               <div v-if="isLlmHandler" class="subsection-label">Output Settings</div>
@@ -1295,7 +1295,7 @@ def _studio_html() -> str:
                   placeholder="output (default)"
                 />
               </div>
-              <div v-if="isLlmHandler" class="hint">省略時は "output" キーに結果を格納します。</div>
+              <div v-if="isLlmHandler" class="hint">If left blank, the result is stored under the "output" key.</div>
 
               <button type="button" class="secondary" :disabled="isBusy" @click="applyNodeEdit">Apply Node Edit</button>
               <div class="hint">Node id must be unique and non-empty. If no prompt yaml is selected, a file is auto-created under prompts/ on Apply. Use prompt key for path#key references.</div>

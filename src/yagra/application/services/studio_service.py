@@ -94,15 +94,25 @@ def _resolve_ui_state_for_target(workflow_path: Path, ui_state_override: Path | 
     return workflow_path.with_suffix(".workflow-ui.json")
 
 
+_EXCLUDED_DIRS = {".venv", "venv", "node_modules", "__pycache__", ".git", ".tox", "dist", "build"}
+
+
 def _list_workflow_candidates(workspace_root: Path) -> list[str]:
-    """Returns a list of workflow candidates under the workspace."""
+    """Returns a list of workflow candidates under the workspace.
+
+    Excludes common non-project directories such as .venv, node_modules, etc.
+    """
     candidates: list[str] = []
     for path in sorted(workspace_root.rglob("*")):
         if not path.is_file():
             continue
         if path.suffix.lower() not in _WORKFLOW_EXTENSIONS:
             continue
-        candidates.append(path.relative_to(workspace_root).as_posix())
+        # Skip files inside excluded directories
+        relative = path.relative_to(workspace_root)
+        if any(part in _EXCLUDED_DIRS for part in relative.parts[:-1]):
+            continue
+        candidates.append(relative.as_posix())
     return candidates
 
 
