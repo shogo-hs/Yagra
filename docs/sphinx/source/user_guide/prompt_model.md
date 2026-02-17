@@ -181,7 +181,7 @@ nodes:
 Yagra Studio provides visual editing for prompts and models:
 
 1. **Prompt Editing**:
-   - Select a prompt YAML from dropdown
+   - Select a prompt YAML from dropdown (project YAML files, excluding tool and dot-directories)
    - Edit `system` and `user` fields in form
    - Auto-create prompt YAML if not selected
 
@@ -189,7 +189,12 @@ Yagra Studio provides visual editing for prompts and models:
    - Fill in `provider`, `name`, and `kwargs` via form
    - Changes are reflected in workflow YAML immediately
 
-3. **Diff Preview**:
+3. **Output Key** (LLM handler nodes only):
+   - In the **Output Settings** section of the Node Properties panel, enter the state key where the handler result is stored
+   - Leave blank to use the default (`"output"`)
+   - Writes `params.output_key` to workflow YAML on Apply
+
+4. **Diff Preview**:
    - Review changes before saving
    - See exact YAML diff with validation results
 

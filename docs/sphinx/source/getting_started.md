@@ -298,6 +298,24 @@ Three handler types are available:
 | Structured Output | `create_structured_llm_handler(schema=MyModel)` | Pydantic model instance |
 | Streaming | `create_streaming_llm_handler()` | `Generator[str, None, None]` |
 
+**Auto-detecting prompt variables**: Template variables (`{variable_name}`) are automatically extracted from the prompt template — no need to declare `input_keys` explicitly.
+
+**Controlling the output key**: By default the handler stores its result under the `"output"` key in state. Override it with `output_key` in `params`:
+
+```yaml
+nodes:
+  - id: "summarizer"
+    handler: "llm"
+    params:
+      output_key: "summary"   # stored as state["summary"]
+      prompt_ref: "prompts/summarize.yaml#main"
+      model:
+        provider: "openai"
+        name: "gpt-4.1-mini"
+```
+
+You can also set `output_key` visually from the Node Properties panel in Yagra Studio (Output Settings section).
+
 For working examples, see:
 - [`examples/llm-basic/`](https://github.com/shogo-hs/Yagra/tree/main/examples/llm-basic)
 - [`examples/llm-structured/`](https://github.com/shogo-hs/Yagra/tree/main/examples/llm-structured)
