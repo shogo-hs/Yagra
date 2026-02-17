@@ -890,7 +890,7 @@ def _studio_html() -> str:
     /* データフロー変数バッジ */
     .node-vars-section {
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       flex-wrap: wrap;
       gap: 3px;
       margin-top: 5px;
@@ -902,6 +902,7 @@ def _studio_html() -> str:
       color: var(--muted);
       min-width: 20px;
       flex-shrink: 0;
+      padding-top: 3px;
     }
     .var-pill {
       display: inline-flex;
@@ -1490,12 +1491,7 @@ def _studio_html() -> str:
             class="node-vars-section node-vars-in"
           >
             <span class="node-vars-label">IN</span>
-            <span v-for="v in data.inputVars.slice(0, 3)" :key="v" class="var-pill var-pill-in" :title="v">{{ v }}</span>
-            <span
-              v-if="data.inputVars.length > 3"
-              class="var-pill-more"
-              :title="data.inputVars.slice(3).join(', ')"
-            >+{{ data.inputVars.length - 3 }}</span>
+            <span v-for="v in data.inputVars" :key="v" class="var-pill var-pill-in" :title="v">{{ v }}</span>
           </div>
           <div
             v-if="showOutputVars && data.outputVar"
