@@ -2847,7 +2847,9 @@ def _studio_html() -> str:
             const rawNode = isRecord(data.rawNode) ? deepClone(data.rawNode) : {};
             rawNode.id = node.id;
             rawNode.handler = normalizeText(data.handler);
-            const params = isRecord(rawNode.params) ? deepClone(rawNode.params) : {};
+            const rawParams = isRecord(rawNode.params) ? deepClone(rawNode.params) : {};
+            const dataParams = isRecord(data.params) ? deepClone(data.params) : {};
+            const params = { ...rawParams, ...dataParams };
             delete params.prompt_ref;
             delete params.prompt;
             delete params.model;

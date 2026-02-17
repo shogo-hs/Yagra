@@ -8,6 +8,18 @@ For the canonical changelog (Japanese), see [CHANGELOG.md](https://github.com/sh
 
 ## [Unreleased]
 
+## [0.4.4] - 2026-02-17
+
+### Fixed
+- **WebUI output_key save bug**: Fixed an issue where `output_key` set via the UI was not persisted to YAML on Save
+  - `buildWorkflowPayload` was only reading from `node.data.rawNode.params`, ignoring the updated `node.data.params` written by `applyNodeEdit`
+  - Now merges `node.data.params` (latest edited values) over `rawNode.params` before building the save payload
+  - `schema_yaml` (structured_llm nodes) is also now correctly persisted
+
+### Related
+- **Goal**: G-08 (Declarative control of LLM node data flow via YAML, configurable from WebUI)
+- **Milestone**: M-20
+
 ## [0.4.3] - 2026-02-17
 
 ### Added

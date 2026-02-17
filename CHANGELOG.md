@@ -4,6 +4,17 @@
 
 ## [Unreleased]
 
+## [0.4.4] - 2026-02-17
+
+### Fixed
+- 🐛 **WebUI output_key 保存バグ修正**: `buildWorkflowPayload` が `node.data.rawNode.params` のみを参照していたため、Apply 後に設定した `output_key` が Save 時に YAML へ反映されなかった問題を修正
+  - `node.data.params`（Apply 後の最新値）を `rawNode.params` にマージしてから Save するよう変更
+  - `schema_yaml`（structured_llm ノード）も同様に正しく保存されるようになった
+
+### Related
+- **Goal**: G-08（YAML で LLM ノードのデータフロー（入出力キー）を宣言的に制御でき、WebUI から設定できる）
+- **Milestone**: M-20
+
 ## [0.4.3] - 2026-02-17
 
 ### Added
