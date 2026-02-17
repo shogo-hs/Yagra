@@ -8,6 +8,15 @@ For the canonical changelog (Japanese), see [CHANGELOG.md](https://github.com/sh
 
 ## [Unreleased]
 
+## [0.4.8] - 2026-02-17
+
+### Fixed
+- **Studio UI: output_key / schema_yaml lost after reload** — Fixed a bug where `output_key` and `schema_yaml` were cleared in the node editor after saving a workflow and reloading. `buildNodesFromPayload` was not populating `data.params` from the loaded YAML node params, so the node editor watch could not read them.
+
+### Related
+- **Goal**: G-08 (Declarative control of LLM node data flow via YAML, configurable from WebUI)
+- **Milestone**: M-20
+
 ## [0.4.7] - 2026-02-17
 
 ### Changed

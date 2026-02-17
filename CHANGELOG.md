@@ -4,6 +4,17 @@
 
 ## [Unreleased]
 
+## [0.4.8] - 2026-02-17
+
+### Fixed
+- 🐛 **Studio UI: output_key / schema_yaml がリロード後に消える問題を修正**: ワークフローを Save して再読み込みすると `output_key` と `schema_yaml` が UI 上で空になる問題を修正
+  - 原因: `buildNodesFromPayload` が YAML から読み込んだ `node.params` を `data.params` に反映していなかった
+  - 修正: ロード時に `output_key` と `schema_yaml` を `data.params` へ抽出するよう変更
+
+### Related
+- **Goal**: G-08（YAML で LLM ノードのデータフロー（入出力キー）を宣言的に制御でき、WebUI から設定できる）
+- **Milestone**: M-20
+
 ## [0.4.7] - 2026-02-17
 
 ### Changed
