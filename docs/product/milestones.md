@@ -3,9 +3,9 @@
 最終更新: 2026-02-17
 
 補足:
+- M-17 は完了。handler 値（llm/structured_llm/streaming_llm）に応じてノードプロパティパネルのフォームが切り替わり、structured_llm では Schema Settings（schema_yaml 入力）、streaming_llm では Streaming Settings（stream: false チェックボックス）が表示される。
 - M-15 は完了。`create_structured_llm_handler(schema=PydanticModel)` で型安全な構造化出力が動作することを確認済み。単体テスト 16 件・結合テスト 3 件追加。WebUI スキーマ編集は M-16 にスコープ移動（WebUI フォーム設計の大幅変更を伴うため）。
 - M-16 は完了。`create_streaming_llm_handler()` でストリーミングレスポンスを受け取れ、YAML 定義だけで動作することを確認済み。単体テスト 13 件・結合テスト 3 件追加。
-- M-17 をアクティブに変更。WebUI ハンドラータイプ別フォーム（structured_llm スキーマ編集含む）が次の開発ターゲット。
 - M-14 は完了。`examples/llm-basic/` で YAML 定義だけで LLM 呼び出しが動作することを確認済み。Issue #11（例外テストの fixture 競合）はコア機能に影響なし。
 
 ## ステップ一覧
@@ -28,7 +28,7 @@
 | M-14 | G-07 | 基本 LLM ハンドラーユーティリティを提供する | `create_llm_handler()` で litellm 統合ハンドラーを生成でき、YAML 定義だけでテキスト入出力が動作する | Done |
 | M-15 | G-07 | 構造化出力ハンドラーを実装する | Pydantic model 指定で型安全な出力を得られ、YAML 定義だけで動作する | Done |
 | M-16 | G-07 | ストリーミングハンドラーを実装する | `create_streaming_llm_handler()` でストリーミングレスポンスを受け取れ、YAML 定義だけで動作する | Done |
-| M-17 | G-07 | WebUI ハンドラータイプ別フォームを実装する | handler 値に応じてフォームが切り替わり、structured_llm ノードで Pydantic スキーマを WebUI から編集できる | Active |
+| M-17 | G-07 | WebUI ハンドラータイプ別フォームを実装する | handler 値に応じてフォームが切り替わり、structured_llm ノードで Pydantic スキーマを WebUI から編集できる | Done |
 
 ## Goal 別の実装項目
 
@@ -97,7 +97,7 @@
 | G07-I03 | 単体テストを整備する（正常系・リトライ・kwargs 等） | Done | `tests/unit/handlers/test_llm_handler.py` |
 | G07-I04 | 構造化出力ハンドラー（Pydantic）を実装する | Done | `src/yagra/handlers/structured_llm_handler.py` |
 | G07-I05 | ストリーミングハンドラーを実装する | Done | `src/yagra/handlers/streaming_llm_handler.py` |
-| G07-I06 | WebUI でハンドラータイプ別フォームを実装する（structured_llm スキーマ編集含む） | Planned | M-17 |
+| G07-I06 | WebUI でハンドラータイプ別フォームを実装する（structured_llm スキーマ編集含む） | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` |
 
 ## 運用ルール
 

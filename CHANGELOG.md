@@ -5,6 +5,12 @@
 ## [Unreleased]
 
 ### Added
+- ✨ **WebUI Handler Type Forms**: ノードプロパティパネルで handler タイプ別フォームを表示するように変更
+  - `llm` / `structured_llm` / `streaming_llm` 選択時のみ Prompt Settings / Model Settings を表示
+  - `structured_llm` 選択時に **Schema Settings** セクションを追加表示（YAML テキストでスキーマを記述・保存）
+  - `streaming_llm` 選択時に **Streaming Settings** セクションを追加表示（`stream: false` チェックボックス）
+  - 非 LLM handler（任意の文字列）では LLM 関連セクションを非表示
+  - 後方互換（既存 YAML の読み込み・保存動作に影響なし）
 - ✨ **Streaming Handler**: LLM レスポンスをストリーミングで受け取れる `create_streaming_llm_handler()` ファクトリ関数を追加
   - 戻り値は `Generator[str, None, None]` — 逐次処理とバッファリングの両方に対応
   - `stream=True` を自動付与（`model.kwargs` で明示 `False` を指定した場合は上書きしない）
@@ -24,7 +30,7 @@
 
 ### Related
 - **Goal**: G-07（DX改善: LLM ノードのボイラープレート削減）
-- **Milestone**: M-16（ストリーミングハンドラー）、M-15（構造化出力ハンドラー）、M-14（基本 LLM ハンドラーサンプル）
+- **Milestone**: M-17（WebUI ハンドラータイプ別フォーム）、M-16（ストリーミングハンドラー）、M-15（構造化出力ハンドラー）、M-14（基本 LLM ハンドラーサンプル）
 
 ## [0.3.1] - 2026-02-17
 

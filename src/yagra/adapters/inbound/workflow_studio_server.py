@@ -1145,8 +1145,8 @@ def _studio_html() -> str:
                 <input id="nodeHandlerInput" v-model="nodeEditor.handler" type="text" />
               </div>
 
-              <div class="subsection-label">Prompt Settings</div>
-              <div class="field">
+              <div v-if="isLlmHandler" class="subsection-label">Prompt Settings</div>
+              <div v-if="isLlmHandler" class="field">
                 <label for="nodePromptFileSelect">prompt yaml</label>
                 <select
                   id="nodePromptFileSelect"
@@ -1159,7 +1159,7 @@ def _studio_html() -> str:
                   </option>
                 </select>
               </div>
-              <div class="field">
+              <div v-if="isLlmHandler" class="field">
                 <label for="nodePromptKeyInput">prompt key (optional)</label>
                 <input
                   id="nodePromptKeyInput"
@@ -1170,16 +1170,16 @@ def _studio_html() -> str:
                   @change="onNodePromptKeyChange"
                 />
               </div>
-              <div class="field">
+              <div v-if="isLlmHandler" class="field">
                 <label>prompt_ref (auto)</label>
                 <div class="mono hint" style="padding: 4px 0; min-height: 1.4em; word-break: break-all;">
                   {{ nodeEditor.promptRef || "(auto create on Apply)" }}
                 </div>
               </div>
-              <div v-if="nodeEditor.promptFileParseError" class="hint danger">
+              <div v-if="isLlmHandler && nodeEditor.promptFileParseError" class="hint danger">
                 {{ nodeEditor.promptFileParseError }}
               </div>
-              <div class="field">
+              <div v-if="isLlmHandler" class="field">
                 <label for="nodePromptSystemInput">system prompt</label>
                 <textarea
                   id="nodePromptSystemInput"
@@ -1187,7 +1187,7 @@ def _studio_html() -> str:
                   placeholder="You are a helpful assistant..."
                 ></textarea>
               </div>
-              <div class="field">
+              <div v-if="isLlmHandler" class="field">
                 <label for="nodePromptUserInput">user prompt</label>
                 <textarea
                   id="nodePromptUserInput"
@@ -1196,8 +1196,8 @@ def _studio_html() -> str:
                 ></textarea>
               </div>
 
-              <div class="subsection-label">Model Settings</div>
-              <div class="inline-row">
+              <div v-if="isLlmHandler" class="subsection-label">Model Settings</div>
+              <div v-if="isLlmHandler" class="inline-row">
                 <div class="field">
                   <label for="nodeModelProviderInput">provider</label>
                   <input
@@ -1217,7 +1217,7 @@ def _studio_html() -> str:
                   />
                 </div>
               </div>
-              <div class="inline-row">
+              <div v-if="isLlmHandler" class="inline-row">
                 <div class="field">
                   <label for="nodeModelTemperatureInput">temperature</label>
                   <input
@@ -1237,7 +1237,7 @@ def _studio_html() -> str:
                   />
                 </div>
               </div>
-              <div class="field">
+              <div v-if="isLlmHandler" class="field">
                 <label for="nodeModelMaxTokensInput">max_tokens</label>
                 <input
                   id="nodeModelMaxTokensInput"
@@ -1246,6 +1246,34 @@ def _studio_html() -> str:
                   placeholder="e.g. 512"
                 />
               </div>
+
+              <template v-if="isStructuredLlm">
+                <div class="subsection-label">Schema Settings</div>
+                <div class="field">
+                  <label for="nodeSchemaYamlInput">schema yaml</label>
+                  <textarea
+                    id="nodeSchemaYamlInput"
+                    v-model="nodeEditor.schemaYaml"
+                    placeholder="fields:&#10;  name: str&#10;  age: int"
+                    style="font-family: monospace; min-height: 6em;"
+                  ></textarea>
+                </div>
+                <div class="hint">Pydantic モデルのフィールド定義を YAML で記述します。Apply 時に params.schema_yaml として保存されます。</div>
+              </template>
+
+              <template v-if="isStreamingLlm">
+                <div class="subsection-label">Streaming Settings</div>
+                <div class="field" style="flex-direction: row; align-items: center; gap: 8px;">
+                  <input
+                    id="nodeStreamDisabledInput"
+                    v-model="nodeEditor.streamDisabled"
+                    type="checkbox"
+                    style="width: auto; margin: 0;"
+                  />
+                  <label for="nodeStreamDisabledInput" style="margin: 0;">Disable stream (explicit false)</label>
+                </div>
+                <div class="hint">チェック OFF（デフォルト）でストリーミングが有効。チェック ON で model.kwargs.stream: false を YAML に明記します。</div>
+              </template>
 
               <button type="button" class="secondary" :disabled="isBusy" @click="applyNodeEdit">Apply Node Edit</button>
               <div class="hint">Node id must be unique and non-empty. If no prompt yaml is selected, a file is auto-created under prompts/ on Apply. Use prompt key for path#key references.</div>
@@ -2087,6 +2115,8 @@ def _studio_html() -> str:
           temperature: "",
           topP: "",
           maxTokens: "",
+          schemaYaml: "",
+          streamDisabled: false,
         });
         const edgeEditor = reactive({
           condition: "",
@@ -2130,6 +2160,10 @@ def _studio_html() -> str:
           }
           return ids;
         });
+        const LLM_HANDLERS = ["llm", "structured_llm", "streaming_llm"];
+        const isLlmHandler = computed(() => LLM_HANDLERS.includes(nodeEditor.handler.trim().toLowerCase()));
+        const isStructuredLlm = computed(() => nodeEditor.handler.trim().toLowerCase() === "structured_llm");
+        const isStreamingLlm = computed(() => nodeEditor.handler.trim().toLowerCase() === "streaming_llm");
 
         watch(
           selectedNode,
@@ -2149,6 +2183,8 @@ def _studio_html() -> str:
               nodeEditor.temperature = "";
               nodeEditor.topP = "";
               nodeEditor.maxTokens = "";
+              nodeEditor.schemaYaml = "";
+              nodeEditor.streamDisabled = false;
               return;
             }
             const data = isRecord(node.data) ? node.data : {};
@@ -2188,6 +2224,10 @@ def _studio_html() -> str:
             nodeEditor.maxTokens = Number.isInteger(Number(maxTokensRaw))
               ? String(Number(maxTokensRaw))
               : "";
+            const params = isRecord(data.params) ? data.params : {};
+            nodeEditor.schemaYaml = typeof params.schema_yaml === "string" ? params.schema_yaml : "";
+            const streamKwargs = isRecord(model?.kwargs) ? model.kwargs : {};
+            nodeEditor.streamDisabled = streamKwargs.stream === false;
             const refParts = splitPromptReference(nodeEditor.promptRef);
             const workspacePromptPath = promptRefPathToWorkspacePath(refParts.path);
             nodeEditor.promptFilePath = workspacePromptPath;
@@ -2927,6 +2967,7 @@ def _studio_html() -> str:
               delete modelObj.kwargs.temperature;
               delete modelObj.kwargs.top_p;
               delete modelObj.kwargs.max_tokens;
+              delete modelObj.kwargs.stream;
               if (Object.keys(modelObj.kwargs).length === 0) {
                 delete modelObj.kwargs;
               }
@@ -2946,7 +2987,17 @@ def _studio_html() -> str:
             } else {
               delete modelObj.max_tokens;
             }
+            if (isStreamingLlm.value && nodeEditor.streamDisabled) {
+              modelObj.kwargs = { ...(isRecord(modelObj.kwargs) ? modelObj.kwargs : {}), stream: false };
+            }
             const finalModel = Object.keys(modelObj).length > 0 ? modelObj : null;
+            const selectedParams = isRecord(selectedData.params) ? deepClone(selectedData.params) : {};
+            if (isStructuredLlm.value && nodeEditor.schemaYaml.trim()) {
+              selectedParams.schema_yaml = nodeEditor.schemaYaml.trim();
+            } else {
+              delete selectedParams.schema_yaml;
+            }
+            const finalParams = Object.keys(selectedParams).length > 0 ? selectedParams : null;
             const renamed = currentNodeId !== nextNodeId;
             nodes.value = nodes.value.map(node => {
               if (node.id !== currentNodeId) {
@@ -2963,6 +3014,7 @@ def _studio_html() -> str:
                   promptRef,
                   prompt: null,
                   model: finalModel,
+                  params: finalParams,
                 },
               };
             });
@@ -3788,6 +3840,9 @@ def _studio_html() -> str:
           yamlFiles,
           workflowMeta,
           nodeIdOptions,
+          isLlmHandler,
+          isStructuredLlm,
+          isStreamingLlm,
           nodes,
           edges,
           selectedNode,

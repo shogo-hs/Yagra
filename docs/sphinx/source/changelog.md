@@ -9,6 +9,12 @@ For the canonical changelog (Japanese), see [CHANGELOG.md](https://github.com/sh
 ## [Unreleased]
 
 ### Added
+- **WebUI Handler Type Forms**: Node properties panel now shows handler type-specific form sections
+  - Prompt Settings / Model Settings only shown for `llm`, `structured_llm`, and `streaming_llm` handlers
+  - **Schema Settings** section added for `structured_llm` (edit `schema_yaml` as YAML text)
+  - **Streaming Settings** section added for `streaming_llm` (`stream: false` checkbox)
+  - LLM-related sections hidden for non-LLM handlers (any other string)
+  - Fully backward compatible (existing YAML load/save behavior unchanged)
 - **Streaming Handler**: Added `create_streaming_llm_handler()` factory function for streaming LLM responses
   - Returns `Generator[str, None, None]` — supports both incremental and buffered processing
   - Automatically adds `stream=True` (respects explicit `stream=False` in `model.kwargs`)
