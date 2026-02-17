@@ -204,8 +204,7 @@ def create_structured_llm_handler(
                     **model_kwargs,
                 )
 
-                # レスポンス抽出
-                if not response.choices or len(response.choices) == 0:
+                if not response.choices:
                     msg = "LLM returned empty response"
                     raise LLMHandlerCallError(msg)
 
@@ -234,7 +233,6 @@ def create_structured_llm_handler(
                     continue
                 break
 
-        # リトライ尽きた
         msg = f"LLM call failed after {retry} attempts: {last_error}"
         raise LLMHandlerCallError(msg) from last_error
 

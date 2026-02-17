@@ -182,9 +182,14 @@ def create_streaming_llm_handler(
                         str: Non-empty content chunks from the LLM response.
                     """
                     for chunk in resp:
-                        delta = chunk.choices[0].delta.content
-                        if delta is not None:
-                            yield delta
+                        if not chunk.choices:
+                            continue
+                        delta = chunk.choices[0].delta
+                        if delta is None:
+                            continue
+                        content = delta.content
+                        if content is not None:
+                            yield content
 
                 return {output_key: _stream(response)}
 

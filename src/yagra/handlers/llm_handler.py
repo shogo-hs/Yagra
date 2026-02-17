@@ -171,8 +171,7 @@ def create_llm_handler(
                     **model_kwargs,
                 )
 
-                # レスポンス抽出
-                if not response.choices or len(response.choices) == 0:
+                if not response.choices:
                     msg = "LLM returned empty response"
                     raise LLMHandlerCallError(msg)
 
@@ -189,13 +188,11 @@ def create_llm_handler(
             except Exception as e:
                 last_error = e
                 if attempt < retry - 1:
-                    # 指数バックオフ
                     wait_time = 2**attempt
                     time.sleep(wait_time)
                     continue
                 break
 
-        # リトライ尽きた
         msg = f"LLM call failed after {retry} attempts: {last_error}"
         raise LLMHandlerCallError(msg) from last_error
 

@@ -31,30 +31,12 @@ class TestCreateLLMHandler:
 
     def test_create_llm_handler_without_litellm_raises_import_error(self) -> None:
         """litellmがインストールされていない場合にImportErrorが発生すること."""
-        # fixtureの影響を回避するため、直接モジュールをNoneにする
-        import sys
-
-        original = sys.modules.get("litellm")
-        sys.modules["litellm"] = None  # type: ignore[assignment]
-        try:
-            # モジュールキャッシュをクリア
-            import importlib
-
-            import yagra.handlers.llm_handler
-
-            importlib.reload(yagra.handlers.llm_handler)
-
+        # litellm グローバル変数を None にパッチして未インストール状態を再現する
+        with patch("yagra.handlers.llm_handler.litellm", None):
             with pytest.raises(ImportError, match="litellm is not installed"):
                 from yagra.handlers.llm_handler import create_llm_handler as create_fn
 
                 create_fn()
-        finally:
-            if original is not None:
-                sys.modules["litellm"] = original
-            else:
-                sys.modules.pop("litellm", None)
-            # 元の状態に戻す
-            importlib.reload(yagra.handlers.llm_handler)
 
 
 class TestLLMHandler:
