@@ -2759,6 +2759,13 @@ def _studio_html() -> str:
                 : isRecord(params.model)
                   ? deepClone(params.model)
                   : null;
+              const loadedParams = {};
+              if (typeof params.output_key === "string" && params.output_key) {
+                loadedParams.output_key = params.output_key;
+              }
+              if (typeof params.schema_yaml === "string" && params.schema_yaml) {
+                loadedParams.schema_yaml = params.schema_yaml;
+              }
               return {
                 id: node.id,
                 type: "workflow",
@@ -2773,6 +2780,7 @@ def _studio_html() -> str:
                       : "",
                   prompt: null,
                   model: modelObj,
+                  params: Object.keys(loadedParams).length > 0 ? loadedParams : null,
                   isStart: startIds.has(node.id),
                   isEnd: endIds.has(node.id),
                   rawNode: deepClone(node),
