@@ -11,6 +11,7 @@ from typing import Any
 
 import yaml
 
+from yagra.application.services.reference_resolver import resolve_workflow_references
 from yagra.application.use_cases.workflow_edit_session import compute_workflow_revision
 
 
@@ -21,18 +22,20 @@ class WorkflowNodeFormItem:
     id: str
     handler: str
     prompt_ref: str | None
+    prompt_user: str | None
     model: dict[str, Any] | None
 
     def to_dict(self) -> dict[str, Any]:
         """API 応答形式の辞書へ変換する。
 
         Returns:
-            id, handler, prompt_ref, model を含む辞書。
+            id, handler, prompt_ref, prompt_user, model を含む辞書。
         """
         return {
             "id": self.id,
             "handler": self.handler,
             "prompt_ref": self.prompt_ref,
+            "prompt_user": self.prompt_user,
             "model": self.model,
         }
 
@@ -141,6 +144,25 @@ def build_workflow_form_view(
     Raises:
         ValueError: workflow の構造が想定外の場合。
     """
+    workflow_abspath = Path(workflow_path).expanduser().resolve()
+    bundle_root_path = Path(bundle_root).expanduser().resolve() if bundle_root is not None else None
+
+    # prompt_ref を解決して prompt.user を取得できるようにする
+    try:
+        resolved_workflow = resolve_workflow_references(
+            payload=dict(workflow),
+            workflow_path=workflow_abspath,
+            bundle_root=bundle_root_path,
+        )
+    except Exception:
+        resolved_workflow = dict(workflow)
+
+    resolved_nodes_raw = resolved_workflow.get("nodes", []) or []
+    resolved_by_id: dict[str, dict[str, Any]] = {}
+    for rn in resolved_nodes_raw:
+        if isinstance(rn, Mapping) and isinstance(rn.get("id"), str):
+            resolved_by_id[rn["id"]] = dict(rn)
+
     workflow_mapping = _ensure_mapping(workflow, label="workflow")
     ui_state_mapping = _ensure_mapping(ui_state, label="ui_state")
     nodes_raw = workflow_mapping.get("nodes", [])
@@ -169,11 +191,23 @@ def build_workflow_form_view(
         if not isinstance(params, Mapping):
             continue
         params_mapping = dict(params)
+        # 解決済みノードから prompt.user を取得
+        resolved_node = resolved_by_id.get(node_id, {})
+        resolved_params = resolved_node.get("params") or {}
+        resolved_prompt = (
+            resolved_params.get("prompt") if isinstance(resolved_params, Mapping) else None
+        )
+        prompt_user: str | None = None
+        if isinstance(resolved_prompt, Mapping):
+            u = resolved_prompt.get("user")
+            if isinstance(u, str):
+                prompt_user = u
         nodes.append(
             WorkflowNodeFormItem(
                 id=node_id,
                 handler=handler,
                 prompt_ref=_as_optional_string(params_mapping.get("prompt_ref")),
+                prompt_user=prompt_user,
                 model=_as_optional_mapping(params_mapping.get("model")),
             )
         )

@@ -2834,15 +2834,17 @@ def _studio_html() -> str:
         const LLM_HANDLER_TYPES = ["llm", "structured_llm", "streaming_llm"];
 
         /** rawNode.params から入力変数名リストを返す（prompt_variable_validator のロジックをミラー） */
-        function extractInputVars(params) {
+        function extractInputVars(params, promptUserFallback) {
           if (!params || typeof params !== "object") return [];
           const explicitKeys = params.input_keys;
           if (explicitKeys !== undefined && explicitKeys !== null) {
             return Array.isArray(explicitKeys) ? explicitKeys.map(String) : [];
           }
+          // インライン prompt.user を優先し、なければ formItem.prompt_user（prompt_ref 解決済みテキスト）を使う
           const prompt = params.prompt;
-          if (!prompt || typeof prompt !== "object") return [];
-          const userTemplate = prompt.user;
+          const userTemplate = (prompt && typeof prompt === "object" && typeof prompt.user === "string")
+            ? prompt.user
+            : (typeof promptUserFallback === "string" ? promptUserFallback : null);
           if (typeof userTemplate !== "string") return [];
           const matches = [];
           const re = /\{(\w+)\}/g;
@@ -2913,7 +2915,7 @@ def _studio_html() -> str:
                   params: Object.keys(loadedParams).length > 0 ? loadedParams : null,
                   isStart: startIds.has(node.id),
                   isEnd: endIds.has(node.id),
-                  inputVars: isLlmNode ? extractInputVars(params) : null,
+                  inputVars: isLlmNode ? extractInputVars(params, formItem?.prompt_user) : null,
                   outputVar: isLlmNode ? extractOutputVar(params) : null,
                   rawNode: deepClone(node),
                 },
