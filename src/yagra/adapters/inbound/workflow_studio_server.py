@@ -1141,8 +1141,18 @@ def _studio_html() -> str:
                 <input id="nodeIdInput" v-model.trim="nodeEditor.id" type="text" />
               </div>
               <div class="field">
-                <label for="nodeHandlerInput">handler</label>
-                <input id="nodeHandlerInput" v-model="nodeEditor.handler" type="text" />
+                <label for="nodeHandlerTypeSelect">handler type</label>
+                <select id="nodeHandlerTypeSelect" v-model="nodeEditor.handlerType">
+                  <option value="llm">llm</option>
+                  <option value="structured_llm">structured_llm</option>
+                  <option value="streaming_llm">streaming_llm</option>
+                  <option value="custom">custom</option>
+                </select>
+              </div>
+              <div v-if="nodeEditor.handlerType === 'custom'" class="field">
+                <label for="nodeHandlerInput">handler name</label>
+                <input id="nodeHandlerInput" v-model="nodeEditor.handler" type="text"
+                  placeholder="my_custom_handler" />
               </div>
 
               <div v-if="isLlmHandler" class="subsection-label">Prompt Settings</div>
@@ -2102,6 +2112,7 @@ def _studio_html() -> str:
         });
         const nodeEditor = reactive({
           id: "",
+          handlerType: "llm",
           handler: "",
           promptFilePath: "",
           promptFileParseError: "",
@@ -2161,15 +2172,16 @@ def _studio_html() -> str:
           return ids;
         });
         const LLM_HANDLERS = ["llm", "structured_llm", "streaming_llm"];
-        const isLlmHandler = computed(() => LLM_HANDLERS.includes(nodeEditor.handler.trim().toLowerCase()));
-        const isStructuredLlm = computed(() => nodeEditor.handler.trim().toLowerCase() === "structured_llm");
-        const isStreamingLlm = computed(() => nodeEditor.handler.trim().toLowerCase() === "streaming_llm");
+        const isLlmHandler = computed(() => LLM_HANDLERS.includes(nodeEditor.handlerType));
+        const isStructuredLlm = computed(() => nodeEditor.handlerType === "structured_llm");
+        const isStreamingLlm = computed(() => nodeEditor.handlerType === "streaming_llm");
 
         watch(
           selectedNode,
           node => {
             if (!node) {
               nodeEditor.id = "";
+              nodeEditor.handlerType = "llm";
               nodeEditor.handler = "";
               nodeEditor.promptFilePath = "";
               nodeEditor.promptFileParseError = "";
@@ -2202,7 +2214,9 @@ def _studio_html() -> str:
             const topPRaw = model?.top_p ?? modelKwargs?.top_p;
             const maxTokensRaw = model?.max_tokens ?? modelKwargs?.max_tokens;
             nodeEditor.id = normalizeText(node.id);
-            nodeEditor.handler = normalizeText(data.handler);
+            const handlerVal = normalizeText(data.handler);
+            nodeEditor.handler = handlerVal;
+            nodeEditor.handlerType = LLM_HANDLERS.includes(handlerVal) ? handlerVal : "custom";
             nodeEditor.promptRef = normalizeText(data.promptRef);
             nodeEditor.promptKeyOptions = [];
             nodeEditor.promptSystem = typeof prompt?.system === "string"
@@ -2242,6 +2256,15 @@ def _studio_html() -> str:
             }
           },
           { immediate: true },
+        );
+
+        watch(
+          () => nodeEditor.handlerType,
+          type => {
+            if (type !== "custom") {
+              nodeEditor.handler = type;
+            }
+          },
         );
 
         watch(
