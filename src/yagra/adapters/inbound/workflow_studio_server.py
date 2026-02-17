@@ -887,6 +887,68 @@ def _studio_html() -> str:
       line-height: var(--line-height-base);
       overflow-wrap: anywhere;
     }
+    /* データフロー変数バッジ */
+    .node-vars-section {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 3px;
+      margin-top: 5px;
+    }
+    .node-vars-label {
+      font-size: 9px;
+      font-weight: var(--font-weight-extrabold);
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      min-width: 20px;
+      flex-shrink: 0;
+    }
+    .var-pill {
+      display: inline-flex;
+      align-items: center;
+      border-radius: var(--border-radius-pill);
+      font-size: 10px;
+      font-weight: var(--font-weight-bold);
+      line-height: 1;
+      padding: 2px 6px;
+      border: 1px solid transparent;
+      max-width: 120px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .var-pill-in {
+      background: #e8f1ff;
+      color: #0a4a92;
+      border-color: #afc9ec;
+    }
+    .var-pill-out {
+      background: #e8f5ee;
+      color: #0a6e3a;
+      border-color: #8fcdb0;
+    }
+    .var-pill-more {
+      font-size: 10px;
+      color: var(--muted);
+      cursor: default;
+      padding: 2px 4px;
+    }
+    /* ツールバーのトグルラベル */
+    .var-toggle-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: var(--font-size-sm);
+      color: var(--text-secondary);
+      cursor: pointer;
+      user-select: none;
+    }
+    .var-toggle-label input[type="checkbox"] {
+      cursor: pointer;
+      width: 14px;
+      height: 14px;
+      accent-color: var(--primary-active);
+    }
     .node-handle {
       width: 9px;
       height: 9px;
@@ -971,6 +1033,16 @@ def _studio_html() -> str:
           </div>
           <div class="btn-group">
             <button type="button" class="secondary" :disabled="isBusy" @click="openLauncher">Change Target</button>
+          </div>
+          <div class="btn-group">
+            <label class="var-toggle-label">
+              <input type="checkbox" v-model="showInputVars" />
+              <span>入力変数</span>
+            </label>
+            <label class="var-toggle-label">
+              <input type="checkbox" v-model="showOutputVars" />
+              <span>出力変数</span>
+            </label>
           </div>
         </template>
         <template v-else>
@@ -1066,7 +1138,11 @@ def _studio_html() -> str:
               @pane-click="onPaneClick"
             >
               <template #node-workflow="nodeProps">
-                <workflow-node v-bind="nodeProps"></workflow-node>
+                <workflow-node
+                  v-bind="nodeProps"
+                  :show-input-vars="showInputVars"
+                  :show-output-vars="showOutputVars"
+                ></workflow-node>
               </template>
               <mini-map></mini-map>
               <flow-controls></flow-controls>
@@ -1393,6 +1469,8 @@ def _studio_html() -> str:
       props: {
         data: { type: Object, required: true },
         selected: { type: Boolean, default: false },
+        showInputVars: { type: Boolean, default: true },
+        showOutputVars: { type: Boolean, default: true },
       },
       setup() {
         return { Position };
@@ -1407,6 +1485,25 @@ def _studio_html() -> str:
           </div>
           <div class="workflow-node-id">{{ data.id }}</div>
           <div class="workflow-node-handler">{{ data.handler || "(no handler)" }}</div>
+          <div
+            v-if="showInputVars && data.inputVars && data.inputVars.length > 0"
+            class="node-vars-section node-vars-in"
+          >
+            <span class="node-vars-label">IN</span>
+            <span v-for="v in data.inputVars.slice(0, 3)" :key="v" class="var-pill var-pill-in" :title="v">{{ v }}</span>
+            <span
+              v-if="data.inputVars.length > 3"
+              class="var-pill-more"
+              :title="data.inputVars.slice(3).join(', ')"
+            >+{{ data.inputVars.length - 3 }}</span>
+          </div>
+          <div
+            v-if="showOutputVars && data.outputVar"
+            class="node-vars-section node-vars-out"
+          >
+            <span class="node-vars-label">OUT</span>
+            <span class="var-pill var-pill-out" :title="data.outputVar">{{ data.outputVar }}</span>
+          </div>
           <Handle id="right-out" type="source" :position="Position.Right" class="node-handle" />
           <Handle id="bottom-out" type="source" :position="Position.Bottom" class="node-handle node-handle-bottom" />
         </div>
@@ -2189,6 +2286,10 @@ def _studio_html() -> str:
         const isStructuredLlm = computed(() => nodeEditor.handlerType === "structured_llm");
         const isStreamingLlm = computed(() => nodeEditor.handlerType === "streaming_llm");
 
+        // データフロー変数バッジの表示トグル
+        const showInputVars = ref(true);
+        const showOutputVars = ref(true);
+
         watch(
           selectedNode,
           node => {
@@ -2730,6 +2831,33 @@ def _studio_html() -> str:
           }
         }
 
+        const LLM_HANDLER_TYPES = ["llm", "structured_llm", "streaming_llm"];
+
+        /** rawNode.params から入力変数名リストを返す（prompt_variable_validator のロジックをミラー） */
+        function extractInputVars(params) {
+          if (!params || typeof params !== "object") return [];
+          const explicitKeys = params.input_keys;
+          if (explicitKeys !== undefined && explicitKeys !== null) {
+            return Array.isArray(explicitKeys) ? explicitKeys.map(String) : [];
+          }
+          const prompt = params.prompt;
+          if (!prompt || typeof prompt !== "object") return [];
+          const userTemplate = prompt.user;
+          if (typeof userTemplate !== "string") return [];
+          const matches = [];
+          const re = /\{(\w+)\}/g;
+          let m;
+          while ((m = re.exec(userTemplate)) !== null) matches.push(m[1]);
+          return matches;
+        }
+
+        /** rawNode.params から出力変数名を返す（デフォルト "output"） */
+        function extractOutputVar(params) {
+          if (!params || typeof params !== "object") return "output";
+          const key = params.output_key;
+          return (key && typeof key === "string") ? key : "output";
+        }
+
         function buildNodesFromPayload(workflow, uiState, formNodes) {
           const workflowNodes = Array.isArray(workflow?.nodes) ? workflow.nodes : [];
           const startIds = new Set(normalizeNodeIdList(workflow?.start_at));
@@ -2766,13 +2894,15 @@ def _studio_html() -> str:
               if (typeof params.schema_yaml === "string" && params.schema_yaml) {
                 loadedParams.schema_yaml = params.schema_yaml;
               }
+              const handler = typeof node.handler === "string" ? node.handler : "";
+              const isLlmNode = LLM_HANDLER_TYPES.includes(handler);
               return {
                 id: node.id,
                 type: "workflow",
                 position,
                 data: {
                   id: node.id,
-                  handler: typeof node.handler === "string" ? node.handler : "",
+                  handler,
                   promptRef: typeof formItem?.prompt_ref === "string"
                     ? formItem.prompt_ref
                     : typeof params.prompt_ref === "string"
@@ -2783,6 +2913,8 @@ def _studio_html() -> str:
                   params: Object.keys(loadedParams).length > 0 ? loadedParams : null,
                   isStart: startIds.has(node.id),
                   isEnd: endIds.has(node.id),
+                  inputVars: isLlmNode ? extractInputVars(params) : null,
+                  outputVar: isLlmNode ? extractOutputVar(params) : null,
                   rawNode: deepClone(node),
                 },
               };
@@ -3059,17 +3191,27 @@ def _studio_html() -> str:
                 return node;
               }
               const current = isRecord(node.data) ? node.data : {};
+              const nextHandler = normalizeText(nodeEditor.handler);
+              const isLlmNode = LLM_HANDLER_TYPES.includes(nextHandler);
+              // バッジ再計算: output_key は finalParams から、入力変数は promptUser から
+              const nextRawParams = {
+                ...(isRecord(isRecord(node.data) ? node.data.rawNode?.params : {}) ? node.data.rawNode.params : {}),
+                ...(finalParams || {}),
+                prompt: { system: normalizeText(nodeEditor.promptSystem), user: normalizeText(nodeEditor.promptUser) },
+              };
               return {
                 ...node,
                 id: nextNodeId,
                 data: {
                   ...current,
                   id: nextNodeId,
-                  handler: normalizeText(nodeEditor.handler),
+                  handler: nextHandler,
                   promptRef,
                   prompt: null,
                   model: finalModel,
                   params: finalParams,
+                  inputVars: isLlmNode ? extractInputVars(nextRawParams) : null,
+                  outputVar: isLlmNode ? extractOutputVar(nextRawParams) : null,
                 },
               };
             });
@@ -3898,6 +4040,8 @@ def _studio_html() -> str:
           isLlmHandler,
           isStructuredLlm,
           isStreamingLlm,
+          showInputVars,
+          showOutputVars,
           nodes,
           edges,
           selectedNode,

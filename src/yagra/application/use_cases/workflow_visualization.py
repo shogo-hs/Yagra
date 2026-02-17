@@ -15,6 +15,12 @@ from yagra.application.use_cases.workflow_validation_reporter import (
     format_validation_report,
     load_validated_graph_spec,
 )
+from yagra.domain.services.prompt_variable_validator import (
+    _extract_required_vars,
+    _get_output_key,
+)
+
+_LLM_HANDLERS = frozenset({"llm", "streaming_llm", "structured_llm"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -24,6 +30,8 @@ class WorkflowNodeView:
     id: str
     handler: str
     params_json: str
+    input_vars: tuple[str, ...]
+    output_var: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -101,6 +109,10 @@ def build_workflow_visualization_view(
             id=node.id,
             handler=node.handler,
             params_json=json.dumps(node.params, ensure_ascii=False, indent=2, sort_keys=True),
+            input_vars=tuple(_extract_required_vars(node.params))
+            if node.handler in _LLM_HANDLERS
+            else (),
+            output_var=_get_output_key(node.params) if node.handler in _LLM_HANDLERS else "",
         )
         for node in spec.nodes
     )
@@ -166,6 +178,11 @@ def _render_html(view: WorkflowVisualizationView) -> str:
     th, td {{ border-bottom: 1px solid var(--line); text-align: left; padding: 8px 6px; }}
     th {{ color: var(--muted); font-weight: 700; }}
     .cond {{ color: var(--accent); font-weight: 700; }}
+    .node-vars-section {{ display: flex; align-items: center; flex-wrap: wrap; gap: 3px; margin-bottom: 8px; }}
+    .node-vars-label {{ font-size: 10px; font-weight: 700; letter-spacing: .06em; color: var(--muted); min-width: 24px; flex-shrink: 0; }}
+    .var-pill {{ display: inline-flex; align-items: center; border-radius: 999px; font-size: 11px; font-weight: 700; line-height: 1; padding: 2px 7px; border: 1px solid transparent; }}
+    .var-pill-in {{ background: #e8f1ff; color: #0a4a92; border-color: #afc9ec; }}
+    .var-pill-out {{ background: #e8f5ee; color: #0a6e3a; border-color: #8fcdb0; }}
     @media (max-width: 980px) {{
       .layout {{ grid-template-columns: 1fr; }}
     }}
@@ -259,11 +276,25 @@ def _safe_mermaid_id(node_id: str) -> str:
 
 def _render_node_card(node: WorkflowNodeView) -> str:
     """Converts node detail cards to HTML."""
+    in_html = ""
+    if node.input_vars:
+        pills = "".join(
+            f'<span class="var-pill var-pill-in">{html.escape(v)}</span>' for v in node.input_vars
+        )
+        in_html = (
+            f'<div class="node-vars-section"><span class="node-vars-label">IN</span>{pills}</div>'
+        )
+    out_html = ""
+    if node.output_var:
+        out_html = (
+            f'<div class="node-vars-section"><span class="node-vars-label">OUT</span>'
+            f'<span class="var-pill var-pill-out">{html.escape(node.output_var)}</span></div>'
+        )
     return f"""
     <section class=\"node-card\">
       <div class=\"node-title\">{html.escape(node.id)}</div>
       <div class=\"node-sub\">handler: <code>{html.escape(node.handler)}</code></div>
-      <pre>{html.escape(node.params_json)}</pre>
+      {in_html}{out_html}<pre>{html.escape(node.params_json)}</pre>
     </section>
     """
 
