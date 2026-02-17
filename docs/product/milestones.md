@@ -1,8 +1,9 @@
 # 到達ステップ
 
-最終更新: 2026-02-17
+最終更新: 2026-02-18
 
 補足:
+- M-27 は完了。WebUI の Schema Settings テキストエリアに入力された YAML スキーマ（`name: str` / `age: int` 等のフラット形式）を `schema_builder.py` で Pydantic BaseModel に動的変換し、`create_structured_llm_handler(schema=None)` 時に `params.schema_yaml` から実行時解決する。Python コードでのスキーマ定義が不要になり、YAML + WebUI だけで構造化出力が完結する。単体テスト 27 件・動的ハンドラーテスト 5 件・結合テスト 3 件追加。
 - M-20 は完了。WebUI のノードプロパティパネルに Output Settings セクション（output_key テキスト入力）を追加。isLlmHandler 条件下で表示し、空欄時はデフォルト（"output"）を使用。Apply 時に params.output_key に書き込む。G-08 DoD 達成。
 - M-19 は完了。プロンプトテンプレートの `{変数名}` を `re.findall` で自動抽出し、`input_keys` の明示指定が不要になった。`input_keys` 指定時は後方互換で動作（`None` と `[]` を区別）。3 handler すべて対応、単体テスト 5 件追加。
 - M-18 は完了（v0.4.1）。handler 入力を type セレクト（llm/structured_llm/streaming_llm/custom）に変更。組み込み型選択時は handler 名を自動入力、custom 選択時のみ自由テキスト入力。
@@ -41,6 +42,7 @@
 | M-24 | G-10 | ノードの入力変数・出力変数をグラフ上にバッジ表示する | 各ノードのプロンプト変数（入力）と `output_key`（出力）がノード上にバッジとして表示され、データフローが視覚的に把握できる | Done |
 | M-25 | G-10 | データフローバッジの ON/OFF トグルを実装する | ツールバーのトグルスイッチで入力バッジ・出力バッジの表示/非表示を独立に切り替えられ、グラフの視認性を制御できる | Done |
 | M-26 | G-10 | 入出力バッジの UX を洗練する | バッジの色分け・ツールチップ・レイアウト崩れ防止など、ノード数が多い実用ワークフローでも視認性を維持できる | Open |
+| M-27 | G-07 | WebUI の schema_yaml から動的に Pydantic モデルを生成する | `schema_yaml`（フラットな `key: type` 形式）を WebUI で入力し、Python コードなしで構造化出力が動作する | Done |
 
 ## Goal 別の実装項目
 
@@ -110,6 +112,7 @@
 | G07-I04 | 構造化出力ハンドラー（Pydantic）を実装する | Done | `src/yagra/handlers/structured_llm_handler.py` |
 | G07-I05 | ストリーミングハンドラーを実装する | Done | `src/yagra/handlers/streaming_llm_handler.py` |
 | G07-I06 | WebUI でハンドラータイプ別フォームを実装する（structured_llm スキーマ編集含む） | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` |
+| G07-I07 | WebUI の `schema_yaml` から動的に Pydantic モデルを生成し、Python コードなしで構造化出力を実現する | Done | `src/yagra/handlers/schema_builder.py`, `src/yagra/handlers/structured_llm_handler.py` (M-27) |
 
 ### G-08: YAML で LLM ノードのデータフロー（入出力キー）を宣言的に制御でき、WebUI から設定できる
 

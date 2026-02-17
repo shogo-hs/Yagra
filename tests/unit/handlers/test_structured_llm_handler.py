@@ -403,3 +403,142 @@ class TestStructuredLLMHandler:
         system_content = call_messages[0]["content"]
         assert "You are a helper" in system_content
         assert "json" in system_content.lower()
+
+
+class TestDynamicSchemaHandler:
+    """schema_yaml による動的スキーマ生成ハンドラーのテスト."""
+
+    @pytest.fixture
+    def mock_litellm(self) -> MagicMock:
+        """Litellm のモックを返すフィクスチャ."""
+        return MagicMock()
+
+    def _make_mock_response(self, content: str) -> MagicMock:
+        """LLM レスポンスのモックを生成する."""
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock(message=MagicMock(content=content))]
+        return mock_response
+
+    def test_dynamic_schema_basic(self, mock_litellm: MagicMock) -> None:
+        """schema=None + schema_yaml で動的モデルが使われること."""
+        json_content = json.dumps({"name": "Alice", "age": 30})
+        mock_litellm.completion.return_value = self._make_mock_response(json_content)
+
+        with patch("yagra.handlers.structured_llm_handler.litellm", mock_litellm):
+            from yagra.handlers.structured_llm_handler import (
+                create_structured_llm_handler,
+            )
+
+            handler = create_structured_llm_handler(schema=None, retry=1)
+            result = handler(
+                state={"text": "Alice is 30"},
+                params={
+                    "schema_yaml": "name: str\nage: int",
+                    "prompt": {
+                        "system": "Extract person info",
+                        "user": "{text}",
+                    },
+                    "model": {"provider": "openai", "name": "gpt-4o"},
+                    "output_key": "person",
+                },
+            )
+
+        assert "person" in result
+        assert result["person"].name == "Alice"
+        assert result["person"].age == 30
+
+    def test_dynamic_schema_default_no_schema(self, mock_litellm: MagicMock) -> None:
+        """ファクトリを引数なしで呼び、schema_yaml で動作すること."""
+        json_content = json.dumps({"title": "Hello"})
+        mock_litellm.completion.return_value = self._make_mock_response(json_content)
+
+        with patch("yagra.handlers.structured_llm_handler.litellm", mock_litellm):
+            from yagra.handlers.structured_llm_handler import (
+                create_structured_llm_handler,
+            )
+
+            handler = create_structured_llm_handler(retry=1)
+            result = handler(
+                state={},
+                params={
+                    "schema_yaml": "title: str",
+                    "prompt": {
+                        "system": "Extract title",
+                        "user": "Hello World",
+                    },
+                    "model": {"provider": "openai", "name": "gpt-4o"},
+                    "output_key": "data",
+                },
+            )
+
+        assert result["data"].title == "Hello"
+
+    def test_no_schema_and_no_schema_yaml_raises_config_error(self) -> None:
+        """schema=None + schema_yaml 無しで LLMHandlerConfigError が送出されること."""
+        with patch("yagra.handlers.structured_llm_handler.litellm", MagicMock()):
+            from yagra.handlers.llm_handler import LLMHandlerConfigError
+            from yagra.handlers.structured_llm_handler import (
+                create_structured_llm_handler,
+            )
+
+            handler = create_structured_llm_handler(retry=1)
+            with pytest.raises(LLMHandlerConfigError, match="schema_yaml"):
+                handler(
+                    state={},
+                    params={
+                        "prompt": {
+                            "system": "Extract",
+                            "user": "test",
+                        },
+                        "model": {"provider": "openai", "name": "gpt-4o"},
+                    },
+                )
+
+    def test_invalid_schema_yaml_raises_schema_yaml_error(self) -> None:
+        """schema=None + 不正な schema_yaml で SchemaYamlError が送出されること."""
+        with patch("yagra.handlers.structured_llm_handler.litellm", MagicMock()):
+            from yagra.handlers.schema_builder import SchemaYamlError
+            from yagra.handlers.structured_llm_handler import (
+                create_structured_llm_handler,
+            )
+
+            handler = create_structured_llm_handler(retry=1)
+            with pytest.raises(SchemaYamlError, match="Unsupported type"):
+                handler(
+                    state={},
+                    params={
+                        "schema_yaml": "field: UnknownType",
+                        "prompt": {
+                            "system": "Extract",
+                            "user": "test",
+                        },
+                        "model": {"provider": "openai", "name": "gpt-4o"},
+                    },
+                )
+
+    def test_static_schema_takes_priority(self, mock_litellm: MagicMock) -> None:
+        """静的スキーマ指定時は schema_yaml より優先されること."""
+        json_content = json.dumps({"name": "Bob", "age": 25})
+        mock_litellm.completion.return_value = self._make_mock_response(json_content)
+
+        with patch("yagra.handlers.structured_llm_handler.litellm", mock_litellm):
+            from yagra.handlers.structured_llm_handler import (
+                create_structured_llm_handler,
+            )
+
+            handler = create_structured_llm_handler(schema=PersonInfo, retry=1)
+            result = handler(
+                state={},
+                params={
+                    "schema_yaml": "title: str",  # これは無視される
+                    "prompt": {
+                        "system": "Extract",
+                        "user": "Bob is 25",
+                    },
+                    "model": {"provider": "openai", "name": "gpt-4o"},
+                    "output_key": "person",
+                },
+            )
+
+        assert isinstance(result["person"], PersonInfo)
+        assert result["person"].name == "Bob"

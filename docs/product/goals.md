@@ -1,6 +1,6 @@
 # ユーザー到達状態ゴール
 
-最終更新: 2026-02-17
+最終更新: 2026-02-18
 
 ## ゴール一覧
 
@@ -27,7 +27,7 @@
 - G-05 は M-11 で UI ビジュアル品質向上まで完了。CSS Variables によるデザインシステム統一、状態表現の明確化、タイポグラフィ・余白の体系化により、非エンジニアが迷わず運用できる WebUI が整った。
 - G-06 は AI-Native 方針に基づく新規ゴール。M-12（JSON Schema + validate CLI）、M-13（テンプレートライブラリ）により完了。コーディングエージェントが Yagra ワークフローを正確に生成・検証できる環境が整った。
 - G-07 は DX 改善ゴール。LLM ノードの実装を簡潔にし、初学者の参入障壁を下げる。4 段階で実装：M-14（基本 LLM ハンドラー）、M-15（構造化出力）、M-16（ストリーミング）、M-17（WebUI ハンドラータイプ別フォーム）。
-- G-07 は M-17（WebUI ハンドラータイプ別フォーム）の完了をもって Done。G-01〜G-07 すべて Done。
+- G-07 は M-17（WebUI ハンドラータイプ別フォーム）の完了をもって Done。M-27 で WebUI の `schema_yaml` から動的 Pydantic モデル生成を追加し、Python コードなしで構造化出力が完結するようになった。G-01〜G-07 すべて Done。
 - G-08 は handler データフロー改善ゴール。handler タイプ別の責務整理を前提に、`input_keys` の自動検出と `output_key` の WebUI 設定を実現する。3 段階で実装: M-18（handler type セレクト — v0.4.1）、M-19（input_keys 自動検出 — v0.4.2）、M-20（output_key の WebUI 設定）。G-01〜G-08 すべて Done。
 - G-09 は LangGraph の HITL 機能を Yagra の宣言的インターフェースに統合するゴール。YAML レベルの `interrupt_before` / `interrupt_after` 宣言、checkpointer 対応、`resume()` API の3段階で実装する。
 - G-10 は M-24（バッジ表示）、M-25（ON/OFF トグル）の完了をもって Done（v0.5.0）。Studio WebUI および Read-Only 可視化 HTML の両方で IN/OUT バッジが表示され、ツールバーのチェックボックスで独立したトグルが可能になった。G-01〜G-08, G-10 すべて Done。

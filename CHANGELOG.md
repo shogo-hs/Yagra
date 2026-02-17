@@ -4,6 +4,21 @@
 
 ## [Unreleased]
 
+## [0.5.5] - 2026-02-18
+
+### Added
+- ✨ **動的スキーマ生成（M-27）**: WebUI の Schema Settings に入力した YAML から Pydantic モデルを実行時に自動生成し、Python コードなしで `structured_llm` ノードの構造化出力が完結するようになった
+  - `schema_builder.py` を新規追加。フラットな `key: type` 形式の YAML（例: `name: str` / `age: int`）を安全な `TYPE_MAP` ホワイトリストで型解決し、`pydantic.create_model()` でモデルを動的生成
+  - サポート型: プリミティブ（`str` / `int` / `float` / `bool`）、コレクション（`list[str]` 等）、辞書（`dict[str, str]` 等）、Optional（`str | None` 等）
+  - `create_structured_llm_handler()` の `schema` 引数を Optional 化。`schema=None`（デフォルト）時は実行時に `params["schema_yaml"]` から動的解決。`schema=MyModel` の既存パターンは完全後方互換
+  - `build_model_from_schema_yaml()` を `yagra.handlers` からパブリック API として公開
+  - WebUI の Schema Settings プレースホルダーをフラット形式（`name: str` / `age: int` / `score: float`）に更新
+  - 単体テスト 32 件追加（`test_schema_builder.py` 27 件・`test_structured_llm_handler.py` 動的スキーマ 5 件）、結合テスト 3 件追加（`test_structured_llm_dynamic_schema.py`）
+
+### Related
+- **Goal**: G-07（LLM ノードのボイラープレート削減と高度な出力制御）
+- **Milestone**: M-27
+
 ## [0.5.4] - 2026-02-17
 
 ### Fixed

@@ -1341,11 +1341,11 @@ def _studio_html() -> str:
                   <textarea
                     id="nodeSchemaYamlInput"
                     v-model="nodeEditor.schemaYaml"
-                    placeholder="fields:&#10;  name: str&#10;  age: int"
+                    placeholder="name: str&#10;age: int&#10;score: float"
                     style="font-family: monospace; min-height: 6em;"
                   ></textarea>
                 </div>
-                <div class="hint">Define Pydantic model fields in YAML. Saved as params.schema_yaml on Apply.</div>
+                <div class="hint">Define schema fields as 'field_name: type' (e.g. name: str, age: int). Saved as params.schema_yaml on Apply.</div>
               </template>
 
               <template v-if="isStreamingLlm">

@@ -104,6 +104,33 @@ The handler automatically:
 - Injects JSON Schema into the system prompt
 - Validates and parses the response with Pydantic
 
+**Dynamic schema (no Python code required)**: Define the schema directly in your workflow YAML using `schema_yaml`, and call `create_structured_llm_handler()` with no arguments:
+
+```python
+# No Pydantic model needed in Python code
+handler = create_structured_llm_handler()
+registry = {"structured_llm": handler}
+```
+
+```yaml
+# workflow.yaml
+nodes:
+  - id: "extract"
+    handler: "structured_llm"
+    params:
+      schema_yaml: |
+        name: str
+        age: int
+        hobbies: list[str]
+      prompt_ref: "prompts.yaml#extract"
+      model:
+        provider: "openai"
+        name: "gpt-4o"
+      output_key: "person"
+```
+
+Supported types in `schema_yaml`: `str`, `int`, `float`, `bool`, `list[str]`, `list[int]`, `dict[str, str]`, `str | None`, etc.
+
 **See the full working example**: [`examples/llm-structured/`](examples/llm-structured/)
 
 ### Streaming Handler (Beta)

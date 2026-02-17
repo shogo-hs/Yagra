@@ -1,6 +1,7 @@
-"""Integration tests for structured LLM handler with workflow execution.
+"""Integration tests for structured LLM handler with dynamic schema_yaml.
 
-構造化出力 LLM ハンドラーが YAML ワークフローと統合して正しく動作することを検証します。
+schema_yaml による動的スキーマ生成を使った structured_llm ハンドラーが
+YAML ワークフローと統合して正しく動作することを検証する。
 """
 
 import json
@@ -10,34 +11,24 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-from pydantic import BaseModel
 
 import yagra.handlers.structured_llm_handler as slm_module
 
 
-class PersonInfo(BaseModel):
-    name: str
-    age: int
-
-
-class ExtractedEntities(BaseModel):
-    names: list[str]
-    locations: list[str]
-
-
-class TestStructuredLLMHandlerIntegration:
-    """structured LLM handler の結合テスト."""
+class TestDynamicSchemaIntegration:
+    """動的スキーマ（schema_yaml）を使ったワークフロー結合テスト."""
 
     @pytest.fixture(autouse=True)
     def _reset_litellm_global(self) -> Generator[None, None, None]:
-        """各テスト前後に structured_llm_handler のグローバル litellm をリセットする."""
+        """各テスト前後に structured_llm_handler のグローバル litellm を管理する."""
         original = slm_module.litellm
         slm_module.litellm = None
         yield
+        # テスト後は元の値に戻す
         slm_module.litellm = original
 
-    def test_structured_handler_with_prompt_ref(self) -> None:
-        """prompt_ref を使った構造化出力が正しく動作すること."""
+    def test_workflow_with_schema_yaml_basic(self) -> None:
+        """schema_yaml を YAML に定義して動的モデルで実行できること."""
         prompts_yaml = """\
 extract:
   system: "Extract person info as JSON"
@@ -54,6 +45,9 @@ nodes:
   - id: "extract"
     handler: "structured_llm"
     params:
+      schema_yaml: |
+        name: str
+        age: int
       prompt_ref: "prompts.yaml#extract"
       model:
         provider: "openai"
@@ -81,23 +75,23 @@ params:
                 from yagra import Yagra
                 from yagra.handlers import create_structured_llm_handler
 
-                handler = create_structured_llm_handler(schema=PersonInfo, retry=1, timeout=10)
+                # schema 引数なし → params.schema_yaml から動的生成
+                handler = create_structured_llm_handler(retry=1, timeout=10)
                 registry = {"structured_llm": handler}
 
                 yagra = Yagra.from_workflow(workflow_path, registry)
                 result = yagra.invoke({"text": "Alice is 30 years old."})
 
             assert "person" in result
-            assert isinstance(result["person"], PersonInfo)
             assert result["person"].name == "Alice"
             assert result["person"].age == 30
 
-    def test_structured_handler_with_multiple_prompt_variables(self) -> None:
-        """複数のプロンプト変数が自動検出されて正しく処理されること."""
+    def test_workflow_with_schema_yaml_list_type(self) -> None:
+        """schema_yaml でコレクション型を使ったワークフローが動作すること."""
         prompts_yaml = """\
 extract_entities:
   system: "Extract entities as JSON"
-  user: "Text: {text}, Context: {context}"
+  user: "{text}"
 """
 
         workflow_yaml = """\
@@ -110,6 +104,9 @@ nodes:
   - id: "extract"
     handler: "structured_llm"
     params:
+      schema_yaml: |
+        names: list[str]
+        locations: list[str]
       prompt_ref: "prompts.yaml#extract_entities"
       model:
         provider: "openai"
@@ -119,7 +116,6 @@ nodes:
 edges: []
 params:
   text: ""
-  context: ""
 """
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -133,7 +129,12 @@ params:
                 mock_response.choices = [
                     MagicMock(
                         message=MagicMock(
-                            content=json.dumps({"names": ["Alice", "Bob"], "locations": ["Tokyo"]})
+                            content=json.dumps(
+                                {
+                                    "names": ["Alice", "Bob"],
+                                    "locations": ["Tokyo", "Osaka"],
+                                }
+                            )
                         )
                     )
                 ]
@@ -142,31 +143,22 @@ params:
                 from yagra import Yagra
                 from yagra.handlers import create_structured_llm_handler
 
-                handler = create_structured_llm_handler(
-                    schema=ExtractedEntities, retry=1, timeout=10
-                )
+                handler = create_structured_llm_handler(retry=1, timeout=10)
                 registry = {"structured_llm": handler}
 
                 yagra = Yagra.from_workflow(workflow_path, registry)
-                result = yagra.invoke({"text": "Alice and Bob visited Tokyo.", "context": "travel"})
+                result = yagra.invoke({"text": "Alice and Bob visited Tokyo and Osaka."})
 
             assert "entities" in result
-            assert isinstance(result["entities"], ExtractedEntities)
-            assert "Alice" in result["entities"].names
-            assert "Tokyo" in result["entities"].locations
+            assert result["entities"].names == ["Alice", "Bob"]
+            assert result["entities"].locations == ["Tokyo", "Osaka"]
 
-            # プロンプトに両方の入力値が埋め込まれていること
-            call_messages = mock_litellm.completion.call_args.kwargs["messages"]
-            user_content = call_messages[1]["content"]
-            assert "Alice and Bob visited Tokyo." in user_content
-            assert "travel" in user_content
-
-    def test_structured_handler_with_model_kwargs(self) -> None:
-        """model.kwargs が正しく LLM に渡されること."""
+    def test_workflow_with_schema_yaml_mixed_types(self) -> None:
+        """schema_yaml で複合型（プリミティブ + コレクション）が動作すること."""
         prompts_yaml = """\
-test:
-  system: "Extract"
-  user: "Extract person"
+extract:
+  system: "Extract person info as JSON"
+  user: "Extract from: {text}"
 """
 
         workflow_yaml = """\
@@ -179,16 +171,19 @@ nodes:
   - id: "extract"
     handler: "structured_llm"
     params:
-      prompt_ref: "prompts.yaml#test"
+      schema_yaml: |
+        name: str
+        age: int
+        hobbies: list[str]
+      prompt_ref: "prompts.yaml#extract"
       model:
         provider: "openai"
         name: "gpt-4o"
-        kwargs:
-          temperature: 0.0
-          max_tokens: 100
       output_key: "person"
 
 edges: []
+params:
+  text: ""
 """
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -200,19 +195,29 @@ edges: []
             with patch.object(slm_module, "litellm") as mock_litellm:
                 mock_response = MagicMock()
                 mock_response.choices = [
-                    MagicMock(message=MagicMock(content=json.dumps({"name": "Test", "age": 0})))
+                    MagicMock(
+                        message=MagicMock(
+                            content=json.dumps(
+                                {
+                                    "name": "Charlie",
+                                    "age": 28,
+                                    "hobbies": ["reading", "gaming"],
+                                }
+                            )
+                        )
+                    )
                 ]
                 mock_litellm.completion.return_value = mock_response
 
                 from yagra import Yagra
                 from yagra.handlers import create_structured_llm_handler
 
-                handler = create_structured_llm_handler(schema=PersonInfo, retry=1, timeout=10)
+                handler = create_structured_llm_handler(retry=1, timeout=10)
                 registry = {"structured_llm": handler}
 
                 yagra = Yagra.from_workflow(workflow_path, registry)
-                yagra.invoke({})
+                result = yagra.invoke({"text": "Charlie, 28, likes reading and gaming."})
 
-            call_kwargs = mock_litellm.completion.call_args.kwargs
-            assert call_kwargs["temperature"] == 0.0
-            assert call_kwargs["max_tokens"] == 100
+            assert result["person"].name == "Charlie"
+            assert result["person"].age == 28
+            assert result["person"].hobbies == ["reading", "gaming"]

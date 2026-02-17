@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any
 from pydantic import BaseModel, ValidationError
 
 from yagra.handlers.llm_handler import LLMHandlerCallError, LLMHandlerConfigError
+from yagra.handlers.schema_builder import build_model_from_schema_yaml
 from yagra.ports.outbound.node_registry import NodeHandler
 
 if TYPE_CHECKING:
@@ -21,47 +22,56 @@ else:
 
 
 def create_structured_llm_handler(
-    schema: type[BaseModel],
+    schema: type[BaseModel] | None = None,
     retry: int = 3,
     timeout: int = 30,
 ) -> NodeHandler:
-    """Creates a structured output LLM handler with Pydantic model validation.
+    r"""Pydantic モデルバリデーション付きの構造化出力 LLM ハンドラーを生成する。
 
-    Generates a handler that calls an LLM via litellm and parses the response
-    into a Pydantic model instance. The LLM is instructed to return JSON,
-    and the response is validated against the provided schema.
+    litellm を介して LLM を呼び出し、レスポンスを Pydantic モデルインスタンスに
+    パースするハンドラーを生成する。LLM には JSON で返却するよう指示し、
+    指定されたスキーマでバリデーションを行う。
+
+    スキーマの指定方法は 2 通り:
+
+    1. **静的スキーマ**: ``schema`` 引数に Pydantic BaseModel サブクラスを渡す。
+    2. **動的スキーマ**: ``schema`` を省略し、ワークフロー YAML の
+       ``params.schema_yaml`` にフラットな ``key: type`` 形式で定義する。
+
+    動的スキーマの YAML 例::
+
+        name: str
+        age: int
+        tags: list[str]
 
     Args:
-        schema: Pydantic BaseModel subclass used to validate and parse the LLM response.
-        retry: Number of retries on API errors (default: 3).
-        timeout: Timeout in seconds (default: 30).
+        schema: Pydantic BaseModel サブクラス。省略時は実行時に
+            ``params["schema_yaml"]`` から動的にモデルを生成する。
+        retry: API エラー時のリトライ回数（デフォルト: 3）。
+        timeout: タイムアウト秒数（デフォルト: 30）。
 
     Returns:
-        NodeHandler: Handler function that takes (state, params) and returns a dict.
-            The output_key value will be a Pydantic model instance.
+        NodeHandler: (state, params) を受け取り dict を返すハンドラー関数。
+            output_key の値は Pydantic モデルインスタンスになる。
 
     Raises:
-        ImportError: If litellm is not installed.
+        ImportError: litellm がインストールされていない場合。
 
     Examples:
-        Basic usage:
+        静的スキーマ指定:
 
         >>> from pydantic import BaseModel
         >>> class UserInfo(BaseModel):
         ...     name: str
         ...     age: int
         >>> handler = create_structured_llm_handler(schema=UserInfo, retry=3, timeout=30)
-        >>> state = {"text": "My name is Alice and I am 30 years old."}
-        >>> params = {
-        ...     "prompt": {"system": "Extract user info as JSON", "user": "{text}"},
-        ...     "model": {"provider": "openai", "name": "gpt-4o"},
-        ...     "input_keys": ["text"],
-        ...     "output_key": "user_info",
-        ... }
-        >>> result = handler(state, params)
-        >>> print(result["user_info"])  # UserInfo(name='Alice', age=30)
 
-        YAML definition example:
+        動的スキーマ（schema_yaml を params で指定）:
+
+        >>> handler = create_structured_llm_handler()  # schema=None
+        >>> # params["schema_yaml"] = "name: str\\nage: int" で実行時に解決
+
+        YAML 定義例:
 
         .. code-block:: yaml
 
@@ -69,11 +79,15 @@ def create_structured_llm_handler(
               - id: "extract"
                 handler: "structured_llm"
                 params:
-                  prompt_ref: "prompts/extract.yaml#user_info"
+                  schema_yaml: |
+                    name: str
+                    age: int
+                  prompt:
+                    system: "Extract user info as JSON"
+                    user: "{text}"
                   model:
                     provider: "openai"
                     name: "gpt-4o"
-                  input_keys: ["text"]
                   output_key: "user_info"
     """
     global litellm
@@ -88,23 +102,36 @@ def create_structured_llm_handler(
             raise ImportError(msg) from e
 
     def handler(state: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
-        """Invokes the LLM and returns a validated Pydantic model instance.
+        """LLM を呼び出し、バリデーション済み Pydantic モデルインスタンスを返す。
 
-        Calls the LLM with JSON output mode and parses the response using
-        the schema provided to create_structured_llm_handler.
+        JSON 出力モードで LLM を呼び出し、create_structured_llm_handler に
+        指定されたスキーマ、または params["schema_yaml"] から動的に生成した
+        スキーマを使ってレスポンスをパースする。
 
         Args:
-            state: Workflow state dictionary.
-            params: Node parameters (prompt, model, input_keys, output_key).
+            state: ワークフロー state 辞書。
+            params: ノードパラメータ（prompt, model, schema_yaml, output_key 等）。
 
         Returns:
-            dict: Response in the format {output_key: schema_instance}.
-                The value is a validated Pydantic model instance.
+            {output_key: schema_instance} 形式の辞書。
+            値はバリデーション済み Pydantic モデルインスタンス。
 
         Raises:
-            LLMHandlerConfigError: If required parameters are missing or invalid.
-            LLMHandlerCallError: If LLM invocation or JSON parsing/validation fails.
+            LLMHandlerConfigError: 必須パラメータが不足または不正な場合。
+            LLMHandlerCallError: LLM 呼び出しまたは JSON パース/バリデーション失敗時。
+            SchemaYamlError: schema_yaml のパースまたはモデル生成に失敗した場合。
         """
+        # 0. スキーマ解決（静的 > 動的）
+        resolved_schema: type[BaseModel]
+        if schema is not None:
+            resolved_schema = schema
+        else:
+            schema_yaml = params.get("schema_yaml")
+            if not schema_yaml:
+                msg = "Either 'schema' argument or 'schema_yaml' param is required"
+                raise LLMHandlerConfigError(msg)
+            resolved_schema = build_model_from_schema_yaml(schema_yaml)
+
         # 1. パラメータ抽出と検証
         prompt = params.get("prompt")
         if not isinstance(prompt, dict):
@@ -151,7 +178,7 @@ def create_structured_llm_handler(
         json_system_prompt = (
             f"{system_prompt}\n\nRespond with valid JSON only. "
             f"The JSON must conform to the following schema:\n"
-            f"{json.dumps(schema.model_json_schema(), ensure_ascii=False)}"
+            f"{json.dumps(resolved_schema.model_json_schema(), ensure_ascii=False)}"
         ).strip()
 
         messages = [
@@ -189,9 +216,9 @@ def create_structured_llm_handler(
 
                 # 6. JSONパース・Pydanticバリデーション
                 try:
-                    instance = schema.model_validate_json(content)
+                    instance = resolved_schema.model_validate_json(content)
                 except (ValidationError, ValueError) as e:
-                    msg = f"Failed to parse LLM response as {schema.__name__}: {e}"
+                    msg = f"Failed to parse LLM response as {resolved_schema.__name__}: {e}"
                     raise LLMHandlerCallError(msg) from e
 
                 return {output_key: instance}

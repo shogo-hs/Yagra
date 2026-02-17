@@ -41,7 +41,13 @@ Examples:
 """
 
 from yagra.handlers.llm_handler import create_llm_handler
+from yagra.handlers.schema_builder import build_model_from_schema_yaml
 from yagra.handlers.streaming_llm_handler import create_streaming_llm_handler
 from yagra.handlers.structured_llm_handler import create_structured_llm_handler
 
-__all__ = ["create_llm_handler", "create_structured_llm_handler", "create_streaming_llm_handler"]
+__all__ = [
+    "build_model_from_schema_yaml",
+    "create_llm_handler",
+    "create_streaming_llm_handler",
+    "create_structured_llm_handler",
+]

@@ -8,6 +8,21 @@ For the canonical changelog (Japanese), see [CHANGELOG.md](https://github.com/sh
 
 ## [Unreleased]
 
+## [0.5.5] - 2026-02-18
+
+### Added
+- **Dynamic schema generation (M-27)**: `structured_llm` nodes can now generate Pydantic models at runtime from `schema_yaml` defined in the workflow YAML or entered in the WebUI Schema Settings — no Python code required for structured output
+  - New `schema_builder.py` module: converts flat `key: type` YAML (e.g. `name: str`, `age: int`) to a Pydantic `BaseModel` via a safe `TYPE_MAP` whitelist (no `eval()`)
+  - Supported types: primitives (`str`, `int`, `float`, `bool`), collections (`list[str]` etc.), dicts (`dict[str, str]` etc.), Optional (`str | None` etc.)
+  - `create_structured_llm_handler()` `schema` parameter is now optional. When `schema=None` (default), the handler resolves the schema at runtime from `params["schema_yaml"]`. Existing `schema=MyModel` usage is fully backward-compatible.
+  - `build_model_from_schema_yaml()` is now exported as a public API from `yagra.handlers`
+  - WebUI Schema Settings placeholder updated to flat format (`name: str` / `age: int` / `score: float`)
+  - 32 new unit tests (`test_schema_builder.py` × 27, dynamic schema in `test_structured_llm_handler.py` × 5) and 3 new integration tests (`test_structured_llm_dynamic_schema.py`)
+
+### Related
+- **Goal**: G-07 (Reduce LLM node boilerplate and enable advanced output control)
+- **Milestone**: M-27
+
 ## [0.5.4] - 2026-02-17
 
 ### Fixed
