@@ -65,7 +65,7 @@ curl -X POST 'http://127.0.0.1:8787/api/studio/file/read' \
   "content": "intent:\n  system: classify\n",
   "key_paths": ["intent", "intent.system"],
   "prompt_entries": [
-    {"key_path": "intent", "system": "classify", "user": "{{input}}"}
+    {"key_path": "intent", "system": "classify", "user": "{input}"}
   ],
   "parse_error": null
 }

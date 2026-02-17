@@ -1202,7 +1202,7 @@ def _studio_html() -> str:
                 <textarea
                   id="nodePromptUserInput"
                   v-model="nodeEditor.promptUser"
-                  placeholder="{{input}}"
+                  placeholder="{input}"
                 ></textarea>
               </div>
 
