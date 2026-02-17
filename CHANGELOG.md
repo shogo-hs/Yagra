@@ -4,6 +4,17 @@
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-02-17
+
+### Fixed
+- 🐛 **Studio: `prompt_ref` ノードで IN バッジが表示されない問題を修正**: `/api/workflow` が未解決の `prompt_ref` 文字列を返すため、JS 側で変数抽出できていなかった問題を修正
+  - `WorkflowNodeFormItem` に `prompt_user` フィールドを追加し、サーバー側で `prompt_ref` を解決した `prompt.user` テキストを提供
+  - JS の `extractInputVars()` が `params.prompt.user` 不在時に `formItem.prompt_user` にフォールバックするよう変更
+- 🐛 **IN バッジが3件で省略されていた問題を修正**: `+N` バッジを廃止し、全件を `flex-wrap` で折り返し表示するよう変更
+
+### Changed
+- 🎨 **ツールバーのトグルラベルを「IN」「OUT」に統一**: 「入力変数」「出力変数」をノードバッジの表記と一致させた
+
 ## [0.5.0] - 2026-02-17
 
 ### Added

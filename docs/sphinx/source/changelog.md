@@ -8,6 +8,15 @@ For the canonical changelog (Japanese), see [CHANGELOG.md](https://github.com/sh
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-02-17
+
+### Fixed
+- **Studio: IN badges not shown for `prompt_ref` nodes** — The `/api/workflow` endpoint returns unresolved `prompt_ref` strings, so variable extraction failed on the JS side. Added `prompt_user` field to `WorkflowNodeFormItem` to expose the server-resolved `prompt.user` text; `extractInputVars()` now falls back to `prompt_user` when `params.prompt.user` is absent.
+- **IN badges were truncated after 3 items** — Removed the `+N` overflow badge and replaced with full `flex-wrap` display so all variables are shown within the node card width.
+
+### Changed
+- **Toolbar toggle labels unified to IN / OUT** — Renamed "入力変数" / "出力変数" to "IN" / "OUT" to match the badge labels on the graph nodes.
+
 ## [0.5.0] - 2026-02-17
 
 ### Added
