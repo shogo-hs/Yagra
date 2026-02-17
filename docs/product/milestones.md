@@ -38,8 +38,8 @@
 | M-21 | G-09 | YAML スキーマと検証に HITL フィールドを追加する | `GraphSpec` に `interrupt_before` / `interrupt_after` を追加し、未定義ノード参照をバリデーションで検知できる | Open |
 | M-22 | G-09 | StateGraph ビルダーに checkpointer と interrupt を統合する | `build_state_graph()` が checkpointer と interrupt リストを `compile()` に渡し、checkpointer 未設定時に明確なエラーを返す | Open |
 | M-23 | G-09 | Yagra API に HITL 実行サイクルを追加する | `from_workflow(checkpointer=)` / `invoke(thread_id=)` / `resume()` で中断・再開のサイクルが動作する | Open |
-| M-24 | G-10 | ノードの入力変数・出力変数をグラフ上にバッジ表示する | 各ノードのプロンプト変数（入力）と `output_key`（出力）がノード上にバッジとして表示され、データフローが視覚的に把握できる | Open |
-| M-25 | G-10 | データフローバッジの ON/OFF トグルを実装する | ツールバーのトグルスイッチで入力バッジ・出力バッジの表示/非表示を独立に切り替えられ、グラフの視認性を制御できる | Open |
+| M-24 | G-10 | ノードの入力変数・出力変数をグラフ上にバッジ表示する | 各ノードのプロンプト変数（入力）と `output_key`（出力）がノード上にバッジとして表示され、データフローが視覚的に把握できる | Done |
+| M-25 | G-10 | データフローバッジの ON/OFF トグルを実装する | ツールバーのトグルスイッチで入力バッジ・出力バッジの表示/非表示を独立に切り替えられ、グラフの視認性を制御できる | Done |
 | M-26 | G-10 | 入出力バッジの UX を洗練する | バッジの色分け・ツールチップ・レイアウト崩れ防止など、ノード数が多い実用ワークフローでも視認性を維持できる | Open |
 
 ## Goal 別の実装項目
@@ -136,15 +136,15 @@
 
 | Item ID | やるべきこと | 状態 | 根拠 |
 | --- | --- | --- | --- |
-| G10-I01 | ノードの `rawNode.params` から入力変数（プロンプトテンプレートの `{変数名}` または `input_keys`）を抽出する JavaScript ヘルパーを実装する | Open | `src/yagra/adapters/inbound/workflow_studio_server.py` (WorkflowNode 内) |
-| G10-I02 | ノードの `rawNode.params` から出力変数（`output_key`、デフォルト `"output"`）を抽出する JavaScript ヘルパーを実装する | Open | `src/yagra/adapters/inbound/workflow_studio_server.py` (WorkflowNode 内) |
-| G10-I03 | `buildNodesFromPayload()` で抽出した入力変数・出力変数を `node.data` に格納する | Open | `src/yagra/adapters/inbound/workflow_studio_server.py` (buildNodesFromPayload) |
-| G10-I04 | WorkflowNode コンポーネントのテンプレートに入力バッジ（IN ラベル＋変数名 pill）を追加する | Open | `src/yagra/adapters/inbound/workflow_studio_server.py` (WorkflowNode template) |
-| G10-I05 | WorkflowNode コンポーネントのテンプレートに出力バッジ（OUT ラベル＋変数名 pill）を追加する | Open | `src/yagra/adapters/inbound/workflow_studio_server.py` (WorkflowNode template) |
-| G10-I06 | 入力バッジ・出力バッジの CSS スタイル（色分け・pill デザイン・レスポンシブ対応）を実装する | Open | `src/yagra/adapters/inbound/workflow_studio_server.py` (CSS) |
-| G10-I07 | ツールバーに入力バッジ ON/OFF トグルと出力バッジ ON/OFF トグルを追加する | Open | `src/yagra/adapters/inbound/workflow_studio_server.py` (toolbar) |
-| G10-I08 | バッジ数が多い場合のレイアウト崩れ防止（折り返し上限・ツールチップ展開）を実装する | Open | `src/yagra/adapters/inbound/workflow_studio_server.py` (CSS/JS) |
-| G10-I09 | Read-Only 可視化 HTML にも入出力変数情報を表示する | Open | `src/yagra/application/use_cases/workflow_visualization.py` |
+| G10-I01 | ノードの `rawNode.params` から入力変数（プロンプトテンプレートの `{変数名}` または `input_keys`）を抽出する JavaScript ヘルパーを実装する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` (WorkflowNode 内) |
+| G10-I02 | ノードの `rawNode.params` から出力変数（`output_key`、デフォルト `"output"`）を抽出する JavaScript ヘルパーを実装する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` (WorkflowNode 内) |
+| G10-I03 | `buildNodesFromPayload()` で抽出した入力変数・出力変数を `node.data` に格納する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` (buildNodesFromPayload) |
+| G10-I04 | WorkflowNode コンポーネントのテンプレートに入力バッジ（IN ラベル＋変数名 pill）を追加する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` (WorkflowNode template) |
+| G10-I05 | WorkflowNode コンポーネントのテンプレートに出力バッジ（OUT ラベル＋変数名 pill）を追加する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` (WorkflowNode template) |
+| G10-I06 | 入力バッジ・出力バッジの CSS スタイル（色分け・pill デザイン・レスポンシブ対応）を実装する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` (CSS) |
+| G10-I07 | ツールバーに入力バッジ ON/OFF トグルと出力バッジ ON/OFF トグルを追加する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` (toolbar) |
+| G10-I08 | バッジ数が多い場合のレイアウト崩れ防止（折り返し上限・ツールチップ展開）を実装する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` (CSS/JS) |
+| G10-I09 | Read-Only 可視化 HTML にも入出力変数情報を表示する | Done | `src/yagra/application/use_cases/workflow_visualization.py` |
 
 ## 運用ルール
 

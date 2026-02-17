@@ -8,6 +8,21 @@ For the canonical changelog (Japanese), see [CHANGELOG.md](https://github.com/sh
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-02-17
+
+### Added
+- **G-10: Data flow variable badges on graph nodes** — Each LLM node in the Studio WebUI now shows input variable badges (blue, from `{variable}` in prompt templates) and an output variable badge (green, from `output_key`) directly on the graph node
+  - IN badges (blue): extracted from prompt template `{variable}` placeholders; `input_keys` takes precedence if explicitly set
+  - OUT badge (green): shows `output_key` (defaults to `"output"`)
+  - Applies to `llm`, `structured_llm`, and `streaming_llm` handlers; custom handlers are excluded
+  - Toolbar checkboxes to independently toggle IN/OUT badge visibility
+  - Badges update immediately when `prompt` or `output_key` is changed in the node properties panel and applied
+  - Read-Only visualization HTML (`yagra visualize`) also shows the same badges
+
+### Related
+- **Goal**: G-10 (Visualize each node's input and output variables on the WebUI graph at a glance)
+- **Milestone**: M-24, M-25
+
 ## [0.4.8] - 2026-02-17
 
 ### Fixed
