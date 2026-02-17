@@ -13,7 +13,7 @@
 | G-05 | 非エンジニアが WebUI 上でワークフローを可視化・編集し、迷わず運用できる | Read Only 可視化と編集（prompt/model/エッジ接続）を WebUI で行い、round-trip 後も意味整合を維持しつつ、主要操作の導線と視認性が初見ユーザーにとって自己説明的である | Done |
 | G-06 | コーディングエージェントが Yagra ワークフローを正確に生成・検証できる | JSON Schema 公開と validate CLI の JSON 出力により、エージェントがスキーマ準拠の YAML 生成→検証→修正ループを実行できる。加えて、テンプレートライブラリにより典型パターンの生成精度が向上している | Done |
 | G-07 | LLM ノードのボイラープレート削減と高度な出力制御ができる | 基本的な LLM 呼び出し、構造化出力（Pydantic）、ストリーミングレスポンスをハンドラーユーティリティで簡潔に実装でき、YAML 定義だけで動作する | Done |
-| G-08 | YAML で LLM ノードのデータフロー（入出力キー）を宣言的に制御でき、WebUI から設定できる | `input_keys` を廃止しプロンプト変数を自動検出する仕組みにより YAML 記述量を削減し、`output_key` を WebUI から設定できる。handler タイプ別の責務分離（`llm`: 1 キー出力、`structured_llm`: 複数キー構造化出力、`custom`: 自由制御）が明確になっている | Active |
+| G-08 | YAML で LLM ノードのデータフロー（入出力キー）を宣言的に制御でき、WebUI から設定できる | `input_keys` を廃止しプロンプト変数を自動検出する仕組みにより YAML 記述量を削減し、`output_key` を WebUI から設定できる。handler タイプ別の責務分離（`llm`: 1 キー出力、`structured_llm`: 複数キー構造化出力、`custom`: 自由制御）が明確になっている | Done |
 
 ## 運用ルール
 
@@ -26,4 +26,4 @@
 - G-06 は AI-Native 方針に基づく新規ゴール。M-12（JSON Schema + validate CLI）、M-13（テンプレートライブラリ）により完了。コーディングエージェントが Yagra ワークフローを正確に生成・検証できる環境が整った。
 - G-07 は DX 改善ゴール。LLM ノードの実装を簡潔にし、初学者の参入障壁を下げる。4 段階で実装：M-14（基本 LLM ハンドラー）、M-15（構造化出力）、M-16（ストリーミング）、M-17（WebUI ハンドラータイプ別フォーム）。
 - G-07 は M-17（WebUI ハンドラータイプ別フォーム）の完了をもって Done。G-01〜G-07 すべて Done。
-- G-08 は handler データフロー改善ゴール。handler タイプ別の責務整理を前提に、`input_keys` の自動検出と `output_key` の WebUI 設定を実現する。3 段階で実装: M-18（handler type セレクト — v0.4.1 で完了済み）、M-19（input_keys 自動検出）、M-20（output_key の WebUI 設定）。
+- G-08 は handler データフロー改善ゴール。handler タイプ別の責務整理を前提に、`input_keys` の自動検出と `output_key` の WebUI 設定を実現する。3 段階で実装: M-18（handler type セレクト — v0.4.1）、M-19（input_keys 自動検出 — v0.4.2）、M-20（output_key の WebUI 設定）。G-01〜G-08 すべて Done。

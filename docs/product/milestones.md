@@ -3,6 +3,7 @@
 最終更新: 2026-02-17
 
 補足:
+- M-20 は完了。WebUI のノードプロパティパネルに Output Settings セクション（output_key テキスト入力）を追加。isLlmHandler 条件下で表示し、空欄時はデフォルト（"output"）を使用。Apply 時に params.output_key に書き込む。G-08 DoD 達成。
 - M-19 は完了。プロンプトテンプレートの `{変数名}` を `re.findall` で自動抽出し、`input_keys` の明示指定が不要になった。`input_keys` 指定時は後方互換で動作（`None` と `[]` を区別）。3 handler すべて対応、単体テスト 5 件追加。
 - M-18 は完了（v0.4.1）。handler 入力を type セレクト（llm/structured_llm/streaming_llm/custom）に変更。組み込み型選択時は handler 名を自動入力、custom 選択時のみ自由テキスト入力。
 - M-17 は完了。handler 値（llm/structured_llm/streaming_llm）に応じてノードプロパティパネルのフォームが切り替わり、structured_llm では Schema Settings（schema_yaml 入力）、streaming_llm では Streaming Settings（stream: false チェックボックス）が表示される。
@@ -33,7 +34,7 @@
 | M-17 | G-07 | WebUI ハンドラータイプ別フォームを実装する | handler 値に応じてフォームが切り替わり、structured_llm ノードで Pydantic スキーマを WebUI から編集できる | Done |
 | M-18 | G-08 | WebUI handler type セレクトを実装する | handler 入力が type セレクト（llm/structured_llm/streaming_llm/custom）になり、組み込み型選択時は handler 名が自動入力される | Done |
 | M-19 | G-08 | input_keys を廃止しプロンプト変数を自動検出する | プロンプトテンプレート内の `{変数名}` を自動抽出して state から取得する。`input_keys` パラメータの明示指定が不要になる | Done |
-| M-20 | G-08 | WebUI で output_key を設定できるようにする | ノードプロパティパネルに output_key テキスト入力を追加し、I/O が WebUI から完結する | Planned |
+| M-20 | G-08 | WebUI で output_key を設定できるようにする | ノードプロパティパネルに output_key テキスト入力を追加し、I/O が WebUI から完結する | Done |
 
 ## Goal 別の実装項目
 
@@ -112,7 +113,7 @@
 | G08-I02 | `input_keys` パラメータを廃止し、プロンプトテンプレートから `{変数名}` を自動検出して state から取得する | Done | `src/yagra/handlers/llm_handler.py` 等 (M-19) |
 | G08-I03 | 全組み込み handler で `input_keys` 自動検出に対応する（`llm` / `structured_llm` / `streaming_llm`） | Done | `src/yagra/handlers/*.py` (M-19) |
 | G08-I04 | `input_keys` 廃止の後方互換を確保する（指定されていた場合は従来通り動作） | Done | `src/yagra/handlers/*.py` (M-19) |
-| G08-I05 | WebUI のノードプロパティパネルに output_key テキスト入力を追加する | Planned | `src/yagra/adapters/inbound/workflow_studio_server.py` (M-20) |
+| G08-I05 | WebUI のノードプロパティパネルに output_key テキスト入力を追加する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` (M-20) |
 
 ## 運用ルール
 
