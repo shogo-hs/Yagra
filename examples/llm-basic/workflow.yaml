@@ -1,0 +1,18 @@
+nodes:
+  - id: "greeting"
+    handler: "llm"
+    params:
+      prompt_ref: "prompts.yaml#greeting"
+      model:
+        provider: "openai"
+        name: "gpt-4"
+        kwargs:
+          temperature: 0.7
+      input_keys: ["user_name"]
+      output_key: "response"
+
+edges:
+  - from: "__start__"
+    to: "greeting"
+  - from: "greeting"
+    to: "__end__"

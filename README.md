@@ -77,7 +77,37 @@ The handler automatically:
 - Handles retries and timeouts
 - Returns structured output
 
-**Coming Soon**: Structured output (Pydantic), Streaming support
+**See the full working example**: [`examples/llm-basic/`](examples/llm-basic/)
+
+### Structured Output Handler (Beta)
+
+Use `create_structured_llm_handler()` to get type-safe Pydantic model instances from LLM responses:
+
+```python
+from pydantic import BaseModel
+from yagra.handlers import create_structured_llm_handler
+
+class PersonInfo(BaseModel):
+    name: str
+    age: int
+
+handler = create_structured_llm_handler(schema=PersonInfo)
+registry = {"structured_llm": handler}
+app = Yagra.from_workflow("workflow.yaml", registry)
+
+result = app.invoke({"text": "My name is Alice and I am 30."})
+person: PersonInfo = result["person"]  # Type-safe!
+print(person.name, person.age)  # Alice 30
+```
+
+The handler automatically:
+- Enables JSON output mode (`response_format=json_object`)
+- Injects JSON Schema into the system prompt
+- Validates and parses the response with Pydantic
+
+**See the full working example**: [`examples/llm-structured/`](examples/llm-structured/)
+
+**Coming Soon**: Streaming support
 
 ## 🚀 Quick Start
 

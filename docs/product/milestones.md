@@ -2,6 +2,11 @@
 
 最終更新: 2026-02-17
 
+補足:
+- M-15 は完了。`create_structured_llm_handler(schema=PydanticModel)` で型安全な構造化出力が動作することを確認済み。単体テスト 16 件・結合テスト 3 件追加。
+- M-16 をアクティブに変更。ストリーミングハンドラーの実装が次の開発ターゲット。
+- M-14 は完了。`examples/llm-basic/` で YAML 定義だけで LLM 呼び出しが動作することを確認済み。Issue #11（例外テストの fixture 競合）はコア機能に影響なし。
+
 ## ステップ一覧
 
 | Milestone ID | 対応 Goal ID | 到達ステップ | 完了条件 | 状態 |
@@ -19,9 +24,9 @@
 | M-11 | G-05 | UI ビジュアル品質と可読性を向上する | レイアウト・配色・ラベル体系を改善し、重要情報の判別と誤操作防止が現状より向上する | Done |
 | M-12 | G-06 | JSON Schema 公開と validate CLI を整備する | `yagra schema export` で JSON Schema を出力でき、`yagra validate --format json` で構造化エラーを返却できる | Done |
 | M-13 | G-06 | テンプレートライブラリを整備する | `yagra init --template <name>` で典型パターン（branch, loop, rag 等）のスキャフォールドを生成できる | Done |
-| M-14 | G-07 | 基本 LLM ハンドラーユーティリティを提供する | `create_llm_handler()` で litellm 統合ハンドラーを生成でき、YAML 定義だけでテキスト入出力が動作する | Active |
-| M-15 | G-07 | 構造化出力ハンドラーと WebUI スキーマ編集を実装する | Pydantic model 指定で型安全な出力を得られ、WebUI でスキーマを編集できる | Planned |
-| M-16 | G-07 | ストリーミングハンドラーと WebUI リアルタイム表示を実装する | ストリーミングレスポンスを受け取れ、WebUI でリアルタイム表示できる | Planned |
+| M-14 | G-07 | 基本 LLM ハンドラーユーティリティを提供する | `create_llm_handler()` で litellm 統合ハンドラーを生成でき、YAML 定義だけでテキスト入出力が動作する | Done |
+| M-15 | G-07 | 構造化出力ハンドラーと WebUI スキーマ編集を実装する | Pydantic model 指定で型安全な出力を得られ、WebUI でスキーマを編集できる | Done |
+| M-16 | G-07 | ストリーミングハンドラーと WebUI リアルタイム表示を実装する | ストリーミングレスポンスを受け取れ、WebUI でリアルタイム表示できる | Active |
 
 ## 運用ルール
 

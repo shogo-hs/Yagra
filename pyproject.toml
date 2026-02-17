@@ -75,6 +75,7 @@ no_implicit_optional = true
 check_untyped_defs = true
 show_error_codes = true
 pretty = true
+exclude = ["examples/"]
 
 [tool.pytest.ini_options]
 minversion = "8.0"

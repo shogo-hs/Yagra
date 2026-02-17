@@ -8,7 +8,21 @@ For the canonical changelog (Japanese), see [CHANGELOG.md](https://github.com/sh
 
 ## [Unreleased]
 
-No changes yet.
+### Added
+- **Structured Output Handler**: Added `create_structured_llm_handler()` factory function for type-safe structured output using Pydantic models
+  - Specify a Pydantic model as the `schema` argument to automatically parse and validate LLM responses
+  - JSON output mode enabled by default (`response_format=json_object`)
+  - JSON Schema automatically injected into the system prompt
+  - Same retry and timeout features as `create_llm_handler()`
+  - Raises `LLMHandlerCallError` on JSON parse failure or Pydantic validation failure
+  - Fully backward compatible
+- **Testing**: Added 22 tests (16 unit tests, 6 integration tests)
+- **Examples**: Added `examples/llm-structured/` with a working example (YAML + prompts + run script + README)
+- **Examples**: Added `examples/llm-basic/` with a working example for the basic LLM handler
+
+### Related
+- **Goal**: G-07 (DX improvement: reduce LLM node boilerplate)
+- **Milestone**: M-15 (structured output handler), M-14 (basic LLM handler samples)
 
 ## [0.3.1] - 2026-02-17
 

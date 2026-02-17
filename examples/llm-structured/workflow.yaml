@@ -1,0 +1,19 @@
+version: "1.0"
+start_at: "extract"
+end_at:
+  - "extract"
+
+nodes:
+  - id: "extract"
+    handler: "structured_llm"
+    params:
+      prompt_ref: "prompts.yaml#extract_person"
+      model:
+        provider: "openai"
+        name: "gpt-4o"
+        kwargs:
+          temperature: 0.0
+      input_keys: ["text"]
+      output_key: "person"
+
+edges: []

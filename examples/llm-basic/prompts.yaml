@@ -1,0 +1,3 @@
+greeting:
+  system: "You are a friendly assistant."
+  user: "Hello! My name is {user_name}. Please greet me warmly."

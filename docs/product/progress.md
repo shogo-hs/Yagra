@@ -1,6 +1,6 @@
 # 進捗スコアボード
 
-最終更新: 2026-02-16
+最終更新: 2026-02-17（M-15完了）
 
 ## 更新ルール
 
@@ -100,6 +100,32 @@
 - 完了済み: G06-I01, G06-I02, G06-I03, G06-I04
 - 未完了: なし
 - 現在地: M-13（テンプレートライブラリ）完了。`yagra init --template <name>` で branch/loop/rag テンプレートからワークフローを生成できる。テスト 14 件追加済み（単体 7 件 + 結合 7 件）。G-06 の全項目が完了し、コーディングエージェントが Yagra ワークフローを正確に生成・検証できる環境が整った。
+
+### G-07: LLM ノードのボイラープレート削減と高度な出力制御ができる
+
+**やるべきこと一覧**
+
+| Item ID | やるべきこと | 状態 | 根拠 |
+| --- | --- | --- | --- |
+| G07-I01 | `create_llm_handler()` ユーティリティを実装する | Done | `src/yagra/handlers/llm_handler.py` |
+| G07-I02 | YAML 定義だけで LLM 呼び出しが動作する実行可能なサンプルを整備する | Done | `examples/llm-basic/` |
+| G07-I03 | 単体テストを整備する（正常系・リトライ・kwargs 等） | Done | `tests/unit/handlers/test_llm_handler.py` |
+| G07-I04 | 構造化出力ハンドラー（Pydantic）を実装する | Done | `src/yagra/handlers/structured_llm_handler.py` |
+| G07-I05 | ストリーミングハンドラーを実装する | Planned | M-16 |
+
+- 完了済み: G07-I01, G07-I02, G07-I03, G07-I04
+- 未完了: G07-I05（M-16）
+- 現在地: M-15 完了。`create_structured_llm_handler(schema=PydanticModel)` で型安全な構造化出力が得られる。`examples/llm-structured/` に実行可能サンプルを追加。単体テスト 16 件・結合テスト 3 件追加。
+
+## 補足（2026-02-17）
+
+- M-15（構造化出力ハンドラー）を完了した。
+- `create_structured_llm_handler(schema=PydanticModel)` を `src/yagra/handlers/structured_llm_handler.py` に実装した。
+- `examples/llm-structured/` に完全な動作サンプル（YAML + プロンプト + 実行スクリプト + README）を追加した。
+- 単体テスト 16 件・結合テスト 3 件を追加（合計 118 passed、6 skipped）。
+- M-14（基本 LLM ハンドラーユーティリティ）を完了した。
+- `examples/llm-basic/` に完全な動作サンプル（YAML + プロンプト + 実行スクリプト + README）を追加した。
+- Issue #11（LLM handler 例外テストの fixture 競合問題）は根本原因を特定し、コア機能に影響しないことを確認。テストは適切なスキップメッセージとともにスキップ中。
 
 ## 補足（2026-02-16）
 

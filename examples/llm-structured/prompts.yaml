@@ -1,0 +1,8 @@
+extract_person:
+  system: |
+    You are an information extraction assistant.
+    Extract person information from the given text and respond with valid JSON only.
+    Do not include any explanation or markdown formatting - just the JSON object.
+  user: |
+    Extract the person's name and age from this text:
+    "{text}"
