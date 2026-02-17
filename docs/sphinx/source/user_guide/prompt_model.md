@@ -310,6 +310,71 @@ params:
     name: "gpt-4.1-mini"
 ```
 
+### Prompt Variable Not Declared (`prompt_variable_error`)
+
+**Error**: `"prompt_variable_error": Variable 'foo' is not guaranteed on all paths before node 'my_node'`
+
+Yagra validates at save time that every `{variable}` in a prompt template is resolvable before the node executes. A variable is resolvable if:
+
+1. It is a key in the workflow-level `params` section (initial state), **or**
+2. It is the `output_key` of an upstream node that is reached on **every** execution path leading to this node.
+
+**Example — missing declaration**:
+
+```yaml
+# BAD: {query} is used in the prompt but not declared anywhere
+nodes:
+  - id: "answer"
+    handler: "llm"
+    params:
+      prompt:
+        system: "You are helpful."
+        user: "Answer: {query}"
+      model: ...
+edges: []
+# params section is absent → {query} has no source
+```
+
+**Fix option 1 — declare as initial state**:
+
+```yaml
+params:
+  query: ""   # Declare {query} as an initial state key
+```
+
+**Fix option 2 — produce it from an upstream node**:
+
+```yaml
+nodes:
+  - id: "extract_query"
+    handler: "llm"
+    params:
+      ...
+      output_key: "query"   # Produces the 'query' key
+  - id: "answer"
+    handler: "llm"
+    params:
+      prompt:
+        user: "Answer: {query}"
+      ...
+edges:
+  - source: "extract_query"
+    target: "answer"
+```
+
+**Branching**: If conditional edges exist, `{variable}` must be guaranteed on **all** paths:
+
+```yaml
+# BAD: 'result' only exists on path A, not path B
+edges:
+  - source: "start"
+    target: "node_a"
+    condition: "A"       # node_a produces output_key: "result"
+  - source: "start"
+    target: "end"
+    condition: "B"       # 'result' is not available here → error
+```
+
 ## Next Steps
 
 - [Branching & Loops](branching_loops.md)
