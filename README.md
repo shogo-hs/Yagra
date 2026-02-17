@@ -304,10 +304,13 @@ yagra studio --workflow workflows/support.yaml --port 8787
 Open `http://127.0.0.1:8787/` in your browser.
 
 **Studio Features:**
-- **Handler-Aware Forms**: Node Properties panel adapts to the `handler` value
+- **Handler Type Selector**: Node Properties panel provides a type selector (`llm` / `structured_llm` / `streaming_llm` / `custom`)
+  - Predefined types auto-populate the handler name — no manual typing required
+  - `custom` type enables free-text input for user-defined handlers
+- **Handler-Aware Forms**: Form sections adapt automatically to the selected handler type
   - `structured_llm` → Schema Settings section (edit `schema_yaml` as YAML)
   - `streaming_llm` → Streaming Settings section (`stream: false` toggle)
-  - Non-LLM handlers → LLM-specific sections hidden automatically
+  - `custom` → LLM-specific sections hidden automatically
 - **Visual Editing**: Edit prompts, models, and conditions via forms
 - **Drag & Drop**: Add nodes, connect edges, adjust layout visually
 - **Diff Preview**: Review changes before saving

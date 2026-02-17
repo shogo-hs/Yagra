@@ -305,11 +305,14 @@ yagra studio --workspace-root /path/to/project --port 8787
 ### Features
 
 #### Visual Editing
-- **Node Properties**: Form sections adapt to the handler type:
+- **Node Properties**: Handler input uses a type selector with automatic form adaptation:
+  - **Handler type selector**: choose `llm`, `structured_llm`, `streaming_llm`, or `custom`
+    - Predefined types auto-fill the handler name (no manual typing required)
+    - `custom` type enables free-text input for user-defined handlers
   - `llm` / `structured_llm` / `streaming_llm` → Prompt Settings and Model Settings displayed
   - `structured_llm` → Additional **Schema Settings** section (edit `schema_yaml` as YAML text)
   - `streaming_llm` → Additional **Streaming Settings** section (`stream: false` checkbox)
-  - Any other handler value → LLM-specific sections hidden
+  - `custom` → LLM-specific sections hidden (free-text handler name input visible)
 - **Drag & Drop**: Add nodes, connect edges, adjust layout
 - **Re-wiring**: Drag edge endpoints to change connections
 
