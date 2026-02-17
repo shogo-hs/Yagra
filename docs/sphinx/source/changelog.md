@@ -8,6 +8,17 @@ For the canonical changelog (Japanese), see [CHANGELOG.md](https://github.com/sh
 
 ## [Unreleased]
 
+## [0.4.5] - 2026-02-17
+
+### Fixed
+- **WebUI user prompt placeholder**: The user prompt textarea displayed `{{input}}` as placeholder text, causing users to write prompt templates with double-brace syntax which is not expanded by the handler's `str.format()` logic
+  - Changed placeholder from `{{input}}` to `{input}` to match the single-brace `{variable}` convention
+  - Fixed the same incorrect example in `docs/api/post-studio-file-read.md`
+
+### Related
+- **Goal**: G-08 (Declarative control of LLM node data flow via YAML, configurable from WebUI)
+- **Milestone**: M-20
+
 ## [0.4.4] - 2026-02-17
 
 ### Fixed

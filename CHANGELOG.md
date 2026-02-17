@@ -4,6 +4,17 @@
 
 ## [Unreleased]
 
+## [0.4.5] - 2026-02-17
+
+### Fixed
+- 🐛 **WebUI user prompt placeholder**: `placeholder` に `{{input}}` と表示されていたため、ユーザーがプロンプトテンプレートを二重波括弧で記述してしまい変数が展開されない問題を修正
+  - `{{input}}` → `{input}` に変更（ハンドラーの `str.format()` 記法に統一）
+  - API ドキュメント（`docs/api/post-studio-file-read.md`）のサンプルも同様に修正
+
+### Related
+- **Goal**: G-08（YAML で LLM ノードのデータフロー（入出力キー）を宣言的に制御でき、WebUI から設定できる）
+- **Milestone**: M-20
+
 ## [0.4.4] - 2026-02-17
 
 ### Fixed
