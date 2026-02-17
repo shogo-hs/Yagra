@@ -38,6 +38,8 @@ nodes:
       output_key: "response"
 
 edges: []
+params:
+  user_name: ""
 """
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -155,6 +157,10 @@ nodes:
       output_key: "response"
 
 edges: []
+params:
+  name: ""
+  age: ""
+  city: ""
 """
 
         with tempfile.TemporaryDirectory() as tmpdir:

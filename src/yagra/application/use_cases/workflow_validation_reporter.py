@@ -13,6 +13,7 @@ from pydantic import ValidationError
 from yagra.application.services import WorkflowReferenceError, resolve_workflow_references
 from yagra.application.services.edge_rule_validator import collect_edge_rule_issues
 from yagra.domain.entities import GraphSpec
+from yagra.domain.services.prompt_variable_validator import collect_prompt_variable_issues
 from yagra.domain.services.schema_validator import collect_graph_structure_issues
 
 type Location = tuple[str | int, ...]
@@ -197,6 +198,15 @@ def validate_workflow_payload_for_ui(
                 code="edge_rule_error",
                 message=edge_rule_issue.message,
                 location=edge_rule_issue.location,
+            )
+        )
+
+    for prompt_variable_issue in collect_prompt_variable_issues(spec):
+        report.issues.append(
+            WorkflowValidationIssue(
+                code="prompt_variable_error",
+                message=prompt_variable_issue.message,
+                location=prompt_variable_issue.location,
             )
         )
 

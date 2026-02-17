@@ -8,6 +8,20 @@ For the canonical changelog (Japanese), see [CHANGELOG.md](https://github.com/sh
 
 ## [Unreleased]
 
+## [0.4.6] - 2026-02-17
+
+### Added
+- **Prompt variable validation**: Static validation at save time that verifies all `{variable}` references in prompt templates are resolvable from upstream node `output_key` or declared `spec.params` initial keys
+  - Applies to `llm`, `streaming_llm`, and `structured_llm` handlers (custom handlers are excluded)
+  - Validates across ALL execution paths — if a conditional branch exists, the variable must be guaranteed on every path reaching the node (strict intersection)
+  - When `input_keys` is explicitly set on a node, it takes precedence over template variable extraction
+  - Skipped for cyclic graphs and workflows with structural errors (caught by earlier validators)
+  - Error code: `"prompt_variable_error"`
+
+### Related
+- **Goal**: G-08 (Declarative control of LLM node data flow via YAML, configurable from WebUI)
+- **Milestone**: M-20
+
 ## [0.4.5] - 2026-02-17
 
 ### Fixed

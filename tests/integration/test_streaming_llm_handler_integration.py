@@ -43,6 +43,8 @@ nodes:
       output_key: "response"
 
 edges: []
+params:
+  query: ""
 """
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -93,6 +95,8 @@ nodes:
       output_key: "summary"
 
 edges: []
+params:
+  text: ""
 """
 
         with tempfile.TemporaryDirectory() as tmpdir:

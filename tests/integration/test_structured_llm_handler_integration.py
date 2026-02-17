@@ -49,6 +49,8 @@ nodes:
       output_key: "person"
 
 edges: []
+params:
+  text: ""
 """
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -103,6 +105,9 @@ nodes:
       output_key: "entities"
 
 edges: []
+params:
+  text: ""
+  context: ""
 """
 
         with tempfile.TemporaryDirectory() as tmpdir:
