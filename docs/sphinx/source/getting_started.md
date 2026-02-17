@@ -21,6 +21,22 @@ Or with `uv`:
 uv pip install yagra
 ```
 
+### Install with LLM Support
+
+To use the built-in LLM handler utilities (`create_llm_handler`, `create_structured_llm_handler`, `create_streaming_llm_handler`), install the optional `llm` extra:
+
+```bash
+pip install 'yagra[llm]'
+```
+
+Or with `uv`:
+
+```bash
+uv add 'yagra[llm]'
+```
+
+This installs [litellm](https://github.com/BerriAI/litellm), which provides a unified interface to OpenAI, Anthropic, Google, and other LLM providers.
+
 ### Verify Installation
 
 ```bash
@@ -253,3 +269,36 @@ prompt_ref: "../prompts/support_prompts.yaml#faq"
 # ❌ Incorrect (missing file)
 prompt_ref: "../prompts/missing.yaml#faq"
 ```
+
+## Using LLM Handlers
+
+Yagra provides built-in handler utilities for common LLM patterns. Install the `llm` extra first:
+
+```bash
+pip install 'yagra[llm]'
+```
+
+Then register a handler in your Python code:
+
+```python
+from yagra import Yagra
+from yagra.handlers import create_llm_handler
+
+registry = {"llm": create_llm_handler()}
+yagra = Yagra.from_workflow("workflow.yaml", registry)
+result = yagra.invoke({"query": "Hello!"})
+print(result["response"])
+```
+
+Three handler types are available:
+
+| Handler | Factory | Output |
+|---|---|---|
+| Basic LLM | `create_llm_handler()` | `str` |
+| Structured Output | `create_structured_llm_handler(schema=MyModel)` | Pydantic model instance |
+| Streaming | `create_streaming_llm_handler()` | `Generator[str, None, None]` |
+
+For working examples, see:
+- [`examples/llm-basic/`](https://github.com/shogo-hs/Yagra/tree/main/examples/llm-basic)
+- [`examples/llm-structured/`](https://github.com/shogo-hs/Yagra/tree/main/examples/llm-structured)
+- [`examples/llm-streaming/`](https://github.com/shogo-hs/Yagra/tree/main/examples/llm-streaming)

@@ -132,7 +132,6 @@ full_text = "".join(result["response"])
 
 **See the full working example**: [`examples/llm-streaming/`](examples/llm-streaming/)
 
-**Coming Soon**: WebUI handler type-specific forms (M-17)
 
 ## 🚀 Quick Start
 
@@ -305,6 +304,10 @@ yagra studio --workflow workflows/support.yaml --port 8787
 Open `http://127.0.0.1:8787/` in your browser.
 
 **Studio Features:**
+- **Handler-Aware Forms**: Node Properties panel adapts to the `handler` value
+  - `structured_llm` → Schema Settings section (edit `schema_yaml` as YAML)
+  - `streaming_llm` → Streaming Settings section (`stream: false` toggle)
+  - Non-LLM handlers → LLM-specific sections hidden automatically
 - **Visual Editing**: Edit prompts, models, and conditions via forms
 - **Drag & Drop**: Add nodes, connect edges, adjust layout visually
 - **Diff Preview**: Review changes before saving

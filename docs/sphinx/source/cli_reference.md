@@ -305,7 +305,11 @@ yagra studio --workspace-root /path/to/project --port 8787
 ### Features
 
 #### Visual Editing
-- **Node Properties**: Edit `prompt_ref`, model config, and custom params
+- **Node Properties**: Form sections adapt to the handler type:
+  - `llm` / `structured_llm` / `streaming_llm` → Prompt Settings and Model Settings displayed
+  - `structured_llm` → Additional **Schema Settings** section (edit `schema_yaml` as YAML text)
+  - `streaming_llm` → Additional **Streaming Settings** section (`stream: false` checkbox)
+  - Any other handler value → LLM-specific sections hidden
 - **Drag & Drop**: Add nodes, connect edges, adjust layout
 - **Re-wiring**: Drag edge endpoints to change connections
 
