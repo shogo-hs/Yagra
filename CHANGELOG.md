@@ -4,13 +4,20 @@
 
 ## [Unreleased]
 
-## [0.4.0] - 2026-02-17
+## [0.4.1] - 2026-02-17
 
 ### Added
 - ✨ **WebUI Handler Type Selector**: ノードプロパティパネルの handler 入力を type セレクト（`llm` / `structured_llm` / `streaming_llm` / `custom`）に変更
   - 組み込み型選択時は handler 名を自動入力 — 手打ち不要
   - `custom` 選択時のみ自由テキスト入力を表示し、任意の handler 名を指定可能
   - 後方互換（既存 YAML の読み込み・保存動作に影響なし）
+
+### Related
+- **Goal**: G-05（非エンジニアが WebUI 上でワークフローを迷わず運用できる）
+
+## [0.4.0] - 2026-02-17
+
+### Added
 - ✨ **WebUI Handler Type Forms**: handler タイプ別にフォームセクションを自動切り替え
   - `llm` / `structured_llm` / `streaming_llm` 選択時のみ Prompt Settings / Model Settings を表示
   - `structured_llm` 選択時に **Schema Settings** セクションを追加表示（YAML テキストでスキーマを記述・保存）

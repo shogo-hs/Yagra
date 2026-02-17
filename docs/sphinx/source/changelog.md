@@ -8,13 +8,20 @@ For the canonical changelog (Japanese), see [CHANGELOG.md](https://github.com/sh
 
 ## [Unreleased]
 
-## [0.4.0] - 2026-02-17
+## [0.4.1] - 2026-02-17
 
 ### Added
 - **WebUI Handler Type Selector**: Handler input in Node Properties panel changed to a type selector (`llm` / `structured_llm` / `streaming_llm` / `custom`)
   - Predefined types auto-fill the handler name — no manual typing required
   - `custom` type shows free-text input for user-defined handlers
   - Fully backward compatible (existing YAML load/save behavior unchanged)
+
+### Related
+- **Goal**: G-05 (Non-engineers can operate workflows in WebUI without confusion)
+
+## [0.4.0] - 2026-02-17
+
+### Added
 - **WebUI Handler Type Forms**: Node properties panel shows handler type-specific form sections
   - Prompt Settings / Model Settings only shown for `llm`, `structured_llm`, and `streaming_llm` handlers
   - **Schema Settings** section added for `structured_llm` (edit `schema_yaml` as YAML text)
