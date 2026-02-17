@@ -94,13 +94,14 @@ def _resolve_ui_state_for_target(workflow_path: Path, ui_state_override: Path | 
     return workflow_path.with_suffix(".workflow-ui.json")
 
 
-_EXCLUDED_DIRS = {".venv", "venv", "node_modules", "__pycache__", ".git", ".tox", "dist", "build"}
+_EXCLUDED_DIRS = {"venv", "node_modules", "__pycache__", ".tox", "dist", "build"}
 
 
 def _list_workflow_candidates(workspace_root: Path) -> list[str]:
     """Returns a list of workflow candidates under the workspace.
 
-    Excludes common non-project directories such as .venv, node_modules, etc.
+    Excludes dot-directories (e.g. .git, .venv, .github, .yagra),
+    common non-project directories, and source/test directories.
     """
     candidates: list[str] = []
     for path in sorted(workspace_root.rglob("*")):
@@ -108,9 +109,19 @@ def _list_workflow_candidates(workspace_root: Path) -> list[str]:
             continue
         if path.suffix.lower() not in _WORKFLOW_EXTENSIONS:
             continue
-        # Skip files inside excluded directories
         relative = path.relative_to(workspace_root)
-        if any(part in _EXCLUDED_DIRS for part in relative.parts[:-1]):
+        parts = relative.parts[:-1]
+        # Skip dot-directories (e.g. .git, .venv, .github, .yagra, .serena)
+        if any(part.startswith(".") for part in parts):
+            continue
+        # Skip common non-project directories
+        if any(part in _EXCLUDED_DIRS for part in parts):
+            continue
+        # Skip source and test directories
+        if parts and parts[0] in {"src", "tests"}:
+            continue
+        # Skip root-level dot-files (e.g. .pre-commit-config.yaml)
+        if relative.name.startswith("."):
             continue
         candidates.append(relative.as_posix())
     return candidates
