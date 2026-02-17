@@ -4,6 +4,14 @@
 
 ## [Unreleased]
 
+## [0.5.4] - 2026-02-17
+
+### Fixed
+- 🐛 **Conditional edge の source ノードで `output_key` を `__next__` に自動設定**: `output_key` 未指定の場合、LLM の出力が `state["output"]` に入り `state["__next__"]` が設定されず条件分岐が失敗していた問題を修正
+  - `_normalize_runtime_params()` に `is_cond_source` フラグを追加
+  - conditional edge の source ノードで `output_key` が未指定の場合、実行時に `output_key: __next__` を自動注入するよう変更
+  - YAML への `output_key: __next__` 明示指定は不要になる（明示指定した場合はそちらが優先される）
+
 ## [0.5.3] - 2026-02-17
 
 ### Removed

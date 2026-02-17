@@ -8,6 +8,14 @@ For the canonical changelog (Japanese), see [CHANGELOG.md](https://github.com/sh
 
 ## [Unreleased]
 
+## [0.5.4] - 2026-02-17
+
+### Fixed
+- **Conditional edge source nodes now automatically set `output_key` to `__next__`** — Without this, LLM output was stored under `state["output"]` instead of `state["__next__"]`, causing the conditional router to fail with a `GraphBuildError`
+  - `_normalize_runtime_params()` now accepts `is_cond_source` flag
+  - When `output_key` is not specified on a conditional edge source node, `output_key: __next__` is injected at runtime automatically
+  - Explicit `output_key: __next__` in YAML is no longer required (explicit values still take precedence)
+
 ## [0.5.3] - 2026-02-17
 
 ### Removed

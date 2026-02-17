@@ -40,14 +40,23 @@ def build_state_graph(
     """
     state_graph = StateGraph(state_schema)
 
-    for node in spec.nodes:
-        handler = registry.resolve(node.handler)
-        state_graph.add_node(node.id, _build_node_runner(handler=handler, node_params=node.params))
-
     state_graph.set_entry_point(spec.start_at)
 
     conditional_by_source, unconditional_by_source = _split_edges(spec)
     _validate_edge_source_conflicts(conditional_by_source, unconditional_by_source)
+
+    cond_source_ids = frozenset(conditional_by_source)
+
+    for node in spec.nodes:
+        handler = registry.resolve(node.handler)
+        state_graph.add_node(
+            node.id,
+            _build_node_runner(
+                handler=handler,
+                node_params=node.params,
+                is_cond_source=node.id in cond_source_ids,
+            ),
+        )
 
     for source, targets in unconditional_by_source.items():
         for target in targets:
@@ -119,9 +128,20 @@ def _validate_edge_source_conflicts(
         raise GraphBuildError(f"mixed conditional and normal edges are not allowed: {labels}")
 
 
-def _build_node_runner(handler: NodeHandler, node_params: Mapping[str, Any]) -> NodeHandler:
-    """Returns a wrapper callable for node execution."""
-    frozen_params = _normalize_runtime_params(node_params)
+def _build_node_runner(
+    handler: NodeHandler,
+    node_params: Mapping[str, Any],
+    is_cond_source: bool = False,
+) -> NodeHandler:
+    """Returns a wrapper callable for node execution.
+
+    Args:
+        handler: ノードハンドラー callable。
+        node_params: ノードの params 辞書。
+        is_cond_source: このノードが conditional edge の source かどうか。
+            True の場合、``output_key`` が未指定なら ``"__next__"`` を自動設定する。
+    """
+    frozen_params = _normalize_runtime_params(node_params, is_cond_source=is_cond_source)
 
     def _run(state: Mapping[str, Any]) -> dict[str, Any]:
         result = _invoke_handler(handler=handler, state=state, node_params=frozen_params)
@@ -134,10 +154,24 @@ def _build_node_runner(handler: NodeHandler, node_params: Mapping[str, Any]) -> 
     return _run
 
 
-def _normalize_runtime_params(node_params: Mapping[str, Any]) -> dict[str, Any]:
-    """Normalizes node params passed to the handler at execution time."""
+def _normalize_runtime_params(
+    node_params: Mapping[str, Any],
+    is_cond_source: bool = False,
+) -> dict[str, Any]:
+    """Normalizes node params passed to the handler at execution time.
+
+    conditional edge の source ノードで ``output_key`` が未指定の場合、
+    ``"__next__"`` を自動設定する。LLM ハンドラーはこの値を state に書き込み、
+    ルーターが ``state["__next__"]`` を読み取って分岐先を決定する。
+
+    Args:
+        node_params: ノードの params 辞書。
+        is_cond_source: conditional edge の source ノードの場合 True。
+    """
     normalized = deepcopy(dict(node_params))
     normalized.pop("prompt_ref", None)
+    if is_cond_source and "output_key" not in normalized:
+        normalized["output_key"] = "__next__"
     return normalized
 
 
