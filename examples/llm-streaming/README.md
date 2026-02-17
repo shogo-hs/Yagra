@@ -80,7 +80,6 @@ nodes:
         kwargs:
           temperature: 0.7
           # stream: false  # 明示的に無効化する場合のみ指定（デフォルトは true）
-      input_keys: ["query"]
       output_key: "response"
 ```
 

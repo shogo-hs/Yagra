@@ -46,7 +46,6 @@ nodes:
       model:
         provider: "openai"
         name: "gpt-4o"
-      input_keys: ["text"]
       output_key: "person"
 
 edges: []
@@ -79,8 +78,8 @@ edges: []
             assert result["person"].name == "Alice"
             assert result["person"].age == 30
 
-    def test_structured_handler_with_multiple_input_keys(self) -> None:
-        """複数の input_keys が正しく処理されること."""
+    def test_structured_handler_with_multiple_prompt_variables(self) -> None:
+        """複数のプロンプト変数が自動検出されて正しく処理されること."""
         prompts_yaml = """\
 extract_entities:
   system: "Extract entities as JSON"
@@ -101,7 +100,6 @@ nodes:
       model:
         provider: "openai"
         name: "gpt-4o"
-      input_keys: ["text", "context"]
       output_key: "entities"
 
 edges: []

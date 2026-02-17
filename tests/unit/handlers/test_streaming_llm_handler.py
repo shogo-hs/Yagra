@@ -27,7 +27,6 @@ def _make_mock_litellm(chunks: list[MagicMock]) -> MagicMock:
 _BASE_PARAMS = {
     "prompt": {"system": "You are a helpful assistant.", "user": "Hello"},
     "model": {"provider": "openai", "name": "gpt-4o"},
-    "input_keys": [],
     "output_key": "response",
 }
 
@@ -87,7 +86,6 @@ class TestStreamingLLMHandler:
         params = {
             "prompt": {"system": "sys", "user": "Hello {name}"},
             "model": {"provider": "openai", "name": "gpt-4o"},
-            "input_keys": ["name"],
             "output_key": "response",
         }
         chunks = [_make_chunk("Hi")]
@@ -108,7 +106,6 @@ class TestStreamingLLMHandler:
                 "name": "gpt-4o",
                 "kwargs": {"temperature": 0.5},
             },
-            "input_keys": [],
             "output_key": "response",
         }
         chunks = [_make_chunk("ok")]
@@ -140,7 +137,6 @@ class TestStreamingLLMHandler:
                 "name": "gpt-4o",
                 "kwargs": {"stream": False},
             },
-            "input_keys": [],
             "output_key": "response",
         }
         chunks = [_make_chunk("ok")]

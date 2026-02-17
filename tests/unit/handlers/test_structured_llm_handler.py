@@ -91,7 +91,6 @@ class TestStructuredLLMHandler:
                         "user": "{text}",
                     },
                     "model": {"provider": "openai", "name": "gpt-4o"},
-                    "input_keys": ["text"],
                     "output_key": "person",
                 },
             )
@@ -139,7 +138,6 @@ class TestStructuredLLMHandler:
                 params={
                     "prompt": {"system": "Extract", "user": "Input: {user_input}"},
                     "model": {"provider": "openai", "name": "gpt-4o"},
-                    "input_keys": ["user_input"],
                     "output_key": "person",
                 },
             )
@@ -373,7 +371,6 @@ class TestStructuredLLMHandler:
                 params={
                     "prompt": {"system": "Extract entities", "user": "{text}"},
                     "model": {"provider": "openai", "name": "gpt-4o"},
-                    "input_keys": ["text"],
                     "output_key": "entities",
                 },
             )

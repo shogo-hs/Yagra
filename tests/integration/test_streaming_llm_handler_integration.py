@@ -40,7 +40,6 @@ nodes:
       model:
         provider: "openai"
         name: "gpt-4o"
-      input_keys: ["query"]
       output_key: "response"
 
 edges: []
@@ -91,7 +90,6 @@ nodes:
       model:
         provider: "anthropic"
         name: "claude-3-haiku-20240307"
-      input_keys: ["text"]
       output_key: "summary"
 
 edges: []

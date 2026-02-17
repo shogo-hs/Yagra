@@ -80,14 +80,13 @@ nodes:
         name: "gpt-4"
         kwargs:
           temperature: 0.7
-      input_keys: ["user_name"]
       output_key: "response"
 ```
 
 ### prompts.yaml
 
 プロンプト定義。`workflow.yaml` から `prompt_ref` で参照されます。
-`{user_name}` のような変数は、`input_keys` で指定されたステート値で置換されます。
+`{user_name}` のような変数は、プロンプトテンプレートから自動検出されてステート値で置換されます。
 
 ```yaml
 greeting:

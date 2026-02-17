@@ -75,7 +75,6 @@ class TestLLMHandler:
             params = {
                 "prompt": {"system": "You are a helpful assistant", "user": "{query}"},
                 "model": {"provider": "openai", "name": "gpt-4"},
-                "input_keys": ["query"],
                 "output_key": "response",
             }
 
@@ -101,7 +100,6 @@ class TestLLMHandler:
                     "user": "My name is {name} and I am {age} years old",
                 },
                 "model": {"provider": "openai", "name": "gpt-4"},
-                "input_keys": ["name", "age"],
                 "output_key": "result",
             }
 
@@ -183,7 +181,6 @@ class TestLLMHandler:
                 params = {
                     "prompt": {"system": "Test", "user": "{query}"},
                     "model": {"provider": "openai", "name": "gpt-4"},
-                    "input_keys": ["query"],
                     "output_key": "output",
                 }
 
@@ -205,7 +202,6 @@ class TestLLMHandler:
                 params = {
                     "prompt": {"system": "Test", "user": "{query}"},
                     "model": {"provider": "openai", "name": "gpt-4"},
-                    "input_keys": ["query"],
                     "output_key": "output",
                 }
 
@@ -230,7 +226,6 @@ class TestLLMHandler:
                     "name": "gpt-4",
                     "kwargs": {"temperature": 0.5, "max_tokens": 100},
                 },
-                "input_keys": ["query"],
             }
 
             handler(state, params)
@@ -253,7 +248,6 @@ class TestLLMHandler:
             params = {
                 "prompt": {"system": "Test", "user": "{query}"},
                 "model": {"provider": "openai", "name": "gpt-4"},
-                "input_keys": ["query"],
                 # output_key省略
             }
 
@@ -277,7 +271,6 @@ class TestLLMHandler:
             params = {
                 "prompt": {"system": "Test", "user": "{query}"},
                 "model": {"provider": "openai", "name": "gpt-4"},
-                "input_keys": ["query"],
             }
 
             with pytest.raises(LLMHandlerCallError, match="LLM returned empty response"):
@@ -298,8 +291,133 @@ class TestLLMHandler:
             params = {
                 "prompt": {"system": "Test", "user": "{query}"},
                 "model": {"provider": "openai", "name": "gpt-4"},
-                "input_keys": ["query"],
             }
 
             with pytest.raises(LLMHandlerCallError, match="LLM returned None content"):
                 handler(state, params)
+
+
+class TestLLMHandlerAutoDetect:
+    """input_keys 自動検出のテスト."""
+
+    def test_auto_detect_single_variable(self, mock_litellm_import: None) -> None:
+        """プロンプトに {query} があれば state から自動取得すること."""
+        handler = create_llm_handler(retry=1, timeout=10)
+
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock(message=MagicMock(content="Auto detect response"))]
+
+        with patch("yagra.handlers.llm_handler.litellm") as mock_litellm:
+            mock_litellm.completion.return_value = mock_response
+
+            state = {"query": "Hello"}
+            params = {
+                "prompt": {"system": "Assistant", "user": "{query}"},
+                "model": {"provider": "openai", "name": "gpt-4"},
+                "output_key": "response",
+                # input_keys 未指定 → 自動検出
+            }
+
+            result = handler(state, params)
+
+            call_args = mock_litellm.completion.call_args
+            messages = call_args.kwargs["messages"]
+            assert messages[1]["content"] == "Hello"
+            assert result == {"response": "Auto detect response"}
+
+    def test_auto_detect_multiple_variables(self, mock_litellm_import: None) -> None:
+        """プロンプトに {name} と {age} があれば両方 state から自動取得すること."""
+        handler = create_llm_handler(retry=1, timeout=10)
+
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock(message=MagicMock(content="Multi var response"))]
+
+        with patch("yagra.handlers.llm_handler.litellm") as mock_litellm:
+            mock_litellm.completion.return_value = mock_response
+
+            state = {"name": "Alice", "age": "30"}
+            params = {
+                "prompt": {"system": "Assistant", "user": "Name: {name}, Age: {age}"},
+                "model": {"provider": "openai", "name": "gpt-4"},
+                # input_keys 未指定 → 自動検出
+            }
+
+            handler(state, params)
+
+            call_args = mock_litellm.completion.call_args
+            messages = call_args.kwargs["messages"]
+            assert messages[1]["content"] == "Name: Alice, Age: 30"
+
+    def test_explicit_input_keys_takes_priority(self, mock_litellm_import: None) -> None:
+        """input_keys が明示指定されていればそちらを優先すること（後方互換）."""
+        handler = create_llm_handler(retry=1, timeout=10)
+
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock(message=MagicMock(content="Explicit keys response"))]
+
+        with patch("yagra.handlers.llm_handler.litellm") as mock_litellm:
+            mock_litellm.completion.return_value = mock_response
+
+            state = {"query": "Hello"}
+            params = {
+                "prompt": {"system": "Assistant", "user": "{query}"},
+                "model": {"provider": "openai", "name": "gpt-4"},
+                "input_keys": ["query"],  # 明示指定
+            }
+
+            result = handler(state, params)
+
+            call_args = mock_litellm.completion.call_args
+            messages = call_args.kwargs["messages"]
+            assert messages[1]["content"] == "Hello"
+            assert result == {"output": "Explicit keys response"}
+
+    def test_explicit_empty_input_keys_disables_interpolation(
+        self, mock_litellm_import: None
+    ) -> None:
+        """input_keys: [] を明示指定した場合は変数埋め込みなし（後方互換）."""
+        handler = create_llm_handler(retry=1, timeout=10)
+
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock(message=MagicMock(content="No interpolation"))]
+
+        with patch("yagra.handlers.llm_handler.litellm") as mock_litellm:
+            mock_litellm.completion.return_value = mock_response
+
+            state = {"query": "Hello"}
+            params = {
+                "prompt": {"system": "Assistant", "user": "No variables here"},
+                "model": {"provider": "openai", "name": "gpt-4"},
+                "input_keys": [],  # 空リスト明示
+            }
+
+            result = handler(state, params)
+
+            call_args = mock_litellm.completion.call_args
+            messages = call_args.kwargs["messages"]
+            assert messages[1]["content"] == "No variables here"
+            assert result == {"output": "No interpolation"}
+
+    def test_auto_detect_missing_key_uses_empty_string(self, mock_litellm_import: None) -> None:
+        """自動検出したキーが state に存在しない場合は空文字を使うこと."""
+        handler = create_llm_handler(retry=1, timeout=10)
+
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock(message=MagicMock(content="Empty key response"))]
+
+        with patch("yagra.handlers.llm_handler.litellm") as mock_litellm:
+            mock_litellm.completion.return_value = mock_response
+
+            state: dict[str, str] = {}  # query が存在しない
+            params = {
+                "prompt": {"system": "Assistant", "user": "{query}"},
+                "model": {"provider": "openai", "name": "gpt-4"},
+                # input_keys 未指定 → 自動検出
+            }
+
+            result = handler(state, params)
+
+            call_args = mock_litellm.completion.call_args
+            messages = call_args.kwargs["messages"]
+            assert messages[1]["content"] == ""  # 空文字に置換
+            assert result == {"output": "Empty key response"}

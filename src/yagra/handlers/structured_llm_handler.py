@@ -5,6 +5,7 @@ by parsing LLM responses with a Pydantic model.
 """
 
 import json
+import re
 import time
 from typing import TYPE_CHECKING, Any
 
@@ -121,15 +122,23 @@ def create_structured_llm_handler(
             msg = "'model' must have 'provider' and 'name' keys"
             raise LLMHandlerConfigError(msg)
 
-        input_keys = params.get("input_keys", [])
         output_key = params.get("output_key", "output")
 
         # 2. プロンプトに変数を埋め込み
         system_prompt = prompt.get("system", "")
         user_prompt_template = prompt.get("user", "")
 
+        # input_keys が明示指定されていればそちらを優先（後方互換）
+        # 未指定（None）の場合はプロンプトテンプレートから {変数名} を自動抽出
+        explicit_keys = params.get("input_keys")
+        keys = (
+            explicit_keys
+            if explicit_keys is not None
+            else re.findall(r"\{(\w+)\}", user_prompt_template)
+        )
+
         # stateから入力値を取得
-        input_values = {key: state.get(key, "") for key in input_keys}
+        input_values = {key: state.get(key, "") for key in keys}
 
         # {variable}形式の変数を置換
         try:

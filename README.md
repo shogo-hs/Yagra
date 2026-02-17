@@ -67,7 +67,6 @@ nodes:
         name: "gpt-4"
         kwargs:
           temperature: 0.7
-      input_keys: ["query"]
       output_key: "response"
 ```
 

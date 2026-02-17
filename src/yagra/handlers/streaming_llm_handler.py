@@ -4,6 +4,7 @@ This module provides an LLM handler that returns a streaming response
 as a Generator, allowing callers to process chunks incrementally.
 """
 
+import re
 import time
 from collections.abc import Generator
 from typing import TYPE_CHECKING, Any
@@ -122,14 +123,22 @@ def create_streaming_llm_handler(
             msg = "'model' must have 'provider' and 'name' keys"
             raise LLMHandlerConfigError(msg)
 
-        input_keys = params.get("input_keys", [])
         output_key = params.get("output_key", "output")
 
         # 2. プロンプトに変数を埋め込み
         system_prompt = prompt.get("system", "")
         user_prompt_template = prompt.get("user", "")
 
-        input_values = {key: state.get(key, "") for key in input_keys}
+        # input_keys が明示指定されていればそちらを優先（後方互換）
+        # 未指定（None）の場合はプロンプトテンプレートから {変数名} を自動抽出
+        explicit_keys = params.get("input_keys")
+        keys = (
+            explicit_keys
+            if explicit_keys is not None
+            else re.findall(r"\{(\w+)\}", user_prompt_template)
+        )
+
+        input_values = {key: state.get(key, "") for key in keys}
 
         try:
             user_prompt = user_prompt_template.format(**input_values)

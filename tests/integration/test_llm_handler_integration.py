@@ -35,7 +35,6 @@ nodes:
       model:
         provider: "openai"
         name: "gpt-4"
-      input_keys: ["user_name"]
       output_key: "response"
 
 edges: []
@@ -129,8 +128,8 @@ edges: []
                 assert call_args.kwargs["temperature"] == 0.5
                 assert call_args.kwargs["max_tokens"] == 100
 
-    def test_llm_handler_with_multiple_input_keys(self) -> None:
-        """複数の input_keys が正しく処理されること."""
+    def test_llm_handler_with_multiple_prompt_variables(self) -> None:
+        """複数のプロンプト変数が自動検出されて正しく処理されること."""
         # Prompts YAML
         prompts_yaml = """
 multi_input:
@@ -153,7 +152,6 @@ nodes:
       model:
         provider: "openai"
         name: "gpt-4"
-      input_keys: ["name", "age", "city"]
       output_key: "response"
 
 edges: []
