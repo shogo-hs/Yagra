@@ -1285,6 +1285,18 @@ def _studio_html() -> str:
                 <div class="hint">チェック OFF（デフォルト）でストリーミングが有効。チェック ON で model.kwargs.stream: false を YAML に明記します。</div>
               </template>
 
+              <div v-if="isLlmHandler" class="subsection-label">Output Settings</div>
+              <div v-if="isLlmHandler" class="field">
+                <label for="nodeOutputKeyInput">output_key</label>
+                <input
+                  id="nodeOutputKeyInput"
+                  v-model.trim="nodeEditor.outputKey"
+                  type="text"
+                  placeholder="output (default)"
+                />
+              </div>
+              <div v-if="isLlmHandler" class="hint">省略時は "output" キーに結果を格納します。</div>
+
               <button type="button" class="secondary" :disabled="isBusy" @click="applyNodeEdit">Apply Node Edit</button>
               <div class="hint">Node id must be unique and non-empty. If no prompt yaml is selected, a file is auto-created under prompts/ on Apply. Use prompt key for path#key references.</div>
             </template>
@@ -2128,6 +2140,7 @@ def _studio_html() -> str:
           maxTokens: "",
           schemaYaml: "",
           streamDisabled: false,
+          outputKey: "",
         });
         const edgeEditor = reactive({
           condition: "",
@@ -2197,6 +2210,7 @@ def _studio_html() -> str:
               nodeEditor.maxTokens = "";
               nodeEditor.schemaYaml = "";
               nodeEditor.streamDisabled = false;
+              nodeEditor.outputKey = "";
               return;
             }
             const data = isRecord(node.data) ? node.data : {};
@@ -2240,6 +2254,7 @@ def _studio_html() -> str:
               : "";
             const params = isRecord(data.params) ? data.params : {};
             nodeEditor.schemaYaml = typeof params.schema_yaml === "string" ? params.schema_yaml : "";
+            nodeEditor.outputKey = typeof params.output_key === "string" ? params.output_key : "";
             const streamKwargs = isRecord(model?.kwargs) ? model.kwargs : {};
             nodeEditor.streamDisabled = streamKwargs.stream === false;
             const refParts = splitPromptReference(nodeEditor.promptRef);
@@ -2599,6 +2614,7 @@ def _studio_html() -> str:
           nodeEditor.temperature = "";
           nodeEditor.topP = "";
           nodeEditor.maxTokens = "";
+          nodeEditor.outputKey = "";
           selectedNodeId.value = null;
           selectedEdgeId.value = null;
           validationText.value = "-";
@@ -3019,6 +3035,12 @@ def _studio_html() -> str:
               selectedParams.schema_yaml = nodeEditor.schemaYaml.trim();
             } else {
               delete selectedParams.schema_yaml;
+            }
+            const outputKey = normalizeText(nodeEditor.outputKey);
+            if (isLlmHandler.value && outputKey) {
+              selectedParams.output_key = outputKey;
+            } else {
+              delete selectedParams.output_key;
             }
             const finalParams = Object.keys(selectedParams).length > 0 ? selectedParams : null;
             const renamed = currentNodeId !== nextNodeId;
