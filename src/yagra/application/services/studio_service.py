@@ -101,7 +101,8 @@ def _list_workflow_candidates(workspace_root: Path) -> list[str]:
     """Returns a list of workflow candidates under the workspace.
 
     Excludes dot-directories (e.g. .git, .venv, .github, .yagra),
-    common non-project directories, and source/test directories.
+    common non-project tool directories, and root-level dot-files.
+    User-defined directories such as ``src/`` or ``tests/`` are included.
     """
     candidates: list[str] = []
     for path in sorted(workspace_root.rglob("*")):
@@ -114,11 +115,8 @@ def _list_workflow_candidates(workspace_root: Path) -> list[str]:
         # Skip dot-directories (e.g. .git, .venv, .github, .yagra, .serena)
         if any(part.startswith(".") for part in parts):
             continue
-        # Skip common non-project directories
+        # Skip common non-project tool directories
         if any(part in _EXCLUDED_DIRS for part in parts):
-            continue
-        # Skip source and test directories
-        if parts and parts[0] in {"src", "tests"}:
             continue
         # Skip root-level dot-files (e.g. .pre-commit-config.yaml)
         if relative.name.startswith("."):
