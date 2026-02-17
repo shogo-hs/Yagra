@@ -8,6 +8,19 @@ For the canonical changelog (Japanese), see [CHANGELOG.md](https://github.com/sh
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-02-17
+
+### Changed
+- **Auto-detect prompt variables**: `input_keys` parameter is no longer required
+  - Template variables (`{variable_name}`) are automatically extracted from the prompt template using `re.findall` and fetched from state
+  - All built-in handlers (`llm`, `structured_llm`, `streaming_llm`) support auto-detection
+  - Fully backward compatible: existing YAML with explicit `input_keys` continues to work (`None` vs `[]` distinction preserved)
+- **Testing**: Added 5 unit tests for auto-detection behavior
+
+### Related
+- **Goal**: G-08 (Declarative control of LLM node data flow via YAML)
+- **Milestone**: M-19
+
 ## [0.4.1] - 2026-02-17
 
 ### Added

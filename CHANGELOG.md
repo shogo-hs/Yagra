@@ -4,6 +4,19 @@
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-02-17
+
+### Changed
+- 🚀 **input_keys 廃止・プロンプト変数自動検出**: `input_keys` パラメータの明示指定が不要になった
+  - プロンプトテンプレート内の `{変数名}` を `re.findall` で自動抽出し、state から値を取得
+  - 全組み込み handler（`llm` / `structured_llm` / `streaming_llm`）が対応
+  - 後方互換: `input_keys` を明示指定している既存 YAML はそのまま動作（`None` と `[]` を区別）
+- 🧪 **テスト**: 自動検出に関する単体テスト 5 件を追加
+
+### Related
+- **Goal**: G-08（YAML で LLM ノードのデータフロー（入出力キー）を宣言的に制御できる）
+- **Milestone**: M-19
+
 ## [0.4.1] - 2026-02-17
 
 ### Added
