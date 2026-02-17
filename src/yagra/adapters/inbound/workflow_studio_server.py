@@ -1038,11 +1038,11 @@ def _studio_html() -> str:
           <div class="btn-group">
             <label class="var-toggle-label">
               <input type="checkbox" v-model="showInputVars" />
-              <span>入力変数</span>
+              <span>IN</span>
             </label>
             <label class="var-toggle-label">
               <input type="checkbox" v-model="showOutputVars" />
-              <span>出力変数</span>
+              <span>OUT</span>
             </label>
           </div>
         </template>
