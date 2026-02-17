@@ -8,6 +8,17 @@ For the canonical changelog (Japanese), see [CHANGELOG.md](https://github.com/sh
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-02-17
+
+### Fixed
+- **IN/OUT badge detection changed to parameter-based logic** — Replaced handler-name-based detection (`llm`/`structured_llm`/`streaming_llm`) with parameter-based detection for more accurate and flexible badge display
+  - IN badge shown when `prompt` (dict) or `prompt_ref` (str) is present in node params
+  - OUT badge shown only when `output_key` is explicitly specified (default `"output"` is no longer shown)
+  - Conditional edge source nodes now show OUT `__next__` badge
+  - Custom handler nodes with `prompt_ref` + `model` now correctly show IN badges
+  - Nodes with both `prompt_ref` and conditional edge source (e.g. `evaluator`) now show IN + OUT `__next__` simultaneously
+  - Node `outputVars` are now recalculated in real-time when edge conditions change
+
 ## [0.5.1] - 2026-02-17
 
 ### Fixed

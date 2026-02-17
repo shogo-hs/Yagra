@@ -1494,11 +1494,11 @@ def _studio_html() -> str:
             <span v-for="v in data.inputVars" :key="v" class="var-pill var-pill-in" :title="v">{{ v }}</span>
           </div>
           <div
-            v-if="showOutputVars && data.outputVar"
+            v-if="showOutputVars && data.outputVars && data.outputVars.length > 0"
             class="node-vars-section node-vars-out"
           >
             <span class="node-vars-label">OUT</span>
-            <span class="var-pill var-pill-out" :title="data.outputVar">{{ data.outputVar }}</span>
+            <span v-for="v in data.outputVars" :key="v" class="var-pill var-pill-out" :title="v">{{ v }}</span>
           </div>
           <Handle id="right-out" type="source" :position="Position.Right" class="node-handle" />
           <Handle id="bottom-out" type="source" :position="Position.Bottom" class="node-handle node-handle-bottom" />
@@ -2825,9 +2825,48 @@ def _studio_html() -> str:
           if (selectedEdgeId.value && !edges.value.some(edge => edge.id === selectedEdgeId.value)) {
             selectedEdgeId.value = null;
           }
+          // conditional edge の変更に伴い、ノードの outputVars を再計算
+          refreshNodeOutputVars();
         }
 
-        const LLM_HANDLER_TYPES = ["llm", "structured_llm", "streaming_llm"];
+        /** conditional source set を再計算し、各ノードの outputVars を更新する */
+        function refreshNodeOutputVars() {
+          const condSources = new Set(
+            edges.value
+              .filter(e => isRecord(e.data) && normalizeText(e.data.condition))
+              .map(e => e.source),
+          );
+          nodes.value = nodes.value.map(node => {
+            const data = isRecord(node.data) ? node.data : {};
+            const rawParams = isRecord(data.rawNode?.params) ? data.rawNode.params : {};
+            const editedParams = isRecord(data.params) ? data.params : {};
+            const mergedParams = { ...rawParams, ...editedParams };
+            const outs = [];
+            if (hasExplicitOutputKey(mergedParams)) outs.push(extractOutputVar(mergedParams));
+            if (condSources.has(node.id)) outs.push("__next__");
+            return {
+              ...node,
+              data: {
+                ...data,
+                outputVars: outs.length > 0 ? outs : null,
+              },
+            };
+          });
+        }
+
+        /** params に prompt(dict) または prompt_ref(str) が存在するか判定する */
+        function hasPrompt(params) {
+          if (!params || typeof params !== "object") return false;
+          const p = params.prompt;
+          if (p && typeof p === "object") return true;
+          if (typeof params.prompt_ref === "string") return true;
+          return false;
+        }
+
+        /** params に output_key が明示指定されているか判定する */
+        function hasExplicitOutputKey(params) {
+          return params && typeof params === "object" && "output_key" in params;
+        }
 
         /** rawNode.params から入力変数名リストを返す（prompt_variable_validator のロジックをミラー） */
         function extractInputVars(params, promptUserFallback) {
@@ -2858,6 +2897,12 @@ def _studio_html() -> str:
 
         function buildNodesFromPayload(workflow, uiState, formNodes) {
           const workflowNodes = Array.isArray(workflow?.nodes) ? workflow.nodes : [];
+          const workflowEdges = Array.isArray(workflow?.edges) ? workflow.edges : [];
+          const conditionalSources = new Set(
+            workflowEdges
+              .filter(e => isRecord(e) && typeof e.condition === "string")
+              .map(e => e.source),
+          );
           const startIds = new Set(normalizeNodeIdList(workflow?.start_at));
           const endIds = new Set(normalizeNodeIdList(workflow?.end_at));
           const nodeFormById = new Map(
@@ -2893,7 +2938,10 @@ def _studio_html() -> str:
                 loadedParams.schema_yaml = params.schema_yaml;
               }
               const handler = typeof node.handler === "string" ? node.handler : "";
-              const isLlmNode = LLM_HANDLER_TYPES.includes(handler);
+              const nodeHasPrompt = hasPrompt(params) || (formItem && typeof formItem.prompt_user === "string" && formItem.prompt_user);
+              const outs = [];
+              if (hasExplicitOutputKey(params)) outs.push(extractOutputVar(params));
+              if (conditionalSources.has(node.id)) outs.push("__next__");
               return {
                 id: node.id,
                 type: "workflow",
@@ -2911,8 +2959,8 @@ def _studio_html() -> str:
                   params: Object.keys(loadedParams).length > 0 ? loadedParams : null,
                   isStart: startIds.has(node.id),
                   isEnd: endIds.has(node.id),
-                  inputVars: isLlmNode ? extractInputVars(params, formItem?.prompt_user) : null,
-                  outputVar: isLlmNode ? extractOutputVar(params) : null,
+                  inputVars: nodeHasPrompt ? extractInputVars(params, formItem?.prompt_user) : null,
+                  outputVars: outs.length > 0 ? outs : null,
                   rawNode: deepClone(node),
                 },
               };
@@ -3177,7 +3225,7 @@ def _studio_html() -> str:
               delete selectedParams.schema_yaml;
             }
             const outputKey = normalizeText(nodeEditor.outputKey);
-            if (isLlmHandler.value && outputKey) {
+            if (outputKey) {
               selectedParams.output_key = outputKey;
             } else {
               delete selectedParams.output_key;
@@ -3190,13 +3238,26 @@ def _studio_html() -> str:
               }
               const current = isRecord(node.data) ? node.data : {};
               const nextHandler = normalizeText(nodeEditor.handler);
-              const isLlmNode = LLM_HANDLER_TYPES.includes(nextHandler);
               // バッジ再計算: output_key は finalParams から、入力変数は promptUser から
               const nextRawParams = {
                 ...(isRecord(isRecord(node.data) ? node.data.rawNode?.params : {}) ? node.data.rawNode.params : {}),
                 ...(finalParams || {}),
                 prompt: { system: normalizeText(nodeEditor.promptSystem), user: normalizeText(nodeEditor.promptUser) },
               };
+              // prompt_ref がある場合もパラメータに含める
+              if (promptRef) {
+                nextRawParams.prompt_ref = promptRef;
+              }
+              const nodeHasPrompt = hasPrompt(nextRawParams) || (normalizeText(nodeEditor.promptUser));
+              // conditional edge source の判定
+              const condSources = new Set(
+                edges.value
+                  .filter(e => isRecord(e.data) && typeof e.data?.rawEdge?.condition === "string")
+                  .map(e => e.source),
+              );
+              const nextOuts = [];
+              if (hasExplicitOutputKey(nextRawParams)) nextOuts.push(extractOutputVar(nextRawParams));
+              if (condSources.has(nextNodeId)) nextOuts.push("__next__");
               return {
                 ...node,
                 id: nextNodeId,
@@ -3208,8 +3269,8 @@ def _studio_html() -> str:
                   prompt: null,
                   model: finalModel,
                   params: finalParams,
-                  inputVars: isLlmNode ? extractInputVars(nextRawParams) : null,
-                  outputVar: isLlmNode ? extractOutputVar(nextRawParams) : null,
+                  inputVars: nodeHasPrompt ? extractInputVars(nextRawParams) : null,
+                  outputVars: nextOuts.length > 0 ? nextOuts : null,
                 },
               };
             });

@@ -4,6 +4,17 @@
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-02-17
+
+### Fixed
+- 🐛 **IN/OUT バッジ判定をパラメータベースに変更**: handler 名（`llm`/`structured_llm`/`streaming_llm`）による判定を廃止し、パラメータの有無で判定するよう変更
+  - `prompt`(dict) または `prompt_ref`(str) があれば IN バッジを表示
+  - `output_key` が明示指定されている場合のみ OUT バッジを表示（デフォルト `"output"` は非表示）
+  - Conditional edge の source ノードに OUT `__next__` バッジを追加
+  - カスタムハンドラーでも `prompt_ref` + `model` を持つノードでバッジが表示されるように修正
+  - `prompt_ref` + conditional source の両方を持つノード（例: `evaluator`）で IN + OUT `__next__` が同時表示されるように修正
+  - エッジの condition 変更時にノードの `outputVars` をリアルタイムで再計算するよう修正
+
 ## [0.5.1] - 2026-02-17
 
 ### Fixed

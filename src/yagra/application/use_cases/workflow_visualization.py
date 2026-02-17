@@ -15,12 +15,11 @@ from yagra.application.use_cases.workflow_validation_reporter import (
     format_validation_report,
     load_validated_graph_spec,
 )
+from yagra.domain.entities.graph_schema import GraphSpec, NodeSpec
 from yagra.domain.services.prompt_variable_validator import (
     _extract_required_vars,
     _get_output_key,
 )
-
-_LLM_HANDLERS = frozenset({"llm", "streaming_llm", "structured_llm"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -31,7 +30,7 @@ class WorkflowNodeView:
     handler: str
     params_json: str
     input_vars: tuple[str, ...]
-    output_var: str
+    output_vars: tuple[str, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -85,6 +84,67 @@ def render_workflow_visualization_html(
     return _render_html(view)
 
 
+def _has_prompt(params: dict[str, object]) -> bool:
+    """prompt(dict) または prompt_ref(str) がパラメータに存在するか判定する。
+
+    Args:
+        params: ノードのパラメータ辞書。
+
+    Returns:
+        プロンプト定義が存在する場合 True。
+    """
+    return isinstance(params.get("prompt"), dict) or isinstance(params.get("prompt_ref"), str)
+
+
+def _has_explicit_output_key(params: dict[str, object]) -> bool:
+    """output_key がパラメータに明示指定されているか判定する。
+
+    Args:
+        params: ノードのパラメータ辞書。
+
+    Returns:
+        output_key が明示されている場合 True。
+    """
+    return "output_key" in params
+
+
+def _build_node_view(
+    node: NodeSpec,
+    cond_sources: frozenset[str],
+    spec: GraphSpec,
+) -> WorkflowNodeView:
+    """ノードの IN/OUT バッジをパラメータベースで構築する。
+
+    IN: prompt(dict) または prompt_ref(str) があればテンプレート変数を抽出。
+    OUT: output_key が明示指定されていればその値を表示。
+         conditional edge の source ノードには ``__next__`` を追加。
+
+    Args:
+        node: GraphSpec 内の NodeSpec。
+        cond_sources: conditional edge の source ノード ID 集合。
+        spec: GraphSpec（将来の拡張用）。
+
+    Returns:
+        可視化用ノード表示モデル。
+    """
+    input_vars = tuple(_extract_required_vars(node.params)) if _has_prompt(node.params) else ()
+
+    out_parts: list[str] = []
+    if _has_explicit_output_key(node.params):
+        out_parts.append(_get_output_key(node.params))
+    if node.id in cond_sources:
+        out_parts.append("__next__")
+    output_vars = tuple(out_parts)
+
+    return WorkflowNodeView(
+        id=node.id,
+        handler=node.handler,
+        params_json=json.dumps(node.params, ensure_ascii=False, indent=2, sort_keys=True),
+        input_vars=input_vars,
+        output_vars=output_vars,
+    )
+
+
 def build_workflow_visualization_view(
     workflow_path: str | PathLike[str],
     bundle_root: str | PathLike[str] | None = None,
@@ -104,18 +164,9 @@ def build_workflow_visualization_view(
     spec = load_validated_graph_spec(workflow_path=workflow_abspath, bundle_root=bundle_root)
     resolved_title = title if title is not None else workflow_abspath.name
 
-    nodes = tuple(
-        WorkflowNodeView(
-            id=node.id,
-            handler=node.handler,
-            params_json=json.dumps(node.params, ensure_ascii=False, indent=2, sort_keys=True),
-            input_vars=tuple(_extract_required_vars(node.params))
-            if node.handler in _LLM_HANDLERS
-            else (),
-            output_var=_get_output_key(node.params) if node.handler in _LLM_HANDLERS else "",
-        )
-        for node in spec.nodes
-    )
+    cond_sources = frozenset(e.source for e in spec.edges if e.condition)
+
+    nodes = tuple(_build_node_view(node, cond_sources, spec) for node in spec.nodes)
     edges = tuple(
         WorkflowEdgeView(source=edge.source, target=edge.target, condition=edge.condition)
         for edge in spec.edges
@@ -285,10 +336,13 @@ def _render_node_card(node: WorkflowNodeView) -> str:
             f'<div class="node-vars-section"><span class="node-vars-label">IN</span>{pills}</div>'
         )
     out_html = ""
-    if node.output_var:
+    if node.output_vars:
+        out_pills = "".join(
+            f'<span class="var-pill var-pill-out">{html.escape(v)}</span>' for v in node.output_vars
+        )
         out_html = (
             f'<div class="node-vars-section"><span class="node-vars-label">OUT</span>'
-            f'<span class="var-pill var-pill-out">{html.escape(node.output_var)}</span></div>'
+            f"{out_pills}</div>"
         )
     return f"""
     <section class=\"node-card\">
