@@ -97,17 +97,21 @@ def collect_prompt_variable_issues(spec: GraphSpec) -> list[PromptVariableIssue]
             for pred_id in preds[1:]:
                 keys_before = keys_before & guaranteed_after[pred_id]
 
-        # LLM ハンドラーのみ変数チェック
-        if node.handler in _LLM_HANDLERS:
+        # start_at ノードは invoke 時の外部入力を直接受け取るため変数チェックを除外
+        is_start_node = node_id == spec.start_at
+
+        # LLM ハンドラーのみ変数チェック（start_at ノードは除外）
+        if node.handler in _LLM_HANDLERS and not is_start_node:
             required_vars = _extract_required_vars(node.params)
             for var in required_vars:
                 if var not in keys_before:
                     issues.append(
                         PromptVariableIssue(
                             message=(
-                                f"ノード '{node_id}' のプロンプトが参照する変数 '{{{var}}}' は、"
-                                f"到達しうる全パスで state に存在しません。"
-                                f"前ノードの output_key または workflow params での宣言を確認してください。"
+                                f"Variable '{{{var}}}' referenced in node '{node_id}' prompt"
+                                f" is not guaranteed on all paths leading to this node."
+                                f" Declare it in workflow params or ensure an upstream node"
+                                f" produces it via output_key."
                             ),
                             location=("nodes", node_idx, "params", "prompt", "user"),
                         )

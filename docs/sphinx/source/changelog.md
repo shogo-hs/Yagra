@@ -8,6 +8,17 @@ For the canonical changelog (Japanese), see [CHANGELOG.md](https://github.com/sh
 
 ## [Unreleased]
 
+## [0.4.7] - 2026-02-17
+
+### Changed
+- **Prompt variable validation: exclude start_at node**: The `start_at` (START-tagged) node is now fully excluded from prompt variable validation
+  - Prevents false positives when the Studio UI has no `spec.params` editor — the start node receives external inputs at `invoke()` time which cannot be statically determined
+- **Error messages in English**: `prompt_variable_error` messages are now consistently in English
+
+### Related
+- **Goal**: G-08 (Declarative control of LLM node data flow via YAML, configurable from WebUI)
+- **Milestone**: M-20
+
 ## [0.4.6] - 2026-02-17
 
 ### Added
