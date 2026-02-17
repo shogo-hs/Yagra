@@ -8,6 +8,14 @@ For the canonical changelog (Japanese), see [CHANGELOG.md](https://github.com/sh
 
 ## [Unreleased]
 
+## [0.5.3] - 2026-02-17
+
+### Removed
+- **Prompt variable reachability validation (`prompt_variable_error`) removed** — The handler-name-based variable reachability check produced false positives on workflows with conditional edges; removed to restore flexibility
+  - `collect_prompt_variable_issues()` / `PromptVariableIssue` deleted from `prompt_variable_validator`
+  - `prompt_variable_error` code will no longer appear in `WorkflowValidationReport`
+  - `_extract_required_vars()` / `_get_output_key()` utilities retained for badge display
+
 ## [0.5.2] - 2026-02-17
 
 ### Fixed

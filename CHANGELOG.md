@@ -4,6 +4,14 @@
 
 ## [Unreleased]
 
+## [0.5.3] - 2026-02-17
+
+### Removed
+- 🗑️ **プロンプト変数到達性バリデーション（`prompt_variable_error`）を廃止**: handler 名ベースの変数チェックが conditional edge を含むワークフローで過検知を起こすため廃止
+  - `collect_prompt_variable_issues()` / `PromptVariableIssue` を削除
+  - `WorkflowValidationReport` から `prompt_variable_error` コードが出なくなる
+  - バッジ表示用の `_extract_required_vars()` / `_get_output_key()` ユーティリティは維持
+
 ## [0.5.2] - 2026-02-17
 
 ### Fixed
