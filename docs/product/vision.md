@@ -1,6 +1,6 @@
 # プロダクトビジョン
 
-最終更新: 2026-02-16
+最終更新: 2026-02-17
 
 ## 1. Vision Statement
 
@@ -37,6 +37,7 @@ Declarative LangGraph Builder を中核に、
 - Validate Feedback Loop: 構造化されたバリデーション結果を返し、エージェントが自律的にエラー修正ループを回せる。
 - Template Library: 典型パターン（分岐・ループ・RAG 等）のテンプレートを提供し、エージェントおよび開発者の生成精度と立ち上がり速度を向上させる。
 - Human-in-the-Loop: YAML 宣言だけでワークフローの中断・再開ポイントを定義でき、LangGraph の checkpointer と連携して人間のレビュー・承認・修正を実行フローに組み込める。
+- Data Flow Visibility: グラフ上の各ノードが要求する入力変数と生成する出力変数をバッジで可視化し、ワークフロー全体のデータフローを視覚的に追跡できる。
 
 ## 5. 成功状態
 
@@ -48,6 +49,7 @@ Declarative LangGraph Builder を中核に、
 - コーディングエージェントが JSON Schema を参照して有効なワークフロー YAML を生成できる（AI-Native フェーズ）。
 - 生成された YAML を `yagra validate` で検証し、エラーがあれば構造化フィードバックで修正ループを回せる（AI-Native フェーズ）。
 - YAML に `interrupt_before` / `interrupt_after` を記述するだけで、ワークフロー実行中に人間の判断を挟み、修正を反映して再開できる（HITL フェーズ）。
+- WebUI のグラフ上で各ノードの入力変数（プロンプトが要求する `{変数名}`）と出力変数（`output_key`）をバッジとして確認でき、どのノードで何が消費・生成されるかを一目で把握できる（Data Flow Visibility フェーズ）。
 
 ## 6. 将来展望
 

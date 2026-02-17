@@ -15,6 +15,7 @@
 | G-07 | LLM ノードのボイラープレート削減と高度な出力制御ができる | 基本的な LLM 呼び出し、構造化出力（Pydantic）、ストリーミングレスポンスをハンドラーユーティリティで簡潔に実装でき、YAML 定義だけで動作する | Done |
 | G-08 | YAML で LLM ノードのデータフロー（入出力キー）を宣言的に制御でき、WebUI から設定できる | `input_keys` を廃止しプロンプト変数を自動検出する仕組みにより YAML 記述量を削減し、`output_key` を WebUI から設定できる。handler タイプ別の責務分離（`llm`: 1 キー出力、`structured_llm`: 複数キー構造化出力、`custom`: 自由制御）が明確になっている | Done |
 | G-09 | ワークフロー実行中に人間の確認・承認・修正を挟める | YAML で `interrupt_before` / `interrupt_after` を宣言し、`Yagra.invoke()` → 中断 → `Yagra.resume()` のサイクルで実行を制御できる | Open |
+| G-10 | WebUI のグラフ上で各ノードの入力変数と出力変数を一目で把握できる | 各ノードがプロンプトで要求する変数（入力）と `output_key`（出力）がグラフノード上にバッジとして表示され、ON/OFF トグルで表示切り替えができる | Open |
 
 ## 運用ルール
 
@@ -29,3 +30,4 @@
 - G-07 は M-17（WebUI ハンドラータイプ別フォーム）の完了をもって Done。G-01〜G-07 すべて Done。
 - G-08 は handler データフロー改善ゴール。handler タイプ別の責務整理を前提に、`input_keys` の自動検出と `output_key` の WebUI 設定を実現する。3 段階で実装: M-18（handler type セレクト — v0.4.1）、M-19（input_keys 自動検出 — v0.4.2）、M-20（output_key の WebUI 設定）。G-01〜G-08 すべて Done。
 - G-09 は LangGraph の HITL 機能を Yagra の宣言的インターフェースに統合するゴール。YAML レベルの `interrupt_before` / `interrupt_after` 宣言、checkpointer 対応、`resume()` API の3段階で実装する。
+- G-10 はグラフの「データフロー可視性」を高めるゴール。現在の WebUI ではノードに ID とハンドラー名しか表示されず、どのノードがどの変数を必要とし何を出力するかがグラフ上で把握できない。各ノードの入力変数（プロンプトテンプレートの `{変数名}`）と出力変数（`output_key`）をノード上にバッジ表示し、グラフ全体のデータフローを視覚的に追跡可能にする。ノード数が多い場合に見にくくならないよう ON/OFF トグルを設ける。
