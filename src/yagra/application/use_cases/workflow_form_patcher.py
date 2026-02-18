@@ -219,21 +219,20 @@ def _apply_edge_rewires(
         if not isinstance(target_edge, dict):
             raise ValueError(f"edge payload must be a mapping: {edge_index}")
 
-        has_update = False
-        if "source" in rewire_mapping:
-            target_edge["source"] = _required_node_reference(
-                rewire_mapping.get("source"),
-                field_name="source",
-                known_node_ids=known_node_ids,
+        updatable_keys = {"source", "target", "condition"} & rewire_mapping.keys()
+        if not updatable_keys:
+            raise ValueError(
+                "edge rewire requires at least one of 'source', 'target' or 'condition'"
             )
-            has_update = True
-        if "target" in rewire_mapping:
-            target_edge["target"] = _required_node_reference(
-                rewire_mapping.get("target"),
-                field_name="target",
-                known_node_ids=known_node_ids,
-            )
-            has_update = True
+
+        for field_name in ("source", "target"):
+            if field_name in rewire_mapping:
+                target_edge[field_name] = _required_node_reference(
+                    rewire_mapping.get(field_name),
+                    field_name=field_name,
+                    known_node_ids=known_node_ids,
+                )
+
         if "condition" in rewire_mapping:
             normalized = _normalize_optional_condition(
                 rewire_mapping.get("condition"),
@@ -243,12 +242,6 @@ def _apply_edge_rewires(
                 target_edge.pop("condition", None)
             else:
                 target_edge["condition"] = normalized
-            has_update = True
-
-        if not has_update:
-            raise ValueError(
-                "edge rewire requires at least one of 'source', 'target' or 'condition'"
-            )
 
 
 def _apply_optional_string_field(

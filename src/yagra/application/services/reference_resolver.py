@@ -124,28 +124,19 @@ def _resolve_reference(
     Raises:
         WorkflowReferenceError: 参照文字列や参照先が不正な場合。
     """
-    key_path: str | None = None
-    if "#" in reference:
-        raw_path, raw_key_path = reference.split("#", 1)
-        catalog_path = raw_path.strip()
-        if not catalog_path:
-            raise WorkflowReferenceError(
-                f"{ref_label} path is empty: {reference}",
-                location=location,
-            )
-        key_path = raw_key_path.strip()
-        if not key_path:
-            raise WorkflowReferenceError(
-                f"{ref_label} key is empty: {reference}",
-                location=location,
-            )
-    else:
-        catalog_path = reference.strip()
-        if not catalog_path:
-            raise WorkflowReferenceError(
-                f"{ref_label} path is empty: {reference}",
-                location=location,
-            )
+    raw_path, _, raw_key = reference.partition("#")
+    catalog_path = raw_path.strip()
+    if not catalog_path:
+        raise WorkflowReferenceError(
+            f"{ref_label} path is empty: {reference}",
+            location=location,
+        )
+    key_path: str | None = raw_key.strip() if _ else None
+    if key_path is not None and not key_path:
+        raise WorkflowReferenceError(
+            f"{ref_label} key is empty: {reference}",
+            location=location,
+        )
 
     target_path = _resolve_catalog_path(
         catalog_path=catalog_path,

@@ -211,12 +211,11 @@ class StudioService(StudioPort):
         """Returns a list of workflow/YAML candidates under the workspace."""
         with self._config.lock:
             workspace_root = self._config.workspace_root
-            workflows = _list_workflow_candidates(workspace_root)
-            yaml_files = _list_workflow_candidates(workspace_root)
+            candidates = _list_workflow_candidates(workspace_root)
         return {
             "workspace_root": str(workspace_root),
-            "workflows": workflows,
-            "yaml_files": yaml_files,
+            "workflows": candidates,
+            "yaml_files": candidates,
         }
 
     def read_studio_yaml_file(self, body: dict[str, Any]) -> dict[str, Any]:

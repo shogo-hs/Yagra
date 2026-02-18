@@ -250,14 +250,19 @@ def _build_handler_class(
             """Studio サービス呼び出しを実行し、エラーを HTTP 応答へ変換する。"""
             try:
                 return operation()
-            except StudioBadRequestError as exc:
-                self._write_json(400, exc.to_payload())
-            except StudioNotFoundError as exc:
-                self._write_json(404, exc.to_payload())
-            except StudioConflictError as exc:
-                self._write_json(409, exc.to_payload())
-            except StudioUnprocessableEntityError as exc:
-                self._write_json(422, exc.to_payload())
+            except (
+                StudioBadRequestError,
+                StudioNotFoundError,
+                StudioConflictError,
+                StudioUnprocessableEntityError,
+            ) as exc:
+                status = {
+                    StudioBadRequestError: 400,
+                    StudioNotFoundError: 404,
+                    StudioConflictError: 409,
+                    StudioUnprocessableEntityError: 422,
+                }[type(exc)]
+                self._write_json(status, exc.to_payload())
             return None
 
         def _read_json_body(self) -> dict[str, Any]:
@@ -2882,7 +2887,7 @@ def _studio_html() -> str:
             : (typeof promptUserFallback === "string" ? promptUserFallback : null);
           if (typeof userTemplate !== "string") return [];
           const matches = [];
-          const re = /\\{(\w+)\\}/g;
+          const re = /\\{(\\w+)\\}/g;
           let m;
           while ((m = re.exec(userTemplate)) !== null) matches.push(m[1]);
           return matches;
