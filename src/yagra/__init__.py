@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import dataclasses
 import json
 import sys
 from collections.abc import Mapping
@@ -22,10 +21,13 @@ from yagra.application.services.template_initializer import (
     list_templates,
 )
 from yagra.application.use_cases import (
+    WorkflowValidationIssue,
+    WorkflowValidationReport,
     build_from_workflow_path,
     format_validation_report,
     render_workflow_visualization_html,
     validate_workflow_for_ui,
+    validate_workflow_payload_for_ui,
 )
 from yagra.domain.entities import GraphSpec
 from yagra.ports.outbound import NodeHandler, NodeRegistryPort
@@ -112,6 +114,15 @@ def main() -> None:
         raise SystemExit(exit_code)
     if args.command == "studio":
         exit_code = _run_studio_command(args)
+        raise SystemExit(exit_code)
+    if args.command == "handlers":
+        exit_code = _run_handlers_command(args)
+        raise SystemExit(exit_code)
+    if args.command == "explain":
+        exit_code = _run_explain_command(args)
+        raise SystemExit(exit_code)
+    if args.command == "mcp":
+        exit_code = _run_mcp_command(args)
         raise SystemExit(exit_code)
     raise SystemExit(2)
 
@@ -333,6 +344,45 @@ def _build_cli_parser() -> argparse.ArgumentParser:
         help="バインドポート",
     )
 
+    handlers = subparsers.add_parser(
+        "handlers",
+        help="組み込みハンドラーの params スキーマを表示する",
+    )
+    handlers.add_argument(
+        "--format",
+        choices=["text", "json"],
+        default="text",
+        help="出力フォーマット (デフォルト: text)",
+    )
+
+    explain = subparsers.add_parser(
+        "explain",
+        help="ワークフロー YAML を静的解析して実行情報を出力する",
+    )
+    explain.add_argument(
+        "--workflow",
+        required=True,
+        help="解析対象 workflow YAML のパス",
+    )
+    explain.add_argument(
+        "--bundle-root",
+        default=None,
+        help="分割参照解決の基準ディレクトリ",
+    )
+    explain.add_argument(
+        "--format",
+        choices=["text", "json"],
+        default="json",
+        help="出力フォーマット (デフォルト: json)",
+    )
+
+    mcp_parser = subparsers.add_parser(
+        "mcp",
+        help="MCP サーバーを stdio モードで起動する（yagra[mcp] が必要）",
+    )
+    # mcp サブコマンドは引数なし
+    _ = mcp_parser
+
     return parser
 
 
@@ -366,6 +416,7 @@ def _run_validate_command(args: argparse.Namespace) -> int:
 
     Validates workflow YAML and outputs the result in text or JSON format.
     JSON format can be used for error correction loops by coding agents.
+    When ``--workflow -`` is specified, reads YAML from stdin.
 
     Args:
         args: Parsed CLI arguments.
@@ -373,15 +424,43 @@ def _run_validate_command(args: argparse.Namespace) -> int:
     Returns:
         Exit code. valid → 0, invalid → 1.
     """
-    report = validate_workflow_for_ui(
-        workflow_path=args.workflow,
-        bundle_root=args.bundle_root,
-    )
+    import yaml
+
+    if args.workflow == "-":
+        yaml_text = sys.stdin.read()
+        try:
+            payload = yaml.safe_load(yaml_text)
+        except yaml.YAMLError as exc:
+            issue = WorkflowValidationIssue(
+                code="schema_error",
+                message=f"YAML パースエラー: {exc}",
+                location=(),
+            )
+            report = WorkflowValidationReport(issues=[issue])
+        else:
+            if not isinstance(payload, dict):
+                issue = WorkflowValidationIssue(
+                    code="schema_error",
+                    message="workflow must be a mapping",
+                    location=(),
+                )
+                report = WorkflowValidationReport(issues=[issue])
+            else:
+                report = validate_workflow_payload_for_ui(
+                    payload=payload,
+                    workflow_path=Path("<stdin>"),
+                    bundle_root=None,
+                )
+    else:
+        report = validate_workflow_for_ui(
+            workflow_path=args.workflow,
+            bundle_root=args.bundle_root,
+        )
 
     if args.format == "json":
         report_dict = {
             "is_valid": report.is_valid,
-            "issues": [dataclasses.asdict(issue) for issue in report.issues],
+            "issues": [issue.to_dict() for issue in report.issues],
         }
         print(json.dumps(report_dict, indent=2, ensure_ascii=False))
     else:
@@ -457,6 +536,118 @@ def _run_studio_command(args: argparse.Namespace) -> int:
         pass
     finally:
         server.server_close()
+    return 0
+
+
+def _run_handlers_command(args: argparse.Namespace) -> int:
+    """Executes the `handlers` subcommand.
+
+    Outputs the params schema for each built-in handler in text or JSON format.
+
+    Args:
+        args: Parsed CLI arguments.
+
+    Returns:
+        Exit code. 0 on success.
+    """
+    from yagra.handlers.llm_handler import LLM_HANDLER_PARAMS_SCHEMA
+    from yagra.handlers.streaming_llm_handler import STREAMING_LLM_HANDLER_PARAMS_SCHEMA
+    from yagra.handlers.structured_llm_handler import STRUCTURED_LLM_HANDLER_PARAMS_SCHEMA
+
+    handlers_info = [
+        {
+            "name": "llm",
+            "description": "LLM テキスト出力ハンドラー。create_llm_handler() で生成する",
+            "params_schema": LLM_HANDLER_PARAMS_SCHEMA,
+        },
+        {
+            "name": "structured_llm",
+            "description": "Pydantic 構造化出力ハンドラー。create_structured_llm_handler() で生成する",
+            "params_schema": STRUCTURED_LLM_HANDLER_PARAMS_SCHEMA,
+        },
+        {
+            "name": "streaming_llm",
+            "description": "ストリーミング出力ハンドラー。create_streaming_llm_handler() で生成する",
+            "params_schema": STREAMING_LLM_HANDLER_PARAMS_SCHEMA,
+        },
+    ]
+
+    if args.format == "json":
+        print(json.dumps({"handlers": handlers_info}, indent=2, ensure_ascii=False))
+    else:
+        for h in handlers_info:
+            print(f"## {h['name']}")
+            print(f"  {h['description']}")
+            print(f"  params: {json.dumps(h['params_schema'], ensure_ascii=False)}")
+            print()
+    return 0
+
+
+def _run_explain_command(args: argparse.Namespace) -> int:
+    """Executes the `explain` subcommand.
+
+    Statically analyzes the workflow YAML and outputs execution paths,
+    required handlers, and variable flow in JSON format.
+    Useful for coding agents to understand a workflow before running it.
+
+    Args:
+        args: Parsed CLI arguments.
+
+    Returns:
+        Exit code. 0 on success, 1 on validation failure.
+    """
+    from yagra.application.use_cases.workflow_explainer import explain_workflow
+    from yagra.application.use_cases.workflow_validation_reporter import (
+        WorkflowValidationFailedError,
+        load_validated_graph_spec,
+    )
+
+    try:
+        spec = load_validated_graph_spec(
+            workflow_path=args.workflow,
+            bundle_root=args.bundle_root,
+        )
+    except WorkflowValidationFailedError as exc:
+        print(format_validation_report(exc.report), file=sys.stderr)
+        return 1
+
+    result = explain_workflow(spec)
+
+    if args.format == "json":
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+    else:
+        print(f"entry_point: {result['entry_point']}")
+        print(f"exit_points: {result['exit_points']}")
+        print(f"required_handlers: {result['required_handlers']}")
+        print("execution_paths:")
+        for path in result["execution_paths"]:
+            print(f"  {' -> '.join(path)}")
+        print("variable_flow:")
+        for node_id, flow in result["variable_flow"].items():
+            print(f"  {node_id}: inputs={flow['inputs']} outputs={flow['outputs']}")
+    return 0
+
+
+def _run_mcp_command(args: argparse.Namespace) -> int:
+    """Executes the `mcp` subcommand.
+
+    Starts the Yagra MCP server in stdio mode.
+    Requires the 'mcp' optional dependency: uv add yagra[mcp]
+
+    Args:
+        args: Parsed CLI arguments.
+
+    Returns:
+        Exit code. 0 on success.
+    """
+    import asyncio
+
+    try:
+        from yagra.adapters.inbound.mcp_server import run_mcp_server
+    except ImportError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+    asyncio.run(run_mcp_server())
     return 0
 
 

@@ -237,3 +237,33 @@ def create_structured_llm_handler(
         raise LLMHandlerCallError(msg) from last_error
 
     return handler
+
+
+STRUCTURED_LLM_HANDLER_PARAMS_SCHEMA: dict = {
+    "type": "object",
+    "description": "create_structured_llm_handler で生成した Pydantic 構造化出力ハンドラーのパラメータ",
+    "properties": {
+        "prompt": {"$ref": "#/definitions/prompt_field"},
+        "prompt_ref": {"$ref": "#/definitions/prompt_ref_field"},
+        "model": {
+            "type": "string",
+            "description": "使用する LLM モデル名（litellm 形式）",
+            "examples": ["gpt-4o-mini", "gpt-4o"],
+        },
+        "output_key": {
+            "type": "string",
+            "description": "構造化出力を格納するステートキー名。省略時は 'output'",
+            "default": "output",
+        },
+        "schema_yaml": {
+            "type": "string",
+            "description": "Pydantic モデルのフィールド定義。'フィールド名: 型' を改行区切りで記述。対応型: str, int, float, bool, list, dict",
+            "examples": ["name: str\nage: int\ncity: str", "title: str\nsummary: str\ntags: list"],
+        },
+    },
+    "required": ["model"],
+    "oneOf": [
+        {"required": ["prompt"]},
+        {"required": ["prompt_ref"]},
+    ],
+}

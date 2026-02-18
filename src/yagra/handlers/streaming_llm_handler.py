@@ -207,3 +207,39 @@ def create_streaming_llm_handler(
         raise LLMHandlerCallError(msg) from last_error
 
     return handler
+
+
+STREAMING_LLM_HANDLER_PARAMS_SCHEMA: dict = {
+    "type": "object",
+    "description": "create_streaming_llm_handler で生成したストリーミング出力ハンドラーのパラメータ",
+    "properties": {
+        "prompt": {
+            "type": ["string", "object", "array"],
+            "description": "プロンプト定義。prompt_ref と排他",
+        },
+        "prompt_ref": {
+            "type": "string",
+            "description": "プロンプトファイルのパス。prompt と排他",
+        },
+        "model": {
+            "type": "string",
+            "description": "使用する LLM モデル名（litellm 形式）",
+            "examples": ["gpt-4o-mini", "gpt-4o"],
+        },
+        "output_key": {
+            "type": "string",
+            "description": "ストリーミング出力を格納するステートキー名。省略時は 'output'",
+            "default": "output",
+        },
+        "stream": {
+            "type": "boolean",
+            "description": "ストリーミングを有効にするかどうか。false にするとバッファリングしてまとめて返す",
+            "default": True,
+        },
+    },
+    "required": ["model"],
+    "oneOf": [
+        {"required": ["prompt"]},
+        {"required": ["prompt_ref"]},
+    ],
+}

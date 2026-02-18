@@ -25,6 +25,9 @@ dependencies = [
 llm = [
     "litellm>=1.57.10",
 ]
+mcp = [
+    "mcp>=1.26.0",
+]
 
 [project.scripts]
 yagra = "yagra:main"

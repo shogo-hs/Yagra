@@ -197,3 +197,40 @@ def create_llm_handler(
         raise LLMHandlerCallError(msg) from last_error
 
     return handler
+
+
+LLM_HANDLER_PARAMS_SCHEMA: dict = {
+    "type": "object",
+    "description": "create_llm_handler で生成した LLM テキスト出力ハンドラーのパラメータ",
+    "properties": {
+        "prompt": {
+            "oneOf": [
+                {"type": "string", "description": "プロンプトテキスト。{変数名} でステートの値を展開できる"},
+                {"type": "object", "description": "role/content 形式のプロンプト辞書"},
+                {"type": "array", "description": "複数メッセージのリスト"},
+            ],
+            "description": "プロンプト定義。prompt_ref と排他",
+        },
+        "prompt_ref": {
+            "type": "string",
+            "description": "プロンプトファイルのパス（workflow YAML からの相対パスまたは絶対パス）。prompt と排他",
+            "examples": ["prompts/translate.txt", "./prompts/summarize.md"],
+        },
+        "model": {
+            "type": "string",
+            "description": "使用する LLM モデル名（litellm 形式）",
+            "examples": ["gpt-4o-mini", "gpt-4o", "claude-opus-4-6", "gemini/gemini-pro"],
+        },
+        "output_key": {
+            "type": "string",
+            "description": "LLM の出力を格納するステートキー名。省略時は 'output'",
+            "default": "output",
+            "examples": ["translation", "summary", "result"],
+        },
+    },
+    "required": ["model"],
+    "oneOf": [
+        {"required": ["prompt"]},
+        {"required": ["prompt_ref"]},
+    ],
+}

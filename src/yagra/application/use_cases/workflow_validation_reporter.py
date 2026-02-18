@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from os import PathLike
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import yaml
 from pydantic import ValidationError
@@ -25,14 +25,25 @@ class WorkflowValidationIssue:
     code: str
     message: str
     location: Location = ()
+    severity: Literal["error", "warning", "info"] = "error"
+    context: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """API 応答形式の辞書へ変換する。
 
         Returns:
-            code, message, location を含む辞書。
+            code, message, location, severity, context を含む辞書。
+            context が None の場合は context キーを含まない。
         """
-        return {"code": self.code, "message": self.message, "location": list(self.location)}
+        result: dict[str, Any] = {
+            "code": self.code,
+            "message": self.message,
+            "location": list(self.location),
+            "severity": self.severity,
+        }
+        if self.context is not None:
+            result["context"] = self.context
+        return result
 
 
 @dataclass(slots=True)
@@ -188,6 +199,8 @@ def validate_workflow_payload_for_ui(
                 code="structure_error",
                 message=structure_issue.message,
                 location=structure_issue.location,
+                severity="error",
+                context=structure_issue.context,
             )
         )
 

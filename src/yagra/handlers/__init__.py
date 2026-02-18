@@ -40,12 +40,21 @@ Examples:
     ...     print(chunk, end="", flush=True)
 """
 
-from yagra.handlers.llm_handler import create_llm_handler
+from yagra.handlers.llm_handler import LLM_HANDLER_PARAMS_SCHEMA, create_llm_handler
 from yagra.handlers.schema_builder import build_model_from_schema_yaml
-from yagra.handlers.streaming_llm_handler import create_streaming_llm_handler
-from yagra.handlers.structured_llm_handler import create_structured_llm_handler
+from yagra.handlers.streaming_llm_handler import (
+    STREAMING_LLM_HANDLER_PARAMS_SCHEMA,
+    create_streaming_llm_handler,
+)
+from yagra.handlers.structured_llm_handler import (
+    STRUCTURED_LLM_HANDLER_PARAMS_SCHEMA,
+    create_structured_llm_handler,
+)
 
 __all__ = [
+    "LLM_HANDLER_PARAMS_SCHEMA",
+    "STREAMING_LLM_HANDLER_PARAMS_SCHEMA",
+    "STRUCTURED_LLM_HANDLER_PARAMS_SCHEMA",
     "build_model_from_schema_yaml",
     "create_llm_handler",
     "create_streaming_llm_handler",

@@ -15,6 +15,7 @@ from yagra.application.use_cases.workflow_edit_session import (
     load_workflow_edit_session,
     resolve_ui_state_path,
 )
+from yagra.application.use_cases.workflow_explainer import explain_workflow
 from yagra.application.use_cases.workflow_form_model import (
     WorkflowEdgeFormItem,
     WorkflowFormView,
@@ -73,6 +74,7 @@ __all__ = [
     "apply_form_edits",
     "collect_edge_rule_issues",
     "compute_workflow_revision",
+    "explain_workflow",
     "format_validation_report",
     "load_workflow_edit_session",
     "load_validated_graph_spec",

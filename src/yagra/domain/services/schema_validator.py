@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import difflib
 from collections import Counter
 from dataclasses import dataclass
+from typing import Any
 
 from yagra.domain.entities.graph_schema import GraphSpec
 
@@ -16,6 +18,20 @@ class GraphStructureIssue:
 
     message: str
     location: Location
+    context: dict[str, Any] | None = None
+
+
+def _fuzzy_candidates(target: str, candidates: set[str]) -> list[str]:
+    """ファジーマッチで類似候補を返す。
+
+    Args:
+        target: 検索対象の文字列。
+        candidates: 候補として使用する文字列のセット。
+
+    Returns:
+        類似度が高い順に最大 3 件の候補リスト。
+    """
+    return difflib.get_close_matches(target, candidates, n=3, cutoff=0.6)
 
 
 def collect_graph_structure_issues(spec: GraphSpec) -> list[GraphStructureIssue]:
@@ -42,35 +58,59 @@ def collect_graph_structure_issues(spec: GraphSpec) -> list[GraphStructureIssue]
             )
 
     if spec.start_at not in node_id_set:
+        candidates = _fuzzy_candidates(spec.start_at, node_id_set)
         issues.append(
             GraphStructureIssue(
                 message=f"start_at が未定義ノードを参照しています: {spec.start_at}",
                 location=("start_at",),
+                context={
+                    "actual_value": spec.start_at,
+                    "available_values": sorted(node_id_set),
+                    "suggestion": candidates[0] if candidates else None,
+                },
             )
         )
 
     for index, node_id in enumerate(spec.end_at):
         if node_id not in node_id_set:
+            candidates = _fuzzy_candidates(node_id, node_id_set)
             issues.append(
                 GraphStructureIssue(
                     message=f"end_at が未定義ノードを参照しています: {node_id}",
                     location=("end_at", index),
+                    context={
+                        "actual_value": node_id,
+                        "available_values": sorted(node_id_set),
+                        "suggestion": candidates[0] if candidates else None,
+                    },
                 )
             )
 
     for index, edge in enumerate(spec.edges):
         if edge.source not in node_id_set:
+            candidates = _fuzzy_candidates(edge.source, node_id_set)
             issues.append(
                 GraphStructureIssue(
                     message=f"edge.source が未定義ノードを参照しています: {edge.source}",
                     location=("edges", index, "source"),
+                    context={
+                        "actual_value": edge.source,
+                        "available_values": sorted(node_id_set),
+                        "suggestion": candidates[0] if candidates else None,
+                    },
                 )
             )
         if edge.target not in node_id_set:
+            candidates = _fuzzy_candidates(edge.target, node_id_set)
             issues.append(
                 GraphStructureIssue(
                     message=f"edge.target が未定義ノードを参照しています: {edge.target}",
                     location=("edges", index, "target"),
+                    context={
+                        "actual_value": edge.target,
+                        "available_values": sorted(node_id_set),
+                        "suggestion": candidates[0] if candidates else None,
+                    },
                 )
             )
 
