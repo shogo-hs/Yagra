@@ -255,6 +255,7 @@ async def run_mcp_server() -> None:
         ImportError: mcp ライブラリがインストールされていない場合。
     """
     import mcp.server.stdio
+    from mcp.server.lowlevel.server import NotificationOptions
     from mcp.server.models import InitializationOptions
 
     server = create_mcp_server()
@@ -266,7 +267,7 @@ async def run_mcp_server() -> None:
                 server_name="yagra",
                 server_version="0.1.0",
                 capabilities=server.get_capabilities(
-                    notification_options=None,
+                    notification_options=NotificationOptions(),
                     experimental_capabilities={},
                 ),
             ),
