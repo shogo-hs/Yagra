@@ -1,8 +1,9 @@
 # 到達ステップ
 
-最終更新: 2026-02-18 <!-- G-11 マイルストーン追加 -->
+最終更新: 2026-02-18 <!-- G-11 実装完了 -->
 
 補足:
+- M-28〜M-34 は完了（G-11）。`GraphSpec`/`NodeSpec`/`EdgeSpec` 全フィールドに `description`/`examples` 付与（M-28）、`WorkflowValidationIssue` に `severity`/`context` とファジーマッチ修正提案を追加（M-29）、`yagra explain` コマンド実装（M-30）、`yagra validate --workflow -` で stdin 対応（M-31）、組み込みハンドラーの params スキーマ公開と `yagra handlers` コマンド追加（M-32）、エージェント統合ガイド作成（M-33）、MCP サーバー実装（M-34）。単体テスト 181 件（+約 60 件）・ruff/mypy クリア。
 - M-27 は完了。WebUI の Schema Settings テキストエリアに入力された YAML スキーマ（`name: str` / `age: int` 等のフラット形式）を `schema_builder.py` で Pydantic BaseModel に動的変換し、`create_structured_llm_handler(schema=None)` 時に `params.schema_yaml` から実行時解決する。Python コードでのスキーマ定義が不要になり、YAML + WebUI だけで構造化出力が完結する。単体テスト 27 件・動的ハンドラーテスト 5 件・結合テスト 3 件追加。
 - M-20 は完了。WebUI のノードプロパティパネルに Output Settings セクション（output_key テキスト入力）を追加。isLlmHandler 条件下で表示し、空欄時はデフォルト（"output"）を使用。Apply 時に params.output_key に書き込む。G-08 DoD 達成。
 - M-19 は完了。プロンプトテンプレートの `{変数名}` を `re.findall` で自動抽出し、`input_keys` の明示指定が不要になった。`input_keys` 指定時は後方互換で動作（`None` と `[]` を区別）。3 handler すべて対応、単体テスト 5 件追加。
@@ -43,13 +44,13 @@
 | M-25 | G-10 | データフローバッジの ON/OFF トグルを実装する | ツールバーのトグルスイッチで入力バッジ・出力バッジの表示/非表示を独立に切り替えられ、グラフの視認性を制御できる | Done |
 | M-26 | G-10 | 入出力バッジの UX を洗練する | バッジの色分け・ツールチップ・レイアウト崩れ防止など、ノード数が多い実用ワークフローでも視認性を維持できる | Open |
 | M-27 | G-07 | WebUI の schema_yaml から動的に Pydantic モデルを生成する | `schema_yaml`（フラットな `key: type` 形式）を WebUI で入力し、Python コードなしで構造化出力が動作する | Done |
-| M-28 | G-11 | JSON Schema に意味情報を付与する | `GraphSpec` / `NodeSpec` / `EdgeSpec` の各フィールドに `description` / `examples` を追加し、`params` のハンドラー別構造をドキュメント化する。`yagra schema` 出力だけでエージェントが有効な YAML を書ける | Open |
-| M-29 | G-11 | バリデーション結果に修正提案を追加する | `WorkflowValidationIssue` に `severity` / `context`（`actual_value` / `available_values` / `suggestion`）を追加し、ノード ID のファジーマッチによる「もしかして」候補を返す | Open |
-| M-30 | G-11 | `yagra explain` コマンドを追加する | ワークフロー YAML を実行せずに解析し、実行パス・必要ハンドラー・変数フローを JSON で出力する | Open |
-| M-31 | G-11 | CLI の stdin 対応とパイプライン親和性を向上する | `yagra validate --workflow -` で stdin からの YAML 入力を受け付け、エージェントの生成→検証パイプラインを一時ファイルなしで実行できる | Open |
-| M-32 | G-11 | ハンドラースキーマレジストリと `yagra handlers` コマンドを追加する | 組み込みハンドラーが受け付ける `params` の構造を JSON Schema で公開し、`yagra handlers --format json` でエージェントが発見できる | Open |
-| M-33 | G-11 | エージェント統合ガイドとワーキングサンプルを整備する | スキーマ取得→YAML 生成→検証→修正ループの worked example と、エージェント向けプロンプト例をドキュメント化する | Open |
-| M-34 | G-11 | MCP サーバーとして Yagra 機能を公開する | `validate` / `explain` / `list_templates` / `list_handlers` を MCP ツールとして提供し、エージェントが CLI を経由せずに直接呼び出せる | Open |
+| M-28 | G-11 | JSON Schema に意味情報を付与する | `GraphSpec` / `NodeSpec` / `EdgeSpec` の各フィールドに `description` / `examples` を追加し、`params` のハンドラー別構造をドキュメント化する。`yagra schema` 出力だけでエージェントが有効な YAML を書ける | Done |
+| M-29 | G-11 | バリデーション結果に修正提案を追加する | `WorkflowValidationIssue` に `severity` / `context`（`actual_value` / `available_values` / `suggestion`）を追加し、ノード ID のファジーマッチによる「もしかして」候補を返す | Done |
+| M-30 | G-11 | `yagra explain` コマンドを追加する | ワークフロー YAML を実行せずに解析し、実行パス・必要ハンドラー・変数フローを JSON で出力する | Done |
+| M-31 | G-11 | CLI の stdin 対応とパイプライン親和性を向上する | `yagra validate --workflow -` で stdin からの YAML 入力を受け付け、エージェントの生成→検証パイプラインを一時ファイルなしで実行できる | Done |
+| M-32 | G-11 | ハンドラースキーマレジストリと `yagra handlers` コマンドを追加する | 組み込みハンドラーが受け付ける `params` の構造を JSON Schema で公開し、`yagra handlers --format json` でエージェントが発見できる | Done |
+| M-33 | G-11 | エージェント統合ガイドとワーキングサンプルを整備する | スキーマ取得→YAML 生成→検証→修正ループの worked example と、エージェント向けプロンプト例をドキュメント化する | Done |
+| M-34 | G-11 | MCP サーバーとして Yagra 機能を公開する | `validate` / `explain` / `list_templates` / `list_handlers` を MCP ツールとして提供し、エージェントが CLI を経由せずに直接呼び出せる | Done |
 
 ## Goal 別の実装項目
 
@@ -160,16 +161,16 @@
 
 | Item ID | やるべきこと | 状態 | 根拠 |
 | --- | --- | --- | --- |
-| G11-I01 | `GraphSpec` / `NodeSpec` / `EdgeSpec` の全フィールドに `description` と `examples` を追加する | Open | `src/yagra/domain/entities/graph_schema.py` |
-| G11-I02 | `params` のハンドラー別構造（`prompt_ref`, `model`, `schema_yaml` 等）をスキーマドキュメントとして整備する | Open | `src/yagra/domain/entities/graph_schema.py`, `docs/` |
-| G11-I03 | `WorkflowValidationIssue` に `severity` / `context` フィールドを追加する | Open | `src/yagra/application/use_cases/workflow_validation_reporter.py` |
-| G11-I04 | ノード ID 参照エラー時にファジーマッチで候補を提示する | Open | `src/yagra/domain/services/schema_validator.py` |
-| G11-I05 | `yagra explain` コマンドを実装する（実行パス・必要ハンドラー・変数フローの JSON 出力） | Open | `src/yagra/__init__.py` |
-| G11-I06 | `yagra validate` / `yagra schema` で stdin (`--workflow -`) を受け付ける | Open | `src/yagra/__init__.py` |
-| G11-I07 | 組み込みハンドラーの params スキーマを登録・公開する仕組みを実装する | Open | `src/yagra/handlers/`, `src/yagra/ports/outbound/node_registry.py` |
-| G11-I08 | `yagra handlers --format json` コマンドを実装する | Open | `src/yagra/__init__.py` |
-| G11-I09 | エージェント統合ガイド（生成→検証→修正ループの worked example）を作成する | Open | `docs/` |
-| G11-I10 | MCP サーバーを実装し、`validate` / `explain` / `list_templates` / `list_handlers` をツールとして公開する | Open | `src/yagra/adapters/inbound/` |
+| G11-I01 | `GraphSpec` / `NodeSpec` / `EdgeSpec` の全フィールドに `description` と `examples` を追加する | Done | `src/yagra/domain/entities/graph_schema.py` |
+| G11-I02 | `params` のハンドラー別構造（`prompt_ref`, `model`, `schema_yaml` 等）をスキーマドキュメントとして整備する | Done | `src/yagra/domain/entities/graph_schema.py`, `src/yagra/handlers/*_handler.py` |
+| G11-I03 | `WorkflowValidationIssue` に `severity` / `context` フィールドを追加する | Done | `src/yagra/application/use_cases/workflow_validation_reporter.py` |
+| G11-I04 | ノード ID 参照エラー時にファジーマッチで候補を提示する | Done | `src/yagra/domain/services/schema_validator.py` |
+| G11-I05 | `yagra explain` コマンドを実装する（実行パス・必要ハンドラー・変数フローの JSON 出力） | Done | `src/yagra/__init__.py`, `src/yagra/application/use_cases/workflow_explainer.py` |
+| G11-I06 | `yagra validate` で stdin (`--workflow -`) を受け付ける | Done | `src/yagra/__init__.py` |
+| G11-I07 | 組み込みハンドラーの params スキーマを登録・公開する仕組みを実装する | Done | `src/yagra/handlers/*_handler.py` |
+| G11-I08 | `yagra handlers --format json` コマンドを実装する | Done | `src/yagra/__init__.py` |
+| G11-I09 | エージェント統合ガイド（生成→検証→修正ループの worked example）を作成する | Done | `docs/agent-integration-guide.md` |
+| G11-I10 | MCP サーバーを実装し、`validate` / `explain` / `list_templates` / `list_handlers` をツールとして公開する | Done | `src/yagra/adapters/inbound/mcp_server.py` |
 
 ## 運用ルール
 

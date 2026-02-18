@@ -369,3 +369,133 @@ def test_main_studio_rejects_ui_state_without_workflow(
     assert called is False
     captured = capsys.readouterr()
     assert "--ui-state は --workflow 指定時のみ利用できます。" in captured.err
+
+
+class TestValidateCommandStdin:
+    """yagra validate --workflow - (stdin) のテスト。"""
+
+    def _valid_yaml(self) -> str:
+        return yaml.safe_dump(_base_payload(), sort_keys=False, allow_unicode=True)
+
+    def test_validate_stdin_valid_yaml_exits_zero(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Stdin に有効な YAML を渡すと終了コード 0 と passed メッセージを返すこと。"""
+        import io
+
+        monkeypatch.setattr(sys, "stdin", io.StringIO(self._valid_yaml()))
+        monkeypatch.setattr(sys, "argv", ["yagra", "validate", "--workflow", "-"])
+
+        with pytest.raises(SystemExit) as exc:
+            main()
+
+        assert exc.value.code == 0
+        captured = capsys.readouterr()
+        assert "passed" in captured.out
+
+    def test_validate_stdin_valid_yaml_json_format(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Stdin に有効な YAML を渡して --format json を指定すると is_valid が true であること。"""
+        import io
+
+        monkeypatch.setattr(sys, "stdin", io.StringIO(self._valid_yaml()))
+        monkeypatch.setattr(
+            sys, "argv", ["yagra", "validate", "--workflow", "-", "--format", "json"]
+        )
+
+        with pytest.raises(SystemExit) as exc:
+            main()
+
+        assert exc.value.code == 0
+        captured = capsys.readouterr()
+        result = json.loads(captured.out)
+        assert result["is_valid"] is True
+        assert result["issues"] == []
+
+    def test_validate_stdin_invalid_yaml_syntax_exits_one(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Stdin に YAML パースエラーがある文字列を渡すと終了コード 1 を返すこと。"""
+        import io
+
+        broken_yaml = "key: [unclosed bracket"
+        monkeypatch.setattr(sys, "stdin", io.StringIO(broken_yaml))
+        monkeypatch.setattr(sys, "argv", ["yagra", "validate", "--workflow", "-"])
+
+        with pytest.raises(SystemExit) as exc:
+            main()
+
+        assert exc.value.code == 1
+        captured = capsys.readouterr()
+        assert "workflow validation failed" in captured.err
+
+    def test_validate_stdin_invalid_yaml_syntax_json_format(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Stdin に YAML パースエラーがある文字列を --format json で渡すと is_valid が false かつ issues が存在すること。"""
+        import io
+
+        broken_yaml = "key: [unclosed bracket"
+        monkeypatch.setattr(sys, "stdin", io.StringIO(broken_yaml))
+        monkeypatch.setattr(
+            sys, "argv", ["yagra", "validate", "--workflow", "-", "--format", "json"]
+        )
+
+        with pytest.raises(SystemExit) as exc:
+            main()
+
+        assert exc.value.code == 1
+        captured = capsys.readouterr()
+        result = json.loads(captured.out)
+        assert result["is_valid"] is False
+        assert len(result["issues"]) > 0
+        assert result["issues"][0]["code"] == "schema_error"
+
+    def test_validate_stdin_non_mapping_yaml_exits_one(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Stdin にマッピングでない YAML (リスト等) を渡すと終了コード 1 を返すこと。"""
+        import io
+
+        list_yaml = "- item1\n- item2\n"
+        monkeypatch.setattr(sys, "stdin", io.StringIO(list_yaml))
+        monkeypatch.setattr(sys, "argv", ["yagra", "validate", "--workflow", "-"])
+
+        with pytest.raises(SystemExit) as exc:
+            main()
+
+        assert exc.value.code == 1
+        captured = capsys.readouterr()
+        assert "workflow validation failed" in captured.err
+
+    def test_validate_stdin_invalid_workflow_schema_exits_one(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Stdin にスキーマ不正な YAML (edges 欠損) を渡すと終了コード 1 を返すこと。"""
+        import io
+
+        payload = _base_payload()
+        del payload["edges"]
+        invalid_yaml = yaml.safe_dump(payload, sort_keys=False, allow_unicode=True)
+        monkeypatch.setattr(sys, "stdin", io.StringIO(invalid_yaml))
+        monkeypatch.setattr(sys, "argv", ["yagra", "validate", "--workflow", "-"])
+
+        with pytest.raises(SystemExit) as exc:
+            main()
+
+        assert exc.value.code == 1
+        captured = capsys.readouterr()
+        assert "workflow validation failed" in captured.err

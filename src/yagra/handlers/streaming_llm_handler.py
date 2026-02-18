@@ -207,3 +207,52 @@ def create_streaming_llm_handler(
         raise LLMHandlerCallError(msg) from last_error
 
     return handler
+
+
+STREAMING_LLM_HANDLER_PARAMS_SCHEMA: dict = {
+    "type": "object",
+    "description": "create_streaming_llm_handler で生成したストリーミング出力ハンドラーのパラメータ",
+    "properties": {
+        "prompt": {
+            "type": ["string", "object", "array"],
+            "description": "プロンプト定義。prompt_ref と排他",
+        },
+        "prompt_ref": {
+            "type": "string",
+            "description": "プロンプトファイルのパス。prompt と排他",
+        },
+        "model": {
+            "type": "object",
+            "description": "LLM モデル設定。provider と name が必須。kwargs に stream フラグ等の追加パラメータを渡せる",
+            "properties": {
+                "provider": {"type": "string", "examples": ["openai", "anthropic"]},
+                "name": {"type": "string", "examples": ["gpt-4o-mini", "claude-opus-4-6"]},
+                "kwargs": {
+                    "type": "object",
+                    "description": "stream フラグ等の litellm 追加パラメータ",
+                },
+            },
+            "required": ["provider", "name"],
+        },
+        "input_keys": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "プロンプトに渡す state キーの明示指定。省略時はプロンプトテンプレートの {変数名} から自動抽出",
+        },
+        "output_key": {
+            "type": "string",
+            "description": "ストリーミング出力を格納するステートキー名。省略時は 'output'",
+            "default": "output",
+        },
+        "stream": {
+            "type": "boolean",
+            "description": "ストリーミングを有効にするかどうか。false にするとバッファリングしてまとめて返す",
+            "default": True,
+        },
+    },
+    "required": ["model"],
+    "oneOf": [
+        {"required": ["prompt"]},
+        {"required": ["prompt_ref"]},
+    ],
+}

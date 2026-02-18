@@ -259,3 +259,73 @@ def test_validate_workflow_for_ui_reports_error_when_inline_prompt_is_used(
     issue = report.issues[0]
     assert issue.code == "reference_error"
     assert issue.location == ("nodes", 1, "params", "prompt")
+
+
+# ---  severity / context / fuzzy match テスト ---
+
+VALID_SPEC_DICT: dict[str, Any] = {
+    "version": "1",
+    "start_at": "translate",
+    "end_at": ["translate"],
+    "nodes": [{"id": "translate", "handler": "llm", "params": {}}],
+    "edges": [],
+}
+
+
+def test_workflow_validation_issue_default_severity_is_error() -> None:
+    issue = __import__(
+        "yagra.application.use_cases.workflow_validation_reporter",
+        fromlist=["WorkflowValidationIssue"],
+    ).WorkflowValidationIssue(code="test", message="msg")
+
+    assert issue.severity == "error"
+
+
+def test_workflow_validation_issue_to_dict_contains_severity() -> None:
+    from yagra.application.use_cases.workflow_validation_reporter import WorkflowValidationIssue
+
+    issue = WorkflowValidationIssue(code="test", message="msg", severity="warning")
+    d = issue.to_dict()
+
+    assert d["severity"] == "warning"
+
+
+def test_workflow_validation_issue_to_dict_excludes_context_when_none() -> None:
+    from yagra.application.use_cases.workflow_validation_reporter import WorkflowValidationIssue
+
+    issue = WorkflowValidationIssue(code="test", message="msg")
+    d = issue.to_dict()
+
+    assert "context" not in d
+
+
+def test_workflow_validation_issue_to_dict_includes_context_when_set() -> None:
+    from yagra.application.use_cases.workflow_validation_reporter import WorkflowValidationIssue
+
+    ctx = {"actual_value": "foo", "suggestion": "bar"}
+    issue = WorkflowValidationIssue(code="test", message="msg", context=ctx)
+    d = issue.to_dict()
+
+    assert d["context"] == ctx
+
+
+def test_validate_workflow_structure_error_context_has_suggestion(tmp_path: Path) -> None:
+    """ノードIDを1文字変えた場合に context.suggestion へ候補が返る。"""
+    payload: dict[str, Any] = {
+        "version": "1",
+        "start_at": "translat",  # 1文字欠落
+        "end_at": ["translate"],
+        "nodes": [{"id": "translate", "handler": "llm", "params": {}}],
+        "edges": [],
+    }
+    workflow_path = _write_workflow(tmp_path / "fuzzy-start-at.yaml", payload)
+
+    report = validate_workflow_for_ui(workflow_path)
+
+    assert report.is_valid is False
+    structure_issues = [i for i in report.issues if i.code == "structure_error"]
+    assert len(structure_issues) == 1
+    issue = structure_issues[0]
+    assert issue.location == ("start_at",)
+    assert issue.context is not None
+    assert issue.context["suggestion"] == "translate"

@@ -78,3 +78,12 @@ def test_graph_spec_model_validate_accepts_empty_edges() -> None:
 
     spec = GraphSpec.model_validate(payload)
     assert spec.edges == []
+
+
+def test_graph_spec_json_schema_has_descriptions() -> None:
+    schema = GraphSpec.model_json_schema()
+    # トップレベルのプロパティに description が存在する
+    props = schema.get("properties", {})
+    assert "description" in props.get("version", {})
+    assert "description" in props.get("start_at", {})
+    assert "description" in props.get("nodes", {})

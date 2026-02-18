@@ -197,3 +197,65 @@ def create_llm_handler(
         raise LLMHandlerCallError(msg) from last_error
 
     return handler
+
+
+LLM_HANDLER_PARAMS_SCHEMA: dict = {
+    "type": "object",
+    "description": "create_llm_handler で生成した LLM テキスト出力ハンドラーのパラメータ",
+    "properties": {
+        "prompt": {
+            "oneOf": [
+                {
+                    "type": "string",
+                    "description": "プロンプトテキスト。{変数名} でステートの値を展開できる",
+                },
+                {"type": "object", "description": "role/content 形式のプロンプト辞書"},
+                {"type": "array", "description": "複数メッセージのリスト"},
+            ],
+            "description": "プロンプト定義。prompt_ref と排他",
+        },
+        "prompt_ref": {
+            "type": "string",
+            "description": "プロンプトファイルのパス（workflow YAML からの相対パスまたは絶対パス）。prompt と排他",
+            "examples": ["prompts/translate.txt", "./prompts/summarize.md"],
+        },
+        "model": {
+            "type": "object",
+            "description": "LLM モデル設定。provider（litellm プロバイダー名）と name（モデル名）が必須。kwargs に litellm の追加パラメータを渡せる",
+            "properties": {
+                "provider": {
+                    "type": "string",
+                    "description": "litellm プロバイダー名",
+                    "examples": ["openai", "anthropic", "google"],
+                },
+                "name": {
+                    "type": "string",
+                    "description": "モデル名",
+                    "examples": ["gpt-4o-mini", "claude-opus-4-6", "gemini-pro"],
+                },
+                "kwargs": {
+                    "type": "object",
+                    "description": "litellm に渡す追加パラメータ（temperature 等）",
+                },
+            },
+            "required": ["provider", "name"],
+        },
+        "input_keys": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "プロンプトに渡す state キーの明示指定。省略時はプロンプトテンプレートの {変数名} から自動抽出",
+            "examples": [["text"], ["input", "context"]],
+        },
+        "output_key": {
+            "type": "string",
+            "description": "LLM の出力を格納するステートキー名。省略時は 'output'",
+            "default": "output",
+            "examples": ["translation", "summary", "result"],
+        },
+    },
+    "required": ["model"],
+    "oneOf": [
+        {"required": ["prompt"]},
+        {"required": ["prompt_ref"]},
+    ],
+}
