@@ -8,6 +8,22 @@ For the canonical changelog (Japanese), see [CHANGELOG.md](https://github.com/sh
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-02-19
+
+### Added
+- 🤖 **G-11: Agent-Friendly Workflow Generation (M-28–M-34)**: Coding agents can now autonomously generate and fix Yagra workflows with high accuracy
+  - **M-28 Schema semantic metadata**: All fields in `GraphSpec` / `NodeSpec` / `EdgeSpec` now have `description` and `examples`. `yagra schema` output includes field intent, usage, and value examples — agents can understand the spec from schema alone
+  - **M-29 Validation fix suggestions**: `WorkflowValidationIssue` now includes `severity` (`error` / `warning` / `info`) and `context` (`actual_value` / `available_values` / `suggestion`). Fuzzy matching surfaces typo corrections for node IDs
+  - **M-30 `explain` command**: `yagra explain --workflow <path> --format json` — static analysis outputs `entry_point`, `exit_points`, `execution_paths`, `required_handlers`, and `variable_flow`
+  - **M-31 stdin support**: `yagra validate --workflow -` and `yagra explain --workflow -` now accept YAML from stdin — no temp files needed
+  - **M-32 `handlers` command + PARAMS_SCHEMA**: `yagra handlers --format json` outputs the params JSON Schema for each built-in handler. Each handler module now exports a `*_PARAMS_SCHEMA` constant
+  - **M-33 Agent integration guide**: `docs/agent-integration-guide.md` — worked example of generate→validate→fix loop, system prompt template, and MCP server integration instructions
+  - **M-34 MCP server**: MCP server via the official `mcp` Python SDK (Anthropic). Launch with `yagra mcp`. Exposes 4 tools: `validate_workflow`, `explain_workflow`, `list_templates`, `list_handlers`. Install with `pip install "yagra[mcp]"`
+
+### Related
+- **Goal**: G-11 (Coding agents can autonomously generate and fix Yagra workflows with high accuracy)
+- **Milestones**: M-28, M-29, M-30, M-31, M-32, M-33, M-34
+
 ## [0.5.5] - 2026-02-18
 
 ### Added
