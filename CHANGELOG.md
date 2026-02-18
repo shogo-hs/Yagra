@@ -4,6 +4,13 @@
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-02-18
+
+### Fixed
+- 🐛 **MCP サーバー起動時の AttributeError クラッシュを修正**: `yagra mcp` コマンドで起動時に `AttributeError: 'NoneType' object has no attribute 'tools_changed'` が発生していた問題を修正
+  - `run_mcp_server()` の `server.get_capabilities()` に `notification_options=None` を渡していたため、mcp SDK 内部でヌルポインタ相当のエラーが発生していた
+  - `NotificationOptions()` インスタンスを正しく渡すよう修正（`from mcp.server.lowlevel.server import NotificationOptions`）
+
 ## [0.6.0] - 2026-02-19
 
 ### Added

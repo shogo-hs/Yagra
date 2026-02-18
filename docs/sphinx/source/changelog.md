@@ -8,6 +8,13 @@ For the canonical changelog (Japanese), see [CHANGELOG.md](https://github.com/sh
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-02-18
+
+### Fixed
+- **MCP server crash on startup**: `yagra mcp` raised `AttributeError: 'NoneType' object has no attribute 'tools_changed'` on startup
+  - `run_mcp_server()` was passing `notification_options=None` to `server.get_capabilities()`, causing a null-pointer equivalent error inside the mcp SDK
+  - Fixed by importing and passing a `NotificationOptions()` instance (`from mcp.server.lowlevel.server import NotificationOptions`)
+
 ## [0.6.0] - 2026-02-19
 
 ### Added
