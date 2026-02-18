@@ -17,6 +17,7 @@
 | `yagra init --template <name>` | テンプレートから YAML を生成 | 雛形からカスタマイズする |
 | `yagra validate --workflow <path> --format json` | YAML を検証して JSON で結果を返す | 修正ループでエラーを確認する |
 | `yagra validate --workflow - --format json` | stdin から YAML を検証（パイプ対応）| 一時ファイルなしで検証する |
+| `yagra explain --workflow <path> --format json` | ワークフローの実行パス・変数フローを静的解析して出力 | 生成した YAML の実行経路・依存変数を把握する |
 | `yagra visualize --workflow <path>` | ワークフローを HTML で可視化 | 生成した YAML の構造を把握する |
 
 ## ワークフロー生成→検証→修正ループ
@@ -80,7 +81,7 @@ yagra handlers --format json
 
 ```yaml
 # translate_workflow.yaml
-version: "1"
+version: "1.0"
 start_at: translate
 end_at:
   - translat  # タイポ（意図的な誤り）
@@ -125,7 +126,7 @@ yagra validate --workflow translate_workflow.yaml --format json
 `issues[0].context.suggestion` が `"translate"` を示しているので、エージェントは以下のように修正します:
 
 ```yaml
-version: "1"
+version: "1.0"
 start_at: translate
 end_at:
   - translate  # 修正済み
@@ -160,7 +161,7 @@ yagra validate --workflow translate_workflow.yaml --format json
 ```bash
 # エージェントが YAML を生成して直接パイプに流す
 cat <<'EOF' | yagra validate --workflow - --format json
-version: "1"
+version: "1.0"
 start_at: translate
 end_at:
   - translate
@@ -195,7 +196,7 @@ Yagra ワークフローを生成する際は、以下の手順に従ってく�
 - `context.available_values`: 利用可能な値の一覧
 
 Yagra YAML の基本構造:
-- `version`: "1" を指定
+- `version`: "1.0" を指定
 - `start_at`: 最初に実行するノードの id
 - `end_at`: 終了ノードの id リスト
 - `nodes`: ノード定義のリスト（id, handler, params）

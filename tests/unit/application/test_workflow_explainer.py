@@ -9,7 +9,13 @@ def _make_spec(overrides: dict) -> GraphSpec:
         "version": "1",
         "start_at": "node_a",
         "end_at": ["node_a"],
-        "nodes": [{"id": "node_a", "handler": "llm", "params": {"model": "gpt-4o-mini", "prompt": "hello"}}],
+        "nodes": [
+            {
+                "id": "node_a",
+                "handler": "llm",
+                "params": {"model": "gpt-4o-mini", "prompt": "hello"},
+            }
+        ],
         "edges": [],
     }
     base.update(overrides)
@@ -30,67 +36,105 @@ def test_explain_required_handlers():
 
 
 def test_explain_variable_flow_extracts_prompt_vars():
-    spec = _make_spec({
-        "nodes": [{"id": "node_a", "handler": "llm", "params": {
-            "model": "gpt-4o-mini",
-            "prompt": "translate {text} to {lang}",
-            "output_key": "translation",
-        }}],
-    })
+    spec = _make_spec(
+        {
+            "nodes": [
+                {
+                    "id": "node_a",
+                    "handler": "llm",
+                    "params": {
+                        "model": "gpt-4o-mini",
+                        "prompt": "translate {text} to {lang}",
+                        "output_key": "translation",
+                    },
+                }
+            ],
+        }
+    )
     result = explain_workflow(spec)
     assert result["variable_flow"]["node_a"]["inputs"] == ["text", "lang"]
     assert "translation" in result["variable_flow"]["node_a"]["outputs"]
 
 
 def test_explain_conditional_node_has_next_in_outputs():
-    spec = GraphSpec.model_validate({
-        "version": "1",
-        "start_at": "classify",
-        "end_at": ["approve", "reject"],
-        "nodes": [
-            {"id": "classify", "handler": "llm", "params": {"model": "gpt-4o-mini", "prompt": "classify {input}"}},
-            {"id": "approve", "handler": "llm", "params": {"model": "gpt-4o-mini", "prompt": "approved"}},
-            {"id": "reject", "handler": "llm", "params": {"model": "gpt-4o-mini", "prompt": "rejected"}},
-        ],
-        "edges": [
-            {"source": "classify", "target": "approve", "condition": "approved"},
-            {"source": "classify", "target": "reject", "condition": "rejected"},
-        ],
-    })
+    spec = GraphSpec.model_validate(
+        {
+            "version": "1",
+            "start_at": "classify",
+            "end_at": ["approve", "reject"],
+            "nodes": [
+                {
+                    "id": "classify",
+                    "handler": "llm",
+                    "params": {"model": "gpt-4o-mini", "prompt": "classify {input}"},
+                },
+                {
+                    "id": "approve",
+                    "handler": "llm",
+                    "params": {"model": "gpt-4o-mini", "prompt": "approved"},
+                },
+                {
+                    "id": "reject",
+                    "handler": "llm",
+                    "params": {"model": "gpt-4o-mini", "prompt": "rejected"},
+                },
+            ],
+            "edges": [
+                {"source": "classify", "target": "approve", "condition": "approved"},
+                {"source": "classify", "target": "reject", "condition": "rejected"},
+            ],
+        }
+    )
     result = explain_workflow(spec)
     assert "__next__" in result["variable_flow"]["classify"]["outputs"]
 
 
 def test_explain_execution_paths_linear():
-    spec = GraphSpec.model_validate({
-        "version": "1",
-        "start_at": "a",
-        "end_at": ["b"],
-        "nodes": [
-            {"id": "a", "handler": "llm", "params": {"model": "gpt-4o-mini", "prompt": "x"}},
-            {"id": "b", "handler": "llm", "params": {"model": "gpt-4o-mini", "prompt": "y"}},
-        ],
-        "edges": [{"source": "a", "target": "b"}],
-    })
+    spec = GraphSpec.model_validate(
+        {
+            "version": "1",
+            "start_at": "a",
+            "end_at": ["b"],
+            "nodes": [
+                {"id": "a", "handler": "llm", "params": {"model": "gpt-4o-mini", "prompt": "x"}},
+                {"id": "b", "handler": "llm", "params": {"model": "gpt-4o-mini", "prompt": "y"}},
+            ],
+            "edges": [{"source": "a", "target": "b"}],
+        }
+    )
     result = explain_workflow(spec)
     assert result["execution_paths"] == [["a", "b"]]
 
 
 def test_explain_execution_paths_branch():
-    spec = GraphSpec.model_validate({
-        "version": "1",
-        "start_at": "classify",
-        "end_at": ["approve", "reject"],
-        "nodes": [
-            {"id": "classify", "handler": "llm", "params": {"model": "gpt-4o-mini", "prompt": "c"}},
-            {"id": "approve", "handler": "llm", "params": {"model": "gpt-4o-mini", "prompt": "a"}},
-            {"id": "reject", "handler": "llm", "params": {"model": "gpt-4o-mini", "prompt": "r"}},
-        ],
-        "edges": [
-            {"source": "classify", "target": "approve", "condition": "approved"},
-            {"source": "classify", "target": "reject", "condition": "rejected"},
-        ],
-    })
+    spec = GraphSpec.model_validate(
+        {
+            "version": "1",
+            "start_at": "classify",
+            "end_at": ["approve", "reject"],
+            "nodes": [
+                {
+                    "id": "classify",
+                    "handler": "llm",
+                    "params": {"model": "gpt-4o-mini", "prompt": "c"},
+                },
+                {
+                    "id": "approve",
+                    "handler": "llm",
+                    "params": {"model": "gpt-4o-mini", "prompt": "a"},
+                },
+                {
+                    "id": "reject",
+                    "handler": "llm",
+                    "params": {"model": "gpt-4o-mini", "prompt": "r"},
+                },
+            ],
+            "edges": [
+                {"source": "classify", "target": "approve", "condition": "approved"},
+                {"source": "classify", "target": "reject", "condition": "rejected"},
+            ],
+        }
+    )
     result = explain_workflow(spec)
     paths = result["execution_paths"]
     assert ["classify", "approve"] in paths

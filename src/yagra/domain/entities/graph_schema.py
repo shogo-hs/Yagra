@@ -26,8 +26,15 @@ class NodeSpec(BaseModel):
         default_factory=dict,
         description="ハンドラーに渡すパラメータ辞書。llm ハンドラー: prompt_ref または prompt（必須）, model（必須）, output_key（省略時は 'output'）。structured_llm ハンドラー: 上記に加え schema_yaml（'name: str\\nage: int' 形式）。streaming_llm ハンドラー: 上記に加え stream（bool, デフォルト true）",
         examples=[
-            {"prompt_ref": "prompts/translate.txt", "model": "gpt-4o-mini", "output_key": "translation"},
-            {"prompt": {"role": "user", "content": "要約してください: {text}"}, "model": "gpt-4o-mini"},
+            {
+                "prompt_ref": "prompts/translate.txt",
+                "model": "gpt-4o-mini",
+                "output_key": "translation",
+            },
+            {
+                "prompt": {"role": "user", "content": "要約してください: {text}"},
+                "model": "gpt-4o-mini",
+            },
         ],
     )
 
@@ -61,8 +68,8 @@ class GraphSpec(BaseModel):
 
     version: str = Field(
         min_length=1,
-        description="YAML スキーマのバージョン。現在は '1' を指定する",
-        examples=["1"],
+        description="YAML スキーマのバージョン。現在は '1.0' を指定する",
+        examples=["1.0"],
     )
     start_at: str = Field(
         min_length=1,
@@ -77,12 +84,25 @@ class GraphSpec(BaseModel):
     nodes: list[NodeSpec] = Field(
         min_length=1,
         description="ワークフローを構成するノードの定義リスト。各ノードは id, handler, params を持つ",
-        examples=[[{"id": "translate", "handler": "llm", "params": {"prompt_ref": "prompts/translate.txt", "model": "gpt-4o-mini"}}]],
+        examples=[
+            [
+                {
+                    "id": "translate",
+                    "handler": "llm",
+                    "params": {"prompt_ref": "prompts/translate.txt", "model": "gpt-4o-mini"},
+                }
+            ]
+        ],
     )
     edges: list[EdgeSpec] = Field(
         min_length=0,
         description="ノード間の遷移定義リスト。source から target へのエッジを列挙する。条件分岐は condition フィールドで指定する",
-        examples=[[{"source": "classify", "target": "approve", "condition": "approved"}, {"source": "classify", "target": "reject", "condition": "rejected"}]],
+        examples=[
+            [
+                {"source": "classify", "target": "approve", "condition": "approved"},
+                {"source": "classify", "target": "reject", "condition": "rejected"},
+            ]
+        ],
     )
     params: dict[str, Any] = Field(
         default_factory=dict,

@@ -307,6 +307,46 @@ yagra validate --workflow workflows/support.yaml
 yagra validate --workflow workflows/support.yaml --format json
 ```
 
+### `yagra explain`
+
+Statically analyze a workflow YAML to show execution paths, required handlers, and variable flow.
+
+```bash
+# JSON output (default)
+yagra explain --workflow workflows/support.yaml
+
+# Read from stdin (pipe-friendly)
+cat workflows/support.yaml | yagra explain --workflow -
+```
+
+### `yagra handlers`
+
+List built-in handler parameter schemas (useful for coding agents).
+
+```bash
+# Human-readable output
+yagra handlers
+
+# JSON output for agent consumption
+yagra handlers --format json
+```
+
+### `yagra mcp`
+
+Launch Yagra as an [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server. Requires `yagra[mcp]` extra.
+
+```bash
+# Install with MCP support
+pip install "yagra[mcp]"
+# or
+uv add "yagra[mcp]"
+
+# Start the MCP server (stdio mode)
+yagra mcp
+```
+
+Available MCP tools: `validate_workflow`, `explain_workflow`, `list_templates`, `list_handlers`
+
 ### `yagra visualize`
 
 Generate a read-only visualization HTML.

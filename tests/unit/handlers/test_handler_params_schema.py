@@ -1,10 +1,7 @@
 """Unit tests for handler PARAMS_SCHEMA constants and `yagra handlers` CLI command."""
 
 import json
-import sys
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 with patch.dict("sys.modules", {"litellm": MagicMock()}):
     from yagra.handlers.llm_handler import LLM_HANDLER_PARAMS_SCHEMA
@@ -28,13 +25,13 @@ class TestLLMHandlerParamsSchema:
         assert "model" in LLM_HANDLER_PARAMS_SCHEMA["required"]
 
     def test_properties_contains_expected_keys(self) -> None:
-        """properties に prompt, prompt_ref, model, output_key が含まれること."""
+        """Properties に prompt, prompt_ref, model, output_key が含まれること."""
         props = LLM_HANDLER_PARAMS_SCHEMA["properties"]
         for key in ("prompt", "prompt_ref", "model", "output_key"):
             assert key in props, f"'{key}' not found in properties"
 
     def test_one_of_requires_prompt_or_prompt_ref(self) -> None:
-        """oneOf が prompt または prompt_ref を必須として定義していること."""
+        """OneOf が prompt または prompt_ref を必須として定義していること."""
         one_of = LLM_HANDLER_PARAMS_SCHEMA["oneOf"]
         required_sets = [set(item.get("required", [])) for item in one_of]
         assert {"prompt"} in required_sets
@@ -57,13 +54,13 @@ class TestStructuredLLMHandlerParamsSchema:
         assert "model" in STRUCTURED_LLM_HANDLER_PARAMS_SCHEMA["required"]
 
     def test_properties_contains_expected_keys(self) -> None:
-        """properties に model, output_key, schema_yaml が含まれること."""
+        """Properties に model, output_key, schema_yaml が含まれること."""
         props = STRUCTURED_LLM_HANDLER_PARAMS_SCHEMA["properties"]
         for key in ("model", "output_key", "schema_yaml"):
             assert key in props, f"'{key}' not found in properties"
 
     def test_one_of_requires_prompt_or_prompt_ref(self) -> None:
-        """oneOf が prompt または prompt_ref を必須として定義していること."""
+        """OneOf が prompt または prompt_ref を必須として定義していること."""
         one_of = STRUCTURED_LLM_HANDLER_PARAMS_SCHEMA["oneOf"]
         required_sets = [set(item.get("required", [])) for item in one_of]
         assert {"prompt"} in required_sets
@@ -86,13 +83,13 @@ class TestStreamingLLMHandlerParamsSchema:
         assert "model" in STREAMING_LLM_HANDLER_PARAMS_SCHEMA["required"]
 
     def test_properties_contains_expected_keys(self) -> None:
-        """properties に prompt, prompt_ref, model, output_key, stream が含まれること."""
+        """Properties に prompt, prompt_ref, model, output_key, stream が含まれること."""
         props = STREAMING_LLM_HANDLER_PARAMS_SCHEMA["properties"]
         for key in ("prompt", "prompt_ref", "model", "output_key", "stream"):
             assert key in props, f"'{key}' not found in properties"
 
     def test_one_of_requires_prompt_or_prompt_ref(self) -> None:
-        """oneOf が prompt または prompt_ref を必須として定義していること."""
+        """OneOf が prompt または prompt_ref を必須として定義していること."""
         one_of = STREAMING_LLM_HANDLER_PARAMS_SCHEMA["oneOf"]
         required_sets = [set(item.get("required", [])) for item in one_of]
         assert {"prompt"} in required_sets
@@ -112,11 +109,15 @@ class TestHandlersExportsFromInit:
             assert "STREAMING_LLM_HANDLER_PARAMS_SCHEMA" in h.__all__
 
     def test_schemas_accessible_from_handlers_package(self) -> None:
-        """handlers パッケージから直接スキーマ定数にアクセスできること."""
+        """Handlers パッケージから直接スキーマ定数にアクセスできること."""
         with patch.dict("sys.modules", {"litellm": MagicMock()}):
             from yagra.handlers import (
                 LLM_HANDLER_PARAMS_SCHEMA as llm_schema,
+            )
+            from yagra.handlers import (
                 STREAMING_LLM_HANDLER_PARAMS_SCHEMA as streaming_schema,
+            )
+            from yagra.handlers import (
                 STRUCTURED_LLM_HANDLER_PARAMS_SCHEMA as structured_schema,
             )
 
@@ -145,7 +146,9 @@ class TestHandlersCLICommand:
 
             args = argparse.Namespace(format=format_)
             captured = io.StringIO()
-            with patch("builtins.print", side_effect=lambda *a, **kw: captured.write(str(a[0]) + "\n")):
+            with patch(
+                "builtins.print", side_effect=lambda *a, **kw: captured.write(str(a[0]) + "\n")
+            ):
                 _run_handlers_command(args)
             return captured.getvalue()
 
@@ -159,7 +162,9 @@ class TestHandlersCLICommand:
 
             args = argparse.Namespace(format="json")
             captured = io.StringIO()
-            with patch("builtins.print", side_effect=lambda *a, **kw: captured.write(str(a[0]) + "\n")):
+            with patch(
+                "builtins.print", side_effect=lambda *a, **kw: captured.write(str(a[0]) + "\n")
+            ):
                 exit_code = _run_handlers_command(args)
 
             assert exit_code == 0
@@ -181,7 +186,9 @@ class TestHandlersCLICommand:
 
             args = argparse.Namespace(format="json")
             captured = io.StringIO()
-            with patch("builtins.print", side_effect=lambda *a, **kw: captured.write(str(a[0]) + "\n")):
+            with patch(
+                "builtins.print", side_effect=lambda *a, **kw: captured.write(str(a[0]) + "\n")
+            ):
                 _run_handlers_command(args)
 
             data = json.loads(captured.getvalue())
@@ -199,7 +206,9 @@ class TestHandlersCLICommand:
 
             args = argparse.Namespace(format="json")
             captured = io.StringIO()
-            with patch("builtins.print", side_effect=lambda *a, **kw: captured.write(str(a[0]) + "\n")):
+            with patch(
+                "builtins.print", side_effect=lambda *a, **kw: captured.write(str(a[0]) + "\n")
+            ):
                 _run_handlers_command(args)
 
             data = json.loads(captured.getvalue())
@@ -210,7 +219,7 @@ class TestHandlersCLICommand:
                 )
 
     def test_text_output_returns_zero(self) -> None:
-        """text フォーマット指定時も終了コード 0 が返ること."""
+        """Text フォーマット指定時も終了コード 0 が返ること."""
         import argparse
         import io
 
@@ -219,7 +228,10 @@ class TestHandlersCLICommand:
 
             args = argparse.Namespace(format="text")
             captured = io.StringIO()
-            with patch("builtins.print", side_effect=lambda *a, **kw: captured.write((str(a[0]) if a else "") + "\n")):
+            with patch(
+                "builtins.print",
+                side_effect=lambda *a, **kw: captured.write((str(a[0]) if a else "") + "\n"),
+            ):
                 exit_code = _run_handlers_command(args)
 
             assert exit_code == 0

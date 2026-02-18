@@ -222,9 +222,22 @@ STREAMING_LLM_HANDLER_PARAMS_SCHEMA: dict = {
             "description": "プロンプトファイルのパス。prompt と排他",
         },
         "model": {
-            "type": "string",
-            "description": "使用する LLM モデル名（litellm 形式）",
-            "examples": ["gpt-4o-mini", "gpt-4o"],
+            "type": "object",
+            "description": "LLM モデル設定。provider と name が必須。kwargs に stream フラグ等の追加パラメータを渡せる",
+            "properties": {
+                "provider": {"type": "string", "examples": ["openai", "anthropic"]},
+                "name": {"type": "string", "examples": ["gpt-4o-mini", "claude-opus-4-6"]},
+                "kwargs": {
+                    "type": "object",
+                    "description": "stream フラグ等の litellm 追加パラメータ",
+                },
+            },
+            "required": ["provider", "name"],
+        },
+        "input_keys": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "プロンプトに渡す state キーの明示指定。省略時はプロンプトテンプレートの {変数名} から自動抽出",
         },
         "output_key": {
             "type": "string",

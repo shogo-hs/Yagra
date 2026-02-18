@@ -4,6 +4,22 @@
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-02-18
+
+### Added
+- 🤖 **G-11: エージェント向けワークフロー自律生成支援（M-28〜M-34）**: コーディングエージェントが Yagra ワークフローを高精度に自律生成・修正できる環境が整った
+  - **M-28 スキーマ意味情報付与**: `GraphSpec` / `NodeSpec` / `EdgeSpec` の全フィールドに `description` と `examples` を付与。`yagra schema` の JSON Schema 出力にフィールドの意図・用途・値例が含まれるようになり、エージェントがスキーマだけで仕様を理解できる
+  - **M-29 バリデーション修正提案**: `WorkflowValidationIssue` に `severity`（`error` / `warning` / `info`）と `context`（`actual_value` / `available_values` / `suggestion`）を追加。ノード ID のタイポ等に対してファジーマッチで修正候補を提示
+  - **M-30 explain コマンド**: `yagra explain --workflow <path> --format json` を新規実装。静的解析により `entry_point` / `exit_points` / `execution_paths` / `required_handlers` / `variable_flow` を出力
+  - **M-31 stdin 対応**: `yagra validate --workflow -` および `yagra explain --workflow -` で標準入力からの YAML を処理可能に。一時ファイルなしで検証できる
+  - **M-32 handlers コマンドと PARAMS_SCHEMA**: `yagra handlers --format json` で組み込みハンドラーの params JSON Schema を出力。各ハンドラーモジュールに `LLM_HANDLER_PARAMS_SCHEMA` 等の定数を追加
+  - **M-33 エージェント統合ガイド**: `docs/agent-integration-guide.md` を新規追加。生成→検証→修正ループのワークドエグザンプル、システムプロンプト例、MCP サーバー統合手順を掲載
+  - **M-34 MCP サーバー**: `mcp` Python SDK（Anthropic 公式）を使った MCP サーバーを実装。`yagra mcp` で起動。`validate_workflow` / `explain_workflow` / `list_templates` / `list_handlers` の 4 ツールを提供。`pip install "yagra[mcp]"` でオプションインストール
+
+### Related
+- **Goal**: G-11（コーディングエージェントが Yagra ワークフローを高精度に自律生成・修正できる）
+- **Milestones**: M-28, M-29, M-30, M-31, M-32, M-33, M-34
+
 ## [0.5.5] - 2026-02-18
 
 ### Added

@@ -205,7 +205,10 @@ LLM_HANDLER_PARAMS_SCHEMA: dict = {
     "properties": {
         "prompt": {
             "oneOf": [
-                {"type": "string", "description": "プロンプトテキスト。{変数名} でステートの値を展開できる"},
+                {
+                    "type": "string",
+                    "description": "プロンプトテキスト。{変数名} でステートの値を展開できる",
+                },
                 {"type": "object", "description": "role/content 形式のプロンプト辞書"},
                 {"type": "array", "description": "複数メッセージのリスト"},
             ],
@@ -217,9 +220,31 @@ LLM_HANDLER_PARAMS_SCHEMA: dict = {
             "examples": ["prompts/translate.txt", "./prompts/summarize.md"],
         },
         "model": {
-            "type": "string",
-            "description": "使用する LLM モデル名（litellm 形式）",
-            "examples": ["gpt-4o-mini", "gpt-4o", "claude-opus-4-6", "gemini/gemini-pro"],
+            "type": "object",
+            "description": "LLM モデル設定。provider（litellm プロバイダー名）と name（モデル名）が必須。kwargs に litellm の追加パラメータを渡せる",
+            "properties": {
+                "provider": {
+                    "type": "string",
+                    "description": "litellm プロバイダー名",
+                    "examples": ["openai", "anthropic", "google"],
+                },
+                "name": {
+                    "type": "string",
+                    "description": "モデル名",
+                    "examples": ["gpt-4o-mini", "claude-opus-4-6", "gemini-pro"],
+                },
+                "kwargs": {
+                    "type": "object",
+                    "description": "litellm に渡す追加パラメータ（temperature 等）",
+                },
+            },
+            "required": ["provider", "name"],
+        },
+        "input_keys": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "プロンプトに渡す state キーの明示指定。省略時はプロンプトテンプレートの {変数名} から自動抽出",
+            "examples": [["text"], ["input", "context"]],
         },
         "output_key": {
             "type": "string",

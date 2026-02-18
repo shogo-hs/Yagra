@@ -1,7 +1,5 @@
 """Tests for MCP server tools (without actual MCP connection)."""
 
-import pytest
-
 
 def test_tool_validate_workflow_valid():
     from yagra.adapters.inbound.mcp_server import _tool_validate_workflow
@@ -87,7 +85,7 @@ def test_tool_list_handlers():
 
 
 def test_create_mcp_server_requires_mcp_package():
-    """mcp パッケージが未インストールの場合 ImportError が発生することを確認する。"""
+    """Mcp パッケージが未インストールの場合 ImportError が発生することを確認する。"""
     # このテストは mcp がインストールされていれば server オブジェクトが返ることを確認
     # mcp がなければ ImportError が出る（それも正しい動作）
     try:

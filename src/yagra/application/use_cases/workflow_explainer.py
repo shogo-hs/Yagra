@@ -113,9 +113,7 @@ def _build_variable_flow(
         ノード名をキーとする辞書。値は {"inputs": [...], "outputs": [...]} の辞書。
     """
     # conditional edges の source ノードを特定
-    conditional_sources = {
-        edge.source for edge in spec.edges if edge.condition is not None
-    }
+    conditional_sources = {edge.source for edge in spec.edges if edge.condition is not None}
 
     flow: dict[str, dict[str, list[str]]] = {}
     for node in spec.nodes:

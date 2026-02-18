@@ -382,7 +382,7 @@ class TestValidateCommandStdin:
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """stdin に有効な YAML を渡すと終了コード 0 と passed メッセージを返すこと。"""
+        """Stdin に有効な YAML を渡すと終了コード 0 と passed メッセージを返すこと。"""
         import io
 
         monkeypatch.setattr(sys, "stdin", io.StringIO(self._valid_yaml()))
@@ -400,7 +400,7 @@ class TestValidateCommandStdin:
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """stdin に有効な YAML を渡して --format json を指定すると is_valid が true であること。"""
+        """Stdin に有効な YAML を渡して --format json を指定すると is_valid が true であること。"""
         import io
 
         monkeypatch.setattr(sys, "stdin", io.StringIO(self._valid_yaml()))
@@ -422,7 +422,7 @@ class TestValidateCommandStdin:
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """stdin に YAML パースエラーがある文字列を渡すと終了コード 1 を返すこと。"""
+        """Stdin に YAML パースエラーがある文字列を渡すと終了コード 1 を返すこと。"""
         import io
 
         broken_yaml = "key: [unclosed bracket"
@@ -441,7 +441,7 @@ class TestValidateCommandStdin:
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """stdin に YAML パースエラーがある文字列を --format json で渡すと is_valid が false かつ issues が存在すること。"""
+        """Stdin に YAML パースエラーがある文字列を --format json で渡すと is_valid が false かつ issues が存在すること。"""
         import io
 
         broken_yaml = "key: [unclosed bracket"
@@ -465,7 +465,7 @@ class TestValidateCommandStdin:
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """stdin にマッピングでない YAML (リスト等) を渡すと終了コード 1 を返すこと。"""
+        """Stdin にマッピングでない YAML (リスト等) を渡すと終了コード 1 を返すこと。"""
         import io
 
         list_yaml = "- item1\n- item2\n"
@@ -484,7 +484,7 @@ class TestValidateCommandStdin:
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """stdin にスキーマ不正な YAML (edges 欠損) を渡すと終了コード 1 を返すこと。"""
+        """Stdin にスキーマ不正な YAML (edges 欠損) を渡すと終了コード 1 を返すこと。"""
         import io
 
         payload = _base_payload()
