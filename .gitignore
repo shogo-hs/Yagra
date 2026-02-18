@@ -227,6 +227,7 @@ workflows/
 prompts/
 .claude/
 .serena/
+.playwright-mcp/
 
 # Internal planning docs
 docs/task-designs/
