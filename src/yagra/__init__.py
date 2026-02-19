@@ -20,6 +20,7 @@ from yagra.application.services.template_initializer import (
     FileAlreadyExistsError,
     TemplateNotFoundError,
     initialize_from_template,
+    list_templates,
     list_templates_with_info,
 )
 from yagra.application.use_cases import (
@@ -211,17 +212,19 @@ def _run_init_command(args: argparse.Namespace) -> int:
     """
     # テンプレート一覧表示
     if args.list:
-        infos = list_templates_with_info()
-        if not infos:
+        names = list_templates()
+        if not names:
             print("利用可能なテンプレートがありません。")
             return 1
+        infos = {info.name: info for info in list_templates_with_info()}
         print("利用可能なテンプレート:")
-        for info in infos:
-            if info.use_case:
-                print(f"  - {info.name}  [{info.use_case}]")
+        for name in names:
+            info = infos.get(name)
+            if info and info.use_case:
+                print(f"  - {name}  [{info.use_case}]")
             else:
-                print(f"  - {info.name}")
-            if info.description:
+                print(f"  - {name}")
+            if info and info.description:
                 print(f"      {info.description}")
         return 0
 
