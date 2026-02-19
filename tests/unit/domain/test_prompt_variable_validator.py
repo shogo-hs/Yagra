@@ -78,6 +78,36 @@ def test_extract_required_vars_prompt_dict_without_user_key() -> None:
     assert result == []
 
 
+def test_extract_required_vars_extracts_from_system_template() -> None:
+    params = {"prompt": {"system": "You always respond in {language}.", "user": "Hello."}}
+    result = _extract_required_vars(params)
+    assert result == ["language"]
+
+
+def test_extract_required_vars_extracts_from_both_system_and_user() -> None:
+    params = {"prompt": {"system": "Respond in {lang}.", "user": "Translate {text}."}}
+    result = _extract_required_vars(params)
+    assert result == ["lang", "text"]
+
+
+def test_extract_required_vars_deduplicates_shared_variable() -> None:
+    params = {"prompt": {"system": "Use {lang}.", "user": "Output in {lang}."}}
+    result = _extract_required_vars(params)
+    assert result == ["lang"]
+
+
+def test_extract_required_vars_system_only_no_user_key() -> None:
+    params = {"prompt": {"system": "You are a {role}."}}
+    result = _extract_required_vars(params)
+    assert result == ["role"]
+
+
+def test_extract_required_vars_system_not_str_returns_user_vars() -> None:
+    params = {"prompt": {"system": 123, "user": "Hello {name}."}}
+    result = _extract_required_vars(params)
+    assert result == ["name"]
+
+
 # ---------------------------------------------------------------------------
 # _get_output_key
 # ---------------------------------------------------------------------------

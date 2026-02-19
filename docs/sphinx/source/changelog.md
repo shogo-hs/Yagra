@@ -8,6 +8,14 @@ For the canonical changelog (Japanese), see [CHANGELOG.md](https://github.com/sh
 
 ## [Unreleased]
 
+## [0.6.4] - 2026-02-19
+
+### Added
+- ✨ **State variable injection in `system` prompts**: LLM handlers (`llm` / `streaming_llm` / `structured_llm`) now support `{variable}` substitution in `system` prompts using state values
+  - Auto-detection mode (no `input_keys`): extracts `{variable}` patterns from both `system` and `user` templates, deduplicates, and expands both
+  - Explicit mode (`input_keys` specified): applies the specified keys to both `system` and `user` prompts (backward compatible)
+  - `prompt_variable_validator` also validates variables in `system` prompts (backward compatible)
+
 ## [0.6.3] - 2026-02-19
 
 ### Added

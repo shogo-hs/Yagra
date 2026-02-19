@@ -2621,7 +2621,7 @@ wheels = [
 
 [[package]]
 name = "yagra"
-version = "0.6.3"
+version = "0.6.4"
 source = { editable = "." }
 dependencies = [
     { name = "langgraph" },

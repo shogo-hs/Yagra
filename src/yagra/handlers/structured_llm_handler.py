@@ -152,23 +152,25 @@ def create_structured_llm_handler(
         output_key = params.get("output_key", "output")
 
         # 2. Interpolate variables into the prompt
-        system_prompt = prompt.get("system", "")
+        system_prompt_template = prompt.get("system", "")
         user_prompt_template = prompt.get("user", "")
 
         # If input_keys is explicitly specified, use it (backward compatibility);
-        # otherwise auto-extract {variable} patterns from the prompt template
+        # otherwise auto-extract {variable} patterns from both system and user templates
         explicit_keys = params.get("input_keys")
-        keys = (
-            explicit_keys
-            if explicit_keys is not None
-            else re.findall(r"\{(\w+)\}", user_prompt_template)
-        )
+        if explicit_keys is not None:
+            keys = explicit_keys
+        else:
+            system_vars = re.findall(r"\{(\w+)\}", system_prompt_template)
+            user_vars = re.findall(r"\{(\w+)\}", user_prompt_template)
+            keys = list(dict.fromkeys(system_vars + user_vars))
 
         # Retrieve input values from state
         input_values = {key: state.get(key, "") for key in keys}
 
-        # Replace {variable} format variables
+        # Replace {variable} format variables in both system and user prompts
         try:
+            system_prompt = system_prompt_template.format(**input_values)
             user_prompt = user_prompt_template.format(**input_values)
         except KeyError as e:
             msg = f"Missing key in state for prompt interpolation: {e}"

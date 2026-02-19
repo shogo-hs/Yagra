@@ -280,6 +280,118 @@ class TestLLMHandler:
                 handler(state, params)
 
 
+class TestLLMHandlerSystemPromptInterpolation:
+    """Tests for state variable interpolation in system prompt."""
+
+    def test_system_prompt_variable_interpolation(self, mock_litellm_import: None) -> None:
+        """Confirms that {variable} in system prompt is substituted from state."""
+        handler = create_llm_handler(retry=1, timeout=10)
+
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock(message=MagicMock(content="Response"))]
+
+        with patch("yagra.handlers.llm_handler.litellm") as mock_litellm:
+            mock_litellm.completion.return_value = mock_response
+
+            state = {"language": "Japanese", "query": "Hello"}
+            params = {
+                "prompt": {
+                    "system": "You are a helpful assistant. Always respond in {language}.",
+                    "user": "{query}",
+                },
+                "model": {"provider": "openai", "name": "gpt-4"},
+                "output_key": "result",
+            }
+
+            handler(state, params)
+
+            call_args = mock_litellm.completion.call_args
+            messages = call_args.kwargs["messages"]
+            assert (
+                messages[0]["content"] == "You are a helpful assistant. Always respond in Japanese."
+            )
+            assert messages[1]["content"] == "Hello"
+
+    def test_system_prompt_only_variable(self, mock_litellm_import: None) -> None:
+        """Confirms that variables only in system prompt (no user vars) are auto-detected."""
+        handler = create_llm_handler(retry=1, timeout=10)
+
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock(message=MagicMock(content="Response"))]
+
+        with patch("yagra.handlers.llm_handler.litellm") as mock_litellm:
+            mock_litellm.completion.return_value = mock_response
+
+            state = {"role": "translator"}
+            params = {
+                "prompt": {
+                    "system": "You are a {role}.",
+                    "user": "Translate this text.",
+                },
+                "model": {"provider": "openai", "name": "gpt-4"},
+            }
+
+            handler(state, params)
+
+            call_args = mock_litellm.completion.call_args
+            messages = call_args.kwargs["messages"]
+            assert messages[0]["content"] == "You are a translator."
+            assert messages[1]["content"] == "Translate this text."
+
+    def test_system_and_user_share_variable(self, mock_litellm_import: None) -> None:
+        """Confirms that the same variable in both system and user is expanded correctly."""
+        handler = create_llm_handler(retry=1, timeout=10)
+
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock(message=MagicMock(content="Response"))]
+
+        with patch("yagra.handlers.llm_handler.litellm") as mock_litellm:
+            mock_litellm.completion.return_value = mock_response
+
+            state = {"lang": "French"}
+            params = {
+                "prompt": {
+                    "system": "Respond in {lang}.",
+                    "user": "Translate to {lang}.",
+                },
+                "model": {"provider": "openai", "name": "gpt-4"},
+            }
+
+            handler(state, params)
+
+            call_args = mock_litellm.completion.call_args
+            messages = call_args.kwargs["messages"]
+            assert messages[0]["content"] == "Respond in French."
+            assert messages[1]["content"] == "Translate to French."
+
+    def test_explicit_input_keys_applies_to_both_prompts(self, mock_litellm_import: None) -> None:
+        """Confirms that explicit input_keys are applied to both system and user prompts."""
+        handler = create_llm_handler(retry=1, timeout=10)
+
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock(message=MagicMock(content="Response"))]
+
+        with patch("yagra.handlers.llm_handler.litellm") as mock_litellm:
+            mock_litellm.completion.return_value = mock_response
+
+            state = {"lang": "Spanish", "text": "Hello world"}
+            params = {
+                "prompt": {
+                    "system": "You respond in {lang}.",
+                    "user": "Translate: {text}",
+                },
+                "model": {"provider": "openai", "name": "gpt-4"},
+                "input_keys": ["lang", "text"],
+            }
+
+            handler(state, params)
+
+            call_args = mock_litellm.completion.call_args
+            messages = call_args.kwargs["messages"]
+            assert messages[0]["content"] == "You respond in Spanish."
+            assert messages[1]["content"] == "Translate: Hello world"
+
+
 class TestLLMHandlerAutoDetect:
     """Tests for automatic input_keys detection."""
 

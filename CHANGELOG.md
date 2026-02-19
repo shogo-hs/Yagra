@@ -4,6 +4,14 @@
 
 ## [Unreleased]
 
+## [0.6.4] - 2026-02-19
+
+### Added
+- ✨ **`system` プロンプトへの state 変数注入サポート**: LLM ハンドラ（`llm` / `streaming_llm` / `structured_llm`）の `system` プロンプトでも `{variable}` 形式で state の値を参照可能に
+  - 自動検出モード（`input_keys` 未指定）：`system` と `user` 両テンプレートから `{variable}` を抽出し重複除去した上で両方に展開
+  - 明示指定モード（`input_keys` 指定）：従来通り指定されたキーを `system` / `user` 両方に適用
+  - `prompt_variable_validator` も `system` プロンプトの変数を検証対象に追加（後方互換性あり）
+
 ## [0.6.3] - 2026-02-19
 
 ### Added
