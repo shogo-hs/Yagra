@@ -1,6 +1,6 @@
 # 到達ステップ
 
-最終更新: 2026-02-18 <!-- G-11 実装完了 -->
+最終更新: 2026-02-19 <!-- 競合分析を踏まえ M-35/M-36 を追加 -->
 
 補足:
 - M-28〜M-34 は完了（G-11）。`GraphSpec`/`NodeSpec`/`EdgeSpec` 全フィールドに `description`/`examples` 付与（M-28）、`WorkflowValidationIssue` に `severity`/`context` とファジーマッチ修正提案を追加（M-29）、`yagra explain` コマンド実装（M-30）、`yagra validate --workflow -` で stdin 対応（M-31）、組み込みハンドラーの params スキーマ公開と `yagra handlers` コマンド追加（M-32）、エージェント統合ガイド作成（M-33）、MCP サーバー実装（M-34）。単体テスト 181 件（+約 60 件）・ruff/mypy クリア。
@@ -51,6 +51,8 @@
 | M-32 | G-11 | ハンドラースキーマレジストリと `yagra handlers` コマンドを追加する | 組み込みハンドラーが受け付ける `params` の構造を JSON Schema で公開し、`yagra handlers --format json` でエージェントが発見できる | Done |
 | M-33 | G-11 | エージェント統合ガイドとワーキングサンプルを整備する | スキーマ取得→YAML 生成→検証→修正ループの worked example と、エージェント向けプロンプト例をドキュメント化する | Done |
 | M-34 | G-11 | MCP サーバーとして Yagra 機能を公開する | `validate` / `explain` / `list_templates` / `list_handlers` を MCP ツールとして提供し、エージェントが CLI を経由せずに直接呼び出せる | Done |
+| M-35 | G-12 | GitHub Actions 統合を提供する | `yagra validate` を GitHub Actions ワークフローに組み込むサンプル設定と使用ガイドを提供し、PR ごとにワークフロー変更を自動検証できる | Open |
+| M-36 | G-13 | テンプレートライブラリを拡充する | multi-agent・tool-use・human-review（G-09 完了後）の実用テンプレートを追加し、各テンプレートに動作可能サンプルコードを付属させる | Open |
 
 ## Goal 別の実装項目
 
@@ -171,6 +173,24 @@
 | G11-I08 | `yagra handlers --format json` コマンドを実装する | Done | `src/yagra/__init__.py` |
 | G11-I09 | エージェント統合ガイド（生成→検証→修正ループの worked example）を作成する | Done | `docs/agent-integration-guide.md` |
 | G11-I10 | MCP サーバーを実装し、`validate` / `explain` / `list_templates` / `list_handlers` をツールとして公開する | Done | `src/yagra/adapters/inbound/mcp_server.py` |
+
+### G-12: ワークフロー定義を Git で管理し、CI で自動検証できる
+
+| Item ID | やるべきこと | 状態 | 根拠 |
+| --- | --- | --- | --- |
+| G12-I01 | GitHub Actions での `yagra validate` 実行サンプルを作成する | Open | `.github/workflows/validate-example.yml` |
+| G12-I02 | CI 統合ガイドドキュメントを整備する | Open | `docs/ci-integration-guide.md` |
+| G12-I03 | `yagra explain` の出力を PR コメントに貼り付けるサンプルスクリプトを提供する | Open | `scripts/pr-comment-example.sh` |
+
+### G-13: 多様なユースケースに対応するテンプレートから素早く開発を開始できる
+
+| Item ID | やるべきこと | 状態 | 根拠 |
+| --- | --- | --- | --- |
+| G13-I01 | multi-agent テンプレートを追加する（エージェント間連携パターン） | Open | `src/yagra/templates/multi-agent/` |
+| G13-I02 | tool-use テンプレートを追加する（外部ツール呼び出しパターン） | Open | `src/yagra/templates/tool-use/` |
+| G13-I03 | human-review テンプレートを追加する（G-09 完了後：HITL パターン） | Open | `src/yagra/templates/human-review/` |
+| G13-I04 | 各テンプレートに動作可能なサンプルコードを付属させる | Open | `examples/` |
+| G13-I05 | `yagra init --list` でテンプレート一覧にユースケース説明を追加する | Open | `src/yagra/__init__.py` |
 
 ## 運用ルール
 
