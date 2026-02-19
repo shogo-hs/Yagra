@@ -1,1 +1,1 @@
-"""Yagra のドメイン層を提供するパッケージ。"""
+"""Package providing the domain layer for Yagra."""

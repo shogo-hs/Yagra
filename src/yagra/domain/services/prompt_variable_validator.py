@@ -1,4 +1,4 @@
-"""プロンプトテンプレート変数抽出ユーティリティを提供する。"""
+"""Provides utilities for extracting prompt template variables."""
 
 from __future__ import annotations
 
@@ -9,17 +9,16 @@ _LLM_HANDLERS = frozenset({"llm", "streaming_llm", "structured_llm"})
 
 
 def _extract_required_vars(params: dict[str, Any]) -> list[str]:
-    """ノード params からプロンプトが要求する変数名リストを返す。
+    """Returns a list of variable names required by the prompt from the node params.
 
-    ``input_keys`` が明示指定されていればそれを優先し、
-    未指定の場合はユーザープロンプトテンプレートから ``{variable}`` を自動抽出する。
-    ハンドラーと同一のロジックを使用する。
+    Uses ``input_keys`` if explicitly specified; otherwise auto-extracts ``{variable}``
+    patterns from the user prompt template. Uses the same logic as the handler.
 
     Args:
-        params: ノードの params 辞書。
+        params: Node params dictionary.
 
     Returns:
-        要求する変数名のリスト。
+        List of required variable names.
     """
     explicit_keys = params.get("input_keys")
     if explicit_keys is not None:
@@ -37,13 +36,13 @@ def _extract_required_vars(params: dict[str, Any]) -> list[str]:
 
 
 def _get_output_key(params: dict[str, Any]) -> str:
-    """ノード params から output_key を返す。未指定時はデフォルト ``"output"``。
+    """Returns the output_key from node params. Defaults to ``"output"`` if not specified.
 
     Args:
-        params: ノードの params 辞書。
+        params: Node params dictionary.
 
     Returns:
-        output_key 文字列。
+        output_key string.
     """
     key = params.get("output_key", "output")
     return str(key) if key else "output"

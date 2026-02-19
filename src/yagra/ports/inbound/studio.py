@@ -1,4 +1,4 @@
-"""Workflow Studio の inbound port 契約を定義する。"""
+"""Defines the inbound port contract for Workflow Studio."""
 
 from __future__ import annotations
 
@@ -9,14 +9,14 @@ from typing import Any
 
 @dataclass(slots=True)
 class StudioError(Exception):
-    """Studio 操作で返すアプリケーションエラー。"""
+    """Application error returned by Studio operations."""
 
     error: str
     message: str | None = None
     details: dict[str, Any] = field(default_factory=dict)
 
     def to_payload(self) -> dict[str, Any]:
-        """API 応答へ変換可能な辞書を返す。"""
+        """Returns a dictionary that can be converted to an API response."""
         payload: dict[str, Any] = {"error": self.error}
         if self.message is not None:
             payload["message"] = self.message
@@ -41,7 +41,7 @@ class StudioUnprocessableEntityError(StudioError):
 
 
 class StudioPort(ABC):
-    """Workflow Studio の入力境界。"""
+    """Input boundary for Workflow Studio."""
 
     @abstractmethod
     def get_studio_target(self) -> dict[str, Any]:
@@ -85,7 +85,7 @@ class StudioPort(ABC):
 
     @abstractmethod
     def catalog_preview(self, body: dict[str, Any]) -> dict[str, Any]:
-        """Catalog 設定プレビューを返す。"""
+        """Returns a Catalog configuration preview."""
 
     @abstractmethod
     def save(self, body: dict[str, Any]) -> dict[str, Any]:

@@ -1,4 +1,4 @@
-"""Yagra の outbound port 定義を公開する。"""
+"""Exposes the outbound port definitions for Yagra."""
 
 from yagra.ports.outbound.node_registry import (
     NodeHandler,

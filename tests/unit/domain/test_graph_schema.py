@@ -72,6 +72,28 @@ def test_collect_graph_structure_issues_detects_unknown_edge_target() -> None:
     assert any(issue.location == ("edges", 4, "target") for issue in issues)
 
 
+def test_collect_graph_structure_issues_detects_edge_from_end_at_node() -> None:
+    payload = deepcopy(_base_payload())
+    # Add an edge from finish (end_at node) to another node
+    payload["nodes"].append({"id": "after_finish", "handler": "after_handler"})
+    payload["edges"].append({"source": "finish", "target": "after_finish"})
+    spec = GraphSpec.model_validate(payload)
+
+    issues = collect_graph_structure_issues(spec)
+
+    assert any(issue.location == ("edges", len(spec.edges) - 1, "source") for issue in issues)
+
+
+def test_collect_graph_structure_issues_accepts_end_at_node_as_edge_target() -> None:
+    # Incoming edges to an end_at node are valid
+    payload = deepcopy(_base_payload())
+    spec = GraphSpec.model_validate(payload)
+
+    issues = collect_graph_structure_issues(spec)
+
+    assert issues == []
+
+
 def test_graph_spec_model_validate_accepts_empty_edges() -> None:
     payload = deepcopy(_base_payload())
     payload["edges"] = []
@@ -82,7 +104,7 @@ def test_graph_spec_model_validate_accepts_empty_edges() -> None:
 
 def test_graph_spec_json_schema_has_descriptions() -> None:
     schema = GraphSpec.model_json_schema()
-    # トップレベルのプロパティに description が存在する
+    # Top-level properties should have description fields
     props = schema.get("properties", {})
     assert "description" in props.get("version", {})
     assert "description" in props.get("start_at", {})

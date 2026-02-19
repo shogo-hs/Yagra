@@ -1,7 +1,7 @@
-"""G-09: HITL (Human-in-the-Loop) 機能のテスト。
+"""G-09: Tests for HITL (Human-in-the-Loop) functionality.
 
-GraphSpec の interrupt_before / interrupt_after フィールドと
-state_graph_builder の checkpointer 連携をテストする。
+Tests the interrupt_before / interrupt_after fields of GraphSpec
+and their integration with the state_graph_builder checkpointer.
 """
 
 from __future__ import annotations
@@ -13,10 +13,10 @@ from yagra.domain.entities import GraphSpec
 
 
 def _base_payload() -> dict[str, Any]:
-    """最小構成の GraphSpec ペイロードを返す。
+    """Returns a minimal GraphSpec payload.
 
     Returns:
-        テスト用 GraphSpec ペイロード辞書。
+        GraphSpec payload dictionary for testing.
     """
     return {
         "version": "1.0",
@@ -33,15 +33,11 @@ def _base_payload() -> dict[str, Any]:
     }
 
 
-# --- GraphSpec フィールドテスト ---
+# --- GraphSpec field tests ---
 
 
 def test_graph_spec_interrupt_before_defaults_to_empty() -> None:
-    """interrupt_before のデフォルト値が空リストであることを確認する。
-
-    Returns:
-        None
-    """
+    """Confirms that the default value of interrupt_before is an empty list."""
     payload = _base_payload()
     spec = GraphSpec.model_validate(payload)
 
@@ -49,11 +45,7 @@ def test_graph_spec_interrupt_before_defaults_to_empty() -> None:
 
 
 def test_graph_spec_interrupt_after_defaults_to_empty() -> None:
-    """interrupt_after のデフォルト値が空リストであることを確認する。
-
-    Returns:
-        None
-    """
+    """Confirms that the default value of interrupt_after is an empty list."""
     payload = _base_payload()
     spec = GraphSpec.model_validate(payload)
 
@@ -61,11 +53,7 @@ def test_graph_spec_interrupt_after_defaults_to_empty() -> None:
 
 
 def test_graph_spec_interrupt_before_accepts_node_ids() -> None:
-    """interrupt_before にノード ID リストを設定できることを確認する。
-
-    Returns:
-        None
-    """
+    """Confirms that a list of node IDs can be set in interrupt_before."""
     payload = _base_payload()
     payload["interrupt_before"] = ["nodeA"]
     spec = GraphSpec.model_validate(payload)
@@ -74,11 +62,7 @@ def test_graph_spec_interrupt_before_accepts_node_ids() -> None:
 
 
 def test_graph_spec_interrupt_after_accepts_node_ids() -> None:
-    """interrupt_after にノード ID リストを設定できることを確認する。
-
-    Returns:
-        None
-    """
+    """Confirms that a list of node IDs can be set in interrupt_after."""
     payload = _base_payload()
     payload["interrupt_after"] = ["nodeA"]
     spec = GraphSpec.model_validate(payload)
@@ -87,11 +71,7 @@ def test_graph_spec_interrupt_after_accepts_node_ids() -> None:
 
 
 def test_graph_spec_interrupt_before_accepts_multiple_nodes() -> None:
-    """interrupt_before に複数ノード ID を設定できることを確認する。
-
-    Returns:
-        None
-    """
+    """Confirms that multiple node IDs can be set in interrupt_before."""
     payload = _base_payload()
     payload["nodes"].append({"id": "nodeC", "handler": "handler_c"})
     payload["edges"].append({"source": "nodeB", "target": "nodeC"})
@@ -103,11 +83,7 @@ def test_graph_spec_interrupt_before_accepts_multiple_nodes() -> None:
 
 
 def test_graph_spec_interrupt_fields_serialize_to_yaml_compatible() -> None:
-    """interrupt_before / interrupt_after がシリアライズ可能であることを確認する。
-
-    Returns:
-        None
-    """
+    """Confirms that interrupt_before / interrupt_after are serializable."""
     payload = _base_payload()
     payload["interrupt_before"] = ["nodeA"]
     payload["interrupt_after"] = ["nodeB"]
@@ -119,15 +95,11 @@ def test_graph_spec_interrupt_fields_serialize_to_yaml_compatible() -> None:
     assert dumped["interrupt_after"] == ["nodeB"]
 
 
-# --- バリデーションテスト ---
+# --- Validation tests ---
 
 
 def test_validation_detects_unknown_interrupt_before_node() -> None:
-    """Interrupt_before に未定義ノード ID が含まれる場合に問題を検知することを確認する。
-
-    Returns:
-        None
-    """
+    """Confirms that an undefined node ID in interrupt_before is detected as an issue."""
     from yagra.domain.services.schema_validator import collect_graph_structure_issues
 
     payload = _base_payload()
@@ -141,11 +113,7 @@ def test_validation_detects_unknown_interrupt_before_node() -> None:
 
 
 def test_validation_detects_unknown_interrupt_after_node() -> None:
-    """Interrupt_after に未定義ノード ID が含まれる場合に問題を検知することを確認する。
-
-    Returns:
-        None
-    """
+    """Confirms that an undefined node ID in interrupt_after is detected as an issue."""
     from yagra.domain.services.schema_validator import collect_graph_structure_issues
 
     payload = _base_payload()
@@ -159,11 +127,7 @@ def test_validation_detects_unknown_interrupt_after_node() -> None:
 
 
 def test_validation_passes_for_valid_interrupt_nodes() -> None:
-    """有効なノード ID が interrupt_before / interrupt_after に設定されている場合に問題なしを返すことを確認する。
-
-    Returns:
-        None
-    """
+    """Confirms that no issues are reported when valid node IDs are set in interrupt_before / interrupt_after."""
     from yagra.domain.services.schema_validator import collect_graph_structure_issues
 
     payload = _base_payload()
@@ -177,15 +141,11 @@ def test_validation_passes_for_valid_interrupt_nodes() -> None:
     assert interrupt_issues == []
 
 
-# --- build_state_graph との統合テスト ---
+# --- Integration tests with build_state_graph ---
 
 
 def test_build_state_graph_without_checkpointer_ignores_interrupts() -> None:
-    """Checkpointer なしでは interrupt が無効（コンパイルが成功する）ことを確認する。
-
-    Returns:
-        None
-    """
+    """Confirms that interrupts are disabled (compilation succeeds) without a checkpointer."""
     from yagra.adapters.outbound import InMemoryNodeRegistry
     from yagra.application.use_cases.state_graph_builder import build_state_graph
     from yagra.domain.entities import GraphSpec
@@ -201,17 +161,13 @@ def test_build_state_graph_without_checkpointer_ignores_interrupts() -> None:
         }
     )
 
-    # checkpointer=None でもコンパイルエラーが起きないことを確認
+    # Confirm that no compile error occurs even with checkpointer=None
     compiled = build_state_graph(spec, registry, checkpointer=None)
     assert compiled is not None
 
 
 def test_build_state_graph_with_checkpointer_passes_interrupts() -> None:
-    """Checkpointer を渡すと compile() に interrupt_before が伝わることを確認する。
-
-    Returns:
-        None
-    """
+    """Confirms that interrupt_before is passed to compile() when a checkpointer is provided."""
     from yagra.adapters.outbound import InMemoryNodeRegistry
     from yagra.application.use_cases.state_graph_builder import build_state_graph
     from yagra.domain.entities import GraphSpec
@@ -241,17 +197,14 @@ def test_build_state_graph_with_checkpointer_passes_interrupts() -> None:
         assert call_kwargs.get("interrupt_before") == ["nodeA"]
 
 
-# --- Yagra.from_workflow / invoke / resume の API テスト ---
+# --- API tests for Yagra.from_workflow / invoke / resume ---
 
 
 def test_yagra_from_workflow_accepts_checkpointer(tmp_path: Any) -> None:
-    """Yagra.from_workflow が checkpointer キーワード引数を受け付けることを確認する。
+    """Confirms that Yagra.from_workflow accepts the checkpointer keyword argument.
 
     Args:
-        tmp_path: 一時ディレクトリを提供する pytest fixture。
-
-    Returns:
-        None
+        tmp_path: pytest fixture providing a temporary directory.
     """
     import yaml
     from langgraph.checkpoint.memory import MemorySaver
@@ -279,19 +232,16 @@ def test_yagra_from_workflow_accepts_checkpointer(tmp_path: Any) -> None:
 
     checkpointer = MemorySaver()
 
-    # checkpointer を渡しても例外が起きないことを確認
+    # Confirm that no exception is raised when checkpointer is passed
     yagra = Yagra.from_workflow(workflow_path, registry, checkpointer=checkpointer)
     assert yagra is not None
 
 
 def test_yagra_invoke_accepts_thread_id(tmp_path: Any) -> None:
-    """Yagra.invoke が thread_id キーワード引数を受け付けることを確認する。
+    """Confirms that Yagra.invoke accepts the thread_id keyword argument.
 
     Args:
-        tmp_path: 一時ディレクトリを提供する pytest fixture。
-
-    Returns:
-        None
+        tmp_path: pytest fixture providing a temporary directory.
     """
     import yaml
     from langgraph.checkpoint.memory import MemorySaver
@@ -321,21 +271,18 @@ def test_yagra_invoke_accepts_thread_id(tmp_path: Any) -> None:
     checkpointer = MemorySaver()
     yagra = Yagra.from_workflow(workflow_path, registry, checkpointer=checkpointer)
 
-    # thread_id 付きで invoke できることを確認
+    # Confirm that invoke can be called with thread_id
     result = yagra.invoke({"key": "value"}, thread_id="test-thread-1")
     assert isinstance(result, dict)
 
 
 def test_yagra_resume_accepts_thread_id(tmp_path: Any) -> None:
-    """Yagra.resume が thread_id キーワード引数を受け付けることを確認する。
+    """Confirms that Yagra.resume accepts the thread_id keyword argument.
 
-    interrupt_before を使って中断→resume するフローを検証する。
+    Verifies the flow of interrupting with interrupt_before and then resuming.
 
     Args:
-        tmp_path: 一時ディレクトリを提供する pytest fixture。
-
-    Returns:
-        None
+        tmp_path: pytest fixture providing a temporary directory.
     """
     import yaml
     from langgraph.checkpoint.memory import MemorySaver
@@ -367,25 +314,22 @@ def test_yagra_resume_accepts_thread_id(tmp_path: Any) -> None:
 
     thread_id = "hitl-test-thread"
 
-    # invoke で nodeB の手前で中断する
+    # Interrupt before nodeB on invoke
     result1 = yagra.invoke({"input": "hello"}, thread_id=thread_id)
-    # 中断後は nodeB 実行前なので visited_b は存在しない
+    # After interrupt, nodeB has not run yet so visited_b does not exist
     assert result1.get("visited_a") is True
     assert "visited_b" not in result1
 
-    # resume で中断点から再開する
+    # Resume from the interrupt point
     result2 = yagra.resume(thread_id=thread_id)
     assert result2.get("visited_b") is True
 
 
 def test_yagra_resume_with_state_update(tmp_path: Any) -> None:
-    """Yagra.resume が状態更新を受け取れることを確認する。
+    """Confirms that Yagra.resume can receive a state update.
 
     Args:
-        tmp_path: 一時ディレクトリを提供する pytest fixture。
-
-    Returns:
-        None
+        tmp_path: pytest fixture providing a temporary directory.
     """
     import yaml
     from langgraph.checkpoint.memory import MemorySaver
@@ -407,7 +351,7 @@ def test_yagra_resume_with_state_update(tmp_path: Any) -> None:
     workflow_path = tmp_path / "workflow.yaml"
     workflow_path.write_text(yaml.dump(workflow_yaml))
 
-    # nodeB は state["approved"] を確認して result に記録する
+    # nodeB checks state["approved"] and records the result
     registry: dict[str, Any] = {
         "handler_a": lambda s, p: s,
         "handler_b": lambda s, p: {**s, "result": "approved" if s.get("approved") else "rejected"},
@@ -418,9 +362,9 @@ def test_yagra_resume_with_state_update(tmp_path: Any) -> None:
 
     thread_id = "hitl-update-thread"
 
-    # invoke で中断
+    # Interrupt on invoke
     yagra.invoke({"input": "review me"}, thread_id=thread_id)
 
-    # 人間が approved=True を注入して resume
+    # Human injects approved=True and resumes
     result = yagra.resume(update={"approved": True}, thread_id=thread_id)
     assert result.get("result") == "approved"

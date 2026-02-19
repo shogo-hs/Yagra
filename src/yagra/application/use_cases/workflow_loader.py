@@ -1,4 +1,4 @@
-"""workflow.yaml を読み込み、GraphSpec へ変換する。"""
+"""Loads workflow.yaml and converts it to a GraphSpec."""
 
 from __future__ import annotations
 
@@ -12,16 +12,16 @@ def load_graph_spec_from_workflow(
     workflow_path: str | PathLike[str],
     bundle_root: str | PathLike[str] | None = None,
 ) -> GraphSpec:
-    """Workflow ファイルを読み込み、参照解決後に `GraphSpec` を返す。
+    """Loads a workflow file and returns a reference-resolved `GraphSpec`.
 
     Args:
-        workflow_path: 入口となる workflow YAML のパス。
-        bundle_root: 分割参照時の基準ディレクトリ。未指定時は workflow 親を使う。
+        workflow_path: Path to the entry workflow YAML.
+        bundle_root: Base directory for split references. Defaults to workflow parent directory.
 
     Returns:
-        参照解決・スキーマ検証済みの `GraphSpec`。
+        Reference-resolved and schema-validated `GraphSpec`.
 
     Raises:
-        WorkflowValidationFailedError: workflow 検証に失敗した場合。
+        WorkflowValidationFailedError: If workflow validation fails.
     """
     return load_validated_graph_spec(workflow_path=workflow_path, bundle_root=bundle_root)

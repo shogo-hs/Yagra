@@ -1,4 +1,4 @@
-"""ワークフロー YAML を静的解析して実行情報を返す。"""
+"""Statically analyzes workflow YAML and returns execution information."""
 
 from __future__ import annotations
 
@@ -9,21 +9,21 @@ from yagra.domain.entities.graph_schema import GraphSpec, NodeSpec
 
 
 def explain_workflow(spec: GraphSpec) -> dict[str, Any]:
-    """GraphSpec を静的解析して実行情報を返す。
+    """Statically analyzes a GraphSpec and returns execution information.
 
-    ワークフローを実際に実行せずに解析し、エントリポイント・終了ノード・
-    実行パス・必要ハンドラー・変数フローを返す。
+    Analyzes the workflow without actually executing it, returning the entry point,
+    exit nodes, execution paths, required handlers, and variable flow.
 
     Args:
-        spec: 解析対象の GraphSpec。
+        spec: GraphSpec to analyze.
 
     Returns:
-        以下のキーを持つ辞書:
-        - entry_point: start_at ノード名
-        - exit_points: end_at ノード名リスト
-        - execution_paths: 可能な実行パス一覧（各パスはノード名リスト）
-        - required_handlers: 必要なハンドラー名の重複なしリスト
-        - variable_flow: ノード名をキーとする入出力変数マップ
+        Dictionary with the following keys:
+        - entry_point: start_at node name
+        - exit_points: list of end_at node names
+        - execution_paths: list of possible execution paths (each path is a list of node names)
+        - required_handlers: deduplicated list of required handler names
+        - variable_flow: map of node names to input/output variables
     """
     node_map = {node.id: node for node in spec.nodes}
 
@@ -37,20 +37,20 @@ def explain_workflow(spec: GraphSpec) -> dict[str, Any]:
 
 
 def _enumerate_paths(spec: GraphSpec) -> list[list[str]]:
-    """グラフを DFS で辿り、可能な実行パスを列挙する。
+    """Traverses the graph with DFS and enumerates possible execution paths.
 
-    条件分岐がある場合はすべての分岐パスを列挙する。
-    ループが検出された場合は最初の再訪問で打ち切る（無限ループ防止）。
+    Enumerates all branch paths when conditional edges exist.
+    Terminates at the first revisit when a loop is detected (to prevent infinite loops).
 
     Args:
-        spec: 解析対象の GraphSpec。
+        spec: GraphSpec to analyze.
 
     Returns:
-        各実行パス（ノード名リスト）の一覧。
+        List of execution paths (each path is a list of node names).
     """
     end_at_set = set(spec.end_at)
 
-    # source → [target] のマッピングを構築
+    # Build source → [target] mapping
     adjacency: dict[str, list[str]] = {}
     for edge in spec.edges:
         adjacency.setdefault(edge.source, []).append(edge.target)
@@ -64,12 +64,12 @@ def _enumerate_paths(spec: GraphSpec) -> list[list[str]]:
             return
         next_nodes = adjacency.get(current, [])
         if not next_nodes:
-            # エッジなしで終端でないノード（孤立ノード）はそのままパスとして記録
+            # Nodes with no outgoing edges that are not end nodes (isolated nodes) are recorded as paths
             paths.append(path)
             return
         for next_node in next_nodes:
             if next_node in visited:
-                # ループ検出: 打ち切り
+                # Loop detected: terminate
                 paths.append([*path, f"...(loop:{next_node})"])
                 continue
             dfs(next_node, path, visited | {current})
@@ -79,13 +79,13 @@ def _enumerate_paths(spec: GraphSpec) -> list[list[str]]:
 
 
 def _collect_handlers(spec: GraphSpec) -> list[str]:
-    """ワークフロー内で使用されているハンドラー名を重複なしで返す。
+    """Returns deduplicated handler names used in the workflow.
 
     Args:
-        spec: 解析対象の GraphSpec。
+        spec: GraphSpec to analyze.
 
     Returns:
-        使用ハンドラー名の重複なしリスト（登場順）。
+        Deduplicated list of handler names in order of appearance.
     """
     seen: set[str] = set()
     handlers: list[str] = []
@@ -99,20 +99,20 @@ def _collect_handlers(spec: GraphSpec) -> list[str]:
 def _build_variable_flow(
     spec: GraphSpec, node_map: dict[str, NodeSpec]
 ) -> dict[str, dict[str, list[str]]]:
-    """各ノードの入力変数・出力変数を抽出して返す。
+    """Extracts and returns input/output variables for each node.
 
-    入力変数はプロンプトテンプレートの {変数名} から抽出する。
-    出力変数は output_key パラメータから取得し、省略時は 'output' とする。
-    条件分岐ノード（conditional edges の source）は '__next__' を出力変数に追加する。
+    Input variables are extracted from {variable} patterns in prompt templates.
+    Output variables are obtained from the output_key parameter, defaulting to 'output'.
+    Conditional branch nodes (sources of conditional edges) have '__next__' added to their outputs.
 
     Args:
-        spec: 解析対象の GraphSpec。
-        node_map: ノード ID から NodeSpec へのマッピング。
+        spec: GraphSpec to analyze.
+        node_map: Mapping from node ID to NodeSpec.
 
     Returns:
-        ノード名をキーとする辞書。値は {"inputs": [...], "outputs": [...]} の辞書。
+        Dictionary keyed by node name. Values are dicts with {"inputs": [...], "outputs": [...]}.
     """
-    # conditional edges の source ノードを特定
+    # Identify source nodes of conditional edges
     conditional_sources = {edge.source for edge in spec.edges if edge.condition is not None}
 
     flow: dict[str, dict[str, list[str]]] = {}
@@ -124,31 +124,31 @@ def _build_variable_flow(
 
 
 def _extract_input_variables(node: NodeSpec) -> list[str]:
-    """ノードのプロンプトから入力変数を抽出する。
+    """Extracts input variables from a node's prompt.
 
     Args:
-        node: 入力変数を抽出する NodeSpec。
+        node: NodeSpec to extract input variables from.
 
     Returns:
-        プロンプトテンプレート内の {変数名} リスト（重複なし、登場順）。
+        List of {variable} names in the prompt template (deduplicated, in order of appearance).
     """
     params = node.params
     prompt = params.get("prompt") or params.get("prompt_ref")
     if prompt is None:
         return []
 
-    # prompt が文字列の場合はそのまま解析
+    # If prompt is a string, analyze it directly
     if isinstance(prompt, str):
         return _extract_vars_from_text(prompt)
 
-    # prompt が dict の場合は content フィールドを解析
+    # If prompt is a dict, analyze the content field
     if isinstance(prompt, dict):
         content = prompt.get("content", "")
         if isinstance(content, str):
             return _extract_vars_from_text(content)
         return []
 
-    # prompt が list の場合は各メッセージの content を解析
+    # If prompt is a list, analyze the content of each message
     if isinstance(prompt, list):
         vars_seen: set[str] = set()
         vars_list: list[str] = []
@@ -162,18 +162,18 @@ def _extract_input_variables(node: NodeSpec) -> list[str]:
                             vars_list.append(var)
         return vars_list
 
-    # prompt_ref はファイルパスのため静的解析では変数抽出不可
+    # prompt_ref is a file path, so variable extraction is not possible in static analysis
     return []
 
 
 def _extract_vars_from_text(text: str) -> list[str]:
-    """テキスト内の {変数名} パターンを抽出する。
+    """Extracts {variable} patterns from text.
 
     Args:
-        text: 変数を抽出するテキスト。
+        text: Text to extract variables from.
 
     Returns:
-        変数名リスト（重複なし、登場順）。
+        List of variable names (deduplicated, in order of appearance).
     """
     seen: set[str] = set()
     result: list[str] = []
@@ -186,24 +186,24 @@ def _extract_vars_from_text(text: str) -> list[str]:
 
 
 def _extract_output_variables(node: NodeSpec, conditional_sources: set[str]) -> list[str]:
-    """ノードの出力変数を抽出する。
+    """Extracts output variables for a node.
 
-    output_key が明示指定されていればそれを使い、なければ 'output' を使う。
-    条件分岐ノードの場合は '__next__' を追加する。
+    Uses output_key if explicitly specified; otherwise defaults to 'output'.
+    Appends '__next__' for conditional branch nodes.
 
     Args:
-        node: 出力変数を抽出する NodeSpec。
-        conditional_sources: conditional edge の source ノード ID セット。
+        node: NodeSpec to extract output variables from.
+        conditional_sources: Set of source node IDs for conditional edges.
 
     Returns:
-        出力変数名リスト。
+        List of output variable names.
     """
     outputs: list[str] = []
     output_key = node.params.get("output_key")
     if output_key:
         outputs.append(output_key)
-    # output_key 未指定でもハンドラーがある場合は 'output' がデフォルト
-    # （ただし custom ハンドラーは不明なので組み込みのみ判定）
+    # If output_key is not specified but the handler is a builtin, 'output' is the default
+    # (custom handlers are unknown, so only builtin handlers are checked)
     builtin_handlers = {"llm", "structured_llm", "streaming_llm"}
     if not output_key and node.handler in builtin_handlers:
         outputs.append("output")

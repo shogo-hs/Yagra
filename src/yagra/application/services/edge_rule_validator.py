@@ -1,4 +1,4 @@
-"""Workflow エッジ定義のルール検証を提供する。"""
+"""Provides rule validation for workflow edge definitions."""
 
 from __future__ import annotations
 
@@ -21,10 +21,10 @@ def collect_edge_rule_issues(spec: GraphSpec) -> list[EdgeRuleIssue]:
     """Collects rule violations related to edge definitions.
 
     Args:
-        spec: 検証対象の workflow 定義。
+        spec: Workflow definition to validate.
 
     Returns:
-        検知した問題一覧。問題がなければ空リスト。
+        List of detected issues. Empty list if no issues found.
     """
     issues: list[EdgeRuleIssue] = []
     conditional_labels_by_source: dict[str, dict[str, int]] = {}

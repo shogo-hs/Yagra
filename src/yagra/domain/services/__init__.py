@@ -1,4 +1,4 @@
-"""Yagra ドメインサービスを提供するパッケージ。"""
+"""Package providing Yagra domain services."""
 
 from yagra.domain.services.schema_validator import (
     GraphStructureIssue,

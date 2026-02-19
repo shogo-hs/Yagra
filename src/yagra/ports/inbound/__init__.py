@@ -1,4 +1,4 @@
-"""Yagra の inbound port 定義を公開する。"""
+"""Exposes the inbound port definitions for Yagra."""
 
 from yagra.ports.inbound.studio import (
     StudioBadRequestError,

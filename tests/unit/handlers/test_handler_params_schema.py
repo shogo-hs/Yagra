@@ -10,28 +10,28 @@ with patch.dict("sys.modules", {"litellm": MagicMock()}):
 
 
 class TestLLMHandlerParamsSchema:
-    """LLM_HANDLER_PARAMS_SCHEMA の内容を検証するテスト."""
+    """Tests for validating the contents of LLM_HANDLER_PARAMS_SCHEMA."""
 
     def test_schema_is_dict(self) -> None:
-        """スキーマが dict であること."""
+        """Schema should be a dict."""
         assert isinstance(LLM_HANDLER_PARAMS_SCHEMA, dict)
 
     def test_schema_type_is_object(self) -> None:
-        """スキーマのトップレベル type が 'object' であること."""
+        """Top-level type of the schema should be 'object'."""
         assert LLM_HANDLER_PARAMS_SCHEMA["type"] == "object"
 
     def test_model_is_required(self) -> None:
-        """'model' が required に含まれること."""
+        """'model' should be included in required."""
         assert "model" in LLM_HANDLER_PARAMS_SCHEMA["required"]
 
     def test_properties_contains_expected_keys(self) -> None:
-        """Properties に prompt, prompt_ref, model, output_key が含まれること."""
+        """Properties should contain prompt, prompt_ref, model, and output_key."""
         props = LLM_HANDLER_PARAMS_SCHEMA["properties"]
         for key in ("prompt", "prompt_ref", "model", "output_key"):
             assert key in props, f"'{key}' not found in properties"
 
     def test_one_of_requires_prompt_or_prompt_ref(self) -> None:
-        """OneOf が prompt または prompt_ref を必須として定義していること."""
+        """OneOf should define prompt or prompt_ref as required."""
         one_of = LLM_HANDLER_PARAMS_SCHEMA["oneOf"]
         required_sets = [set(item.get("required", [])) for item in one_of]
         assert {"prompt"} in required_sets
@@ -39,28 +39,28 @@ class TestLLMHandlerParamsSchema:
 
 
 class TestStructuredLLMHandlerParamsSchema:
-    """STRUCTURED_LLM_HANDLER_PARAMS_SCHEMA の内容を検証するテスト."""
+    """Tests for validating the contents of STRUCTURED_LLM_HANDLER_PARAMS_SCHEMA."""
 
     def test_schema_is_dict(self) -> None:
-        """スキーマが dict であること."""
+        """Schema should be a dict."""
         assert isinstance(STRUCTURED_LLM_HANDLER_PARAMS_SCHEMA, dict)
 
     def test_schema_type_is_object(self) -> None:
-        """スキーマのトップレベル type が 'object' であること."""
+        """Top-level type of the schema should be 'object'."""
         assert STRUCTURED_LLM_HANDLER_PARAMS_SCHEMA["type"] == "object"
 
     def test_model_is_required(self) -> None:
-        """'model' が required に含まれること."""
+        """'model' should be included in required."""
         assert "model" in STRUCTURED_LLM_HANDLER_PARAMS_SCHEMA["required"]
 
     def test_properties_contains_expected_keys(self) -> None:
-        """Properties に model, output_key, schema_yaml が含まれること."""
+        """Properties should contain model, output_key, and schema_yaml."""
         props = STRUCTURED_LLM_HANDLER_PARAMS_SCHEMA["properties"]
         for key in ("model", "output_key", "schema_yaml"):
             assert key in props, f"'{key}' not found in properties"
 
     def test_one_of_requires_prompt_or_prompt_ref(self) -> None:
-        """OneOf が prompt または prompt_ref を必須として定義していること."""
+        """OneOf should define prompt or prompt_ref as required."""
         one_of = STRUCTURED_LLM_HANDLER_PARAMS_SCHEMA["oneOf"]
         required_sets = [set(item.get("required", [])) for item in one_of]
         assert {"prompt"} in required_sets
@@ -68,28 +68,28 @@ class TestStructuredLLMHandlerParamsSchema:
 
 
 class TestStreamingLLMHandlerParamsSchema:
-    """STREAMING_LLM_HANDLER_PARAMS_SCHEMA の内容を検証するテスト."""
+    """Tests for validating the contents of STREAMING_LLM_HANDLER_PARAMS_SCHEMA."""
 
     def test_schema_is_dict(self) -> None:
-        """スキーマが dict であること."""
+        """Schema should be a dict."""
         assert isinstance(STREAMING_LLM_HANDLER_PARAMS_SCHEMA, dict)
 
     def test_schema_type_is_object(self) -> None:
-        """スキーマのトップレベル type が 'object' であること."""
+        """Top-level type of the schema should be 'object'."""
         assert STREAMING_LLM_HANDLER_PARAMS_SCHEMA["type"] == "object"
 
     def test_model_is_required(self) -> None:
-        """'model' が required に含まれること."""
+        """'model' should be included in required."""
         assert "model" in STREAMING_LLM_HANDLER_PARAMS_SCHEMA["required"]
 
     def test_properties_contains_expected_keys(self) -> None:
-        """Properties に prompt, prompt_ref, model, output_key, stream が含まれること."""
+        """Properties should contain prompt, prompt_ref, model, output_key, and stream."""
         props = STREAMING_LLM_HANDLER_PARAMS_SCHEMA["properties"]
         for key in ("prompt", "prompt_ref", "model", "output_key", "stream"):
             assert key in props, f"'{key}' not found in properties"
 
     def test_one_of_requires_prompt_or_prompt_ref(self) -> None:
-        """OneOf が prompt または prompt_ref を必須として定義していること."""
+        """OneOf should define prompt or prompt_ref as required."""
         one_of = STREAMING_LLM_HANDLER_PARAMS_SCHEMA["oneOf"]
         required_sets = [set(item.get("required", [])) for item in one_of]
         assert {"prompt"} in required_sets
@@ -97,10 +97,10 @@ class TestStreamingLLMHandlerParamsSchema:
 
 
 class TestHandlersExportsFromInit:
-    """handlers/__init__.py から PARAMS_SCHEMA 定数がエクスポートされることを確認するテスト."""
+    """Tests confirming that PARAMS_SCHEMA constants are exported from handlers/__init__.py."""
 
     def test_all_schemas_exported(self) -> None:
-        """__all__ に 3 つのスキーマ定数がすべて含まれること."""
+        """All three schema constants should be included in __all__."""
         with patch.dict("sys.modules", {"litellm": MagicMock()}):
             import yagra.handlers as h
 
@@ -109,7 +109,7 @@ class TestHandlersExportsFromInit:
             assert "STREAMING_LLM_HANDLER_PARAMS_SCHEMA" in h.__all__
 
     def test_schemas_accessible_from_handlers_package(self) -> None:
-        """Handlers パッケージから直接スキーマ定数にアクセスできること."""
+        """Schema constants should be directly accessible from the handlers package."""
         with patch.dict("sys.modules", {"litellm": MagicMock()}):
             from yagra.handlers import (
                 LLM_HANDLER_PARAMS_SCHEMA as llm_schema,
@@ -127,16 +127,16 @@ class TestHandlersExportsFromInit:
 
 
 class TestHandlersCLICommand:
-    """`yagra handlers` CLI コマンドのテスト."""
+    """Tests for the `yagra handlers` CLI command."""
 
     def _run_handlers_command(self, format_: str = "json") -> str:
-        """_run_handlers_command をモック環境で呼び出し、標準出力をキャプチャして返す。
+        """Calls _run_handlers_command in a mock environment and returns captured stdout.
 
         Args:
-            format_: 出力フォーマット ("text" または "json")。
+            format_: Output format ("text" or "json").
 
         Returns:
-            標準出力に書き出された文字列。
+            String written to stdout.
         """
         import argparse
         import io
@@ -153,7 +153,7 @@ class TestHandlersCLICommand:
             return captured.getvalue()
 
     def test_json_output_contains_three_handlers(self) -> None:
-        """JSON 出力に llm, structured_llm, streaming_llm の 3 ハンドラーが含まれること."""
+        """JSON output should contain the three handlers: llm, structured_llm, and streaming_llm."""
         import argparse
         import io
 
@@ -177,7 +177,7 @@ class TestHandlersCLICommand:
             assert "streaming_llm" in handler_names
 
     def test_json_output_each_handler_has_params_schema(self) -> None:
-        """JSON 出力の各ハンドラーに params_schema が含まれること."""
+        """Each handler in JSON output should contain params_schema."""
         import argparse
         import io
 
@@ -197,7 +197,7 @@ class TestHandlersCLICommand:
                 assert isinstance(handler["params_schema"], dict)
 
     def test_json_output_model_required_in_all_schemas(self) -> None:
-        """JSON 出力の全ハンドラースキーマで 'model' が required に含まれること."""
+        """'model' should be included in required for all handler schemas in JSON output."""
         import argparse
         import io
 
@@ -219,7 +219,7 @@ class TestHandlersCLICommand:
                 )
 
     def test_text_output_returns_zero(self) -> None:
-        """Text フォーマット指定時も終了コード 0 が返ること."""
+        """Should return exit code 0 when text format is specified."""
         import argparse
         import io
 

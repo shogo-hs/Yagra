@@ -1,7 +1,7 @@
 """Integration tests for structured LLM handler with dynamic schema_yaml.
 
-schema_yaml による動的スキーマ生成を使った structured_llm ハンドラーが
-YAML ワークフローと統合して正しく動作することを検証する。
+Validates that the structured_llm handler using dynamic schema generation via schema_yaml
+works correctly when integrated with a YAML workflow.
 """
 
 import json
@@ -16,19 +16,19 @@ import yagra.handlers.structured_llm_handler as slm_module
 
 
 class TestDynamicSchemaIntegration:
-    """動的スキーマ（schema_yaml）を使ったワークフロー結合テスト."""
+    """Workflow integration tests using dynamic schema (schema_yaml)."""
 
     @pytest.fixture(autouse=True)
     def _reset_litellm_global(self) -> Generator[None, None, None]:
-        """各テスト前後に structured_llm_handler のグローバル litellm を管理する."""
+        """Manages the global litellm variable in structured_llm_handler before and after each test."""
         original = slm_module.litellm
         slm_module.litellm = None
         yield
-        # テスト後は元の値に戻す
+        # Restore the original value after the test
         slm_module.litellm = original
 
     def test_workflow_with_schema_yaml_basic(self) -> None:
-        """schema_yaml を YAML に定義して動的モデルで実行できること."""
+        """A dynamic model defined via schema_yaml in the YAML should be runnable."""
         prompts_yaml = """\
 extract:
   system: "Extract person info as JSON"
@@ -75,7 +75,7 @@ params:
                 from yagra import Yagra
                 from yagra.handlers import create_structured_llm_handler
 
-                # schema 引数なし → params.schema_yaml から動的生成
+                # No schema argument → dynamically generated from params.schema_yaml
                 handler = create_structured_llm_handler(retry=1, timeout=10)
                 registry = {"structured_llm": handler}
 
@@ -87,7 +87,7 @@ params:
             assert result["person"].age == 30
 
     def test_workflow_with_schema_yaml_list_type(self) -> None:
-        """schema_yaml でコレクション型を使ったワークフローが動作すること."""
+        """A workflow using collection types in schema_yaml should work correctly."""
         prompts_yaml = """\
 extract_entities:
   system: "Extract entities as JSON"
@@ -154,7 +154,7 @@ params:
             assert result["entities"].locations == ["Tokyo", "Osaka"]
 
     def test_workflow_with_schema_yaml_mixed_types(self) -> None:
-        """schema_yaml で複合型（プリミティブ + コレクション）が動作すること."""
+        """Mixed types (primitives + collections) in schema_yaml should work correctly."""
         prompts_yaml = """\
 extract:
   system: "Extract person info as JSON"

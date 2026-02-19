@@ -106,7 +106,7 @@ def create_streaming_llm_handler(
             LLMHandlerConfigError: If required parameters are missing or invalid.
             LLMHandlerCallError: If LLM invocation fails after all retries.
         """
-        # 1. パラメータ抽出と検証
+        # 1. Extract and validate parameters
         prompt = params.get("prompt")
         if not isinstance(prompt, dict):
             msg = "'prompt' must be a dict with 'system' and 'user' keys"
@@ -125,12 +125,12 @@ def create_streaming_llm_handler(
 
         output_key = params.get("output_key", "output")
 
-        # 2. プロンプトに変数を埋め込み
+        # 2. Interpolate variables into the prompt
         system_prompt = prompt.get("system", "")
         user_prompt_template = prompt.get("user", "")
 
-        # input_keys が明示指定されていればそちらを優先（後方互換）
-        # 未指定（None）の場合はプロンプトテンプレートから {変数名} を自動抽出
+        # If input_keys is explicitly specified, use it (backward compatibility);
+        # otherwise auto-extract {variable} patterns from the prompt template
         explicit_keys = params.get("input_keys")
         keys = (
             explicit_keys
@@ -151,14 +151,14 @@ def create_streaming_llm_handler(
             {"role": "user", "content": user_prompt},
         ]
 
-        # 3. model.kwargs の取得（stream=True を自動付与、明示 False は上書きしない）
+        # 3. Retrieve model.kwargs (stream=True is added automatically; explicit False is not overridden)
         model_kwargs = dict(model.get("kwargs", {}))
         if "stream" not in model_kwargs:
             model_kwargs["stream"] = True
 
         litellm_model = f"{provider}/{model_name}"
 
-        # 4. LLM呼び出し（リトライ付き、ストリーミング開始まで）
+        # 4. LLM invocation (with retry, until streaming starts)
         last_error = None
         for attempt in range(retry):
             try:
@@ -169,7 +169,7 @@ def create_streaming_llm_handler(
                     **model_kwargs,
                 )
 
-                # 5. チャンクを yield するジェネレータを返す
+                # 5. Return a generator that yields chunks
                 def _stream(
                     resp: Any,
                 ) -> Generator[str, None, None]:
@@ -211,25 +211,25 @@ def create_streaming_llm_handler(
 
 STREAMING_LLM_HANDLER_PARAMS_SCHEMA: dict = {
     "type": "object",
-    "description": "create_streaming_llm_handler で生成したストリーミング出力ハンドラーのパラメータ",
+    "description": "Parameters for the streaming output handler created by create_streaming_llm_handler",
     "properties": {
         "prompt": {
             "type": ["string", "object", "array"],
-            "description": "プロンプト定義。prompt_ref と排他",
+            "description": "Prompt definition. Mutually exclusive with prompt_ref",
         },
         "prompt_ref": {
             "type": "string",
-            "description": "プロンプトファイルのパス。prompt と排他",
+            "description": "Path to the prompt file. Mutually exclusive with prompt",
         },
         "model": {
             "type": "object",
-            "description": "LLM モデル設定。provider と name が必須。kwargs に stream フラグ等の追加パラメータを渡せる",
+            "description": "LLM model configuration. provider and name are required. Additional parameters such as the stream flag can be passed via kwargs",
             "properties": {
                 "provider": {"type": "string", "examples": ["openai", "anthropic"]},
                 "name": {"type": "string", "examples": ["gpt-4o-mini", "claude-opus-4-6"]},
                 "kwargs": {
                     "type": "object",
-                    "description": "stream フラグ等の litellm 追加パラメータ",
+                    "description": "Additional litellm parameters such as the stream flag",
                 },
             },
             "required": ["provider", "name"],
@@ -237,16 +237,16 @@ STREAMING_LLM_HANDLER_PARAMS_SCHEMA: dict = {
         "input_keys": {
             "type": "array",
             "items": {"type": "string"},
-            "description": "プロンプトに渡す state キーの明示指定。省略時はプロンプトテンプレートの {変数名} から自動抽出",
+            "description": "Explicit state keys to pass to the prompt. Auto-extracted from {variable_name} in the prompt template if omitted",
         },
         "output_key": {
             "type": "string",
-            "description": "ストリーミング出力を格納するステートキー名。省略時は 'output'",
+            "description": "State key name to store the streaming output. Defaults to 'output'",
             "default": "output",
         },
         "stream": {
             "type": "boolean",
-            "description": "ストリーミングを有効にするかどうか。false にするとバッファリングしてまとめて返す",
+            "description": "Whether to enable streaming. If false, buffers the output and returns it all at once",
             "default": True,
         },
     },

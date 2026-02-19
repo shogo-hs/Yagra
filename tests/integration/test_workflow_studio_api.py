@@ -59,13 +59,13 @@ def _request_json(
 
 
 def _server_base_url(server: Any) -> str:
-    """テストサーバーの base URL を組み立てる。
+    """Constructs the base URL of the test server.
 
     Args:
-        server: `ThreadingHTTPServer` 互換オブジェクト。
+        server: A `ThreadingHTTPServer`-compatible object.
 
     Returns:
-        base URL 文字列。
+        The base URL string.
     """
     address = server.server_address
     raw_host = address[0]

@@ -1,4 +1,4 @@
-"""WebUI 向けの workflow 検証レポートを生成する。"""
+"""Generates workflow validation reports for the WebUI."""
 
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ type Location = tuple[str | int, ...]
 
 @dataclass(frozen=True, slots=True)
 class WorkflowValidationIssue:
-    """UI 表示向けの単一検証問題。"""
+    """A single validation issue for UI display."""
 
     code: str
     message: str
@@ -29,11 +29,11 @@ class WorkflowValidationIssue:
     context: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        """API 応答形式の辞書へ変換する。
+        """Converts to a dict in API response format.
 
         Returns:
-            code, message, location, severity, context を含む辞書。
-            context が None の場合は context キーを含まない。
+            Dictionary containing code, message, location, severity, and context.
+            The context key is omitted if context is None.
         """
         result: dict[str, Any] = {
             "code": self.code,
@@ -48,7 +48,7 @@ class WorkflowValidationIssue:
 
 @dataclass(slots=True)
 class WorkflowValidationReport:
-    """Workflow 検証結果を保持するレポート。"""
+    """Report holding workflow validation results."""
 
     issues: list[WorkflowValidationIssue] = field(default_factory=list)
 
@@ -58,10 +58,10 @@ class WorkflowValidationReport:
         return not self.issues
 
     def to_dict(self) -> dict[str, Any]:
-        """API 応答形式の辞書へ変換する。
+        """Converts to a dict in API response format.
 
         Returns:
-            is_valid と issues を含む辞書。
+            Dictionary containing is_valid and issues.
         """
         return {
             "is_valid": self.is_valid,
@@ -70,13 +70,13 @@ class WorkflowValidationReport:
 
 
 class WorkflowValidationFailedError(ValueError):
-    """Workflow 検証失敗を保持する例外。"""
+    """Exception raised when workflow validation fails."""
 
     def __init__(self, report: WorkflowValidationReport) -> None:
         """Initializes the validation failure exception.
 
         Args:
-            report: 検証失敗内容を含むレポート。
+            report: Report containing the validation failure details.
         """
         self.report = report
         super().__init__(format_validation_report(report))
@@ -86,17 +86,17 @@ def load_validated_graph_spec(
     workflow_path: str | PathLike[str],
     bundle_root: str | PathLike[str] | None = None,
 ) -> GraphSpec:
-    """Workflow を検証し、成功時のみ GraphSpec を返す。
+    """Validates a workflow and returns a GraphSpec only on success.
 
     Args:
-        workflow_path: 入口となる workflow YAML のパス。
-        bundle_root: 分割参照時の基準ディレクトリ。未指定時は workflow 親を使う。
+        workflow_path: Path to the entry workflow YAML.
+        bundle_root: Base directory for split references. Defaults to workflow parent directory.
 
     Returns:
-        検証済みの `GraphSpec`。
+        Validated `GraphSpec`.
 
     Raises:
-        WorkflowValidationFailedError: workflow の検証に失敗した場合。
+        WorkflowValidationFailedError: If workflow validation fails.
     """
     report = validate_workflow_for_ui(workflow_path=workflow_path, bundle_root=bundle_root)
     if not report.is_valid:
@@ -106,7 +106,7 @@ def load_validated_graph_spec(
     bundle_root_path = Path(bundle_root).expanduser().resolve() if bundle_root is not None else None
     payload = _load_yaml_mapping_for_ui(path=workflow_abspath, report=WorkflowValidationReport())
     if payload is None:
-        # validate_workflow_for_ui が valid の時点でここには到達しない想定。
+        # This point should not be reached if validate_workflow_for_ui returned valid.
         raise WorkflowValidationFailedError(
             WorkflowValidationReport(
                 issues=[
@@ -130,14 +130,14 @@ def validate_workflow_for_ui(
     workflow_path: str | PathLike[str],
     bundle_root: str | PathLike[str] | None = None,
 ) -> WorkflowValidationReport:
-    """Workflow を UI 向けに検証して構造化レポートを返す。
+    """Validates a workflow for the UI and returns a structured report.
 
     Args:
-        workflow_path: 入口となる workflow YAML のパス。
-        bundle_root: 分割参照時の基準ディレクトリ。未指定時は workflow 親を使う。
+        workflow_path: Path to the entry workflow YAML.
+        bundle_root: Base directory for split references. Defaults to workflow parent directory.
 
     Returns:
-        検証結果を保持する `WorkflowValidationReport`。
+        `WorkflowValidationReport` holding the validation results.
     """
     report = WorkflowValidationReport()
     workflow_abspath = Path(workflow_path).expanduser().resolve()
@@ -159,15 +159,15 @@ def validate_workflow_payload_for_ui(
     workflow_path: str | PathLike[str],
     bundle_root: str | PathLike[str] | None = None,
 ) -> WorkflowValidationReport:
-    """Workflow payload を UI 向けに検証して構造化レポートを返す。
+    """Validates a workflow payload for the UI and returns a structured report.
 
     Args:
-        payload: 検証対象の workflow 辞書データ。
-        workflow_path: 入口となる workflow YAML のパス。
-        bundle_root: 分割参照時の基準ディレクトリ。未指定時は workflow 親を使う。
+        payload: Workflow dictionary data to validate.
+        workflow_path: Path to the entry workflow YAML.
+        bundle_root: Base directory for split references. Defaults to workflow parent directory.
 
     Returns:
-        検証結果を保持する `WorkflowValidationReport`。
+        `WorkflowValidationReport` holding the validation results.
     """
     report = WorkflowValidationReport()
     workflow_abspath = Path(workflow_path).expanduser().resolve()
@@ -219,14 +219,14 @@ def validate_workflow_payload_for_ui(
 def _load_yaml_mapping_for_ui(
     path: Path, report: WorkflowValidationReport
 ) -> dict[str, Any] | None:
-    """YAML ファイルを辞書として読み込み、失敗時は report に記録する。
+    """Loads a YAML file as a dictionary and records any failure in the report.
 
     Args:
-        path: 読み込み対象の workflow パス。
-        report: 問題を追加する検証レポート。
+        path: Path to the workflow to load.
+        report: Validation report to append issues to.
 
     Returns:
-        読み込んだ辞書データ。読み込み失敗時は `None`。
+        Loaded dictionary data, or `None` on load failure.
     """
     try:
         with path.open("r", encoding="utf-8") as handle:
@@ -235,7 +235,7 @@ def _load_yaml_mapping_for_ui(
         report.issues.append(
             WorkflowValidationIssue(
                 code="schema_error",
-                message=f"workflow の読み込みに失敗しました: {exc}",
+                message=f"failed to load workflow: {exc}",
                 location=(),
             )
         )
@@ -258,10 +258,10 @@ def format_validation_report(report: WorkflowValidationReport) -> str:
     """Formats the validation report into a readable message.
 
     Args:
-        report: 整形対象の検証レポート。
+        report: Validation report to format.
 
     Returns:
-        整形済みメッセージ。
+        Formatted message string.
     """
     if report.is_valid:
         return "workflow validation passed"
@@ -275,11 +275,11 @@ def _validate_graph_spec_for_ui(
     """Validates the resolved payload as GraphSpec.
 
     Args:
-        resolved_payload: 参照解決済みの workflow データ。
-        report: 問題を追加する検証レポート。
+        resolved_payload: Reference-resolved workflow data.
+        report: Validation report to append issues to.
 
     Returns:
-        検証済み `GraphSpec`。スキーマエラー時は `None`。
+        Validated `GraphSpec`, or `None` on schema error.
     """
     try:
         return GraphSpec.model_validate(resolved_payload)
@@ -289,7 +289,7 @@ def _validate_graph_spec_for_ui(
             issues = [
                 WorkflowValidationIssue(
                     code="schema_error",
-                    message="Pydanticスキーマ検証に失敗しました",
+                    message="Pydantic schema validation failed",
                     location=(),
                 )
             ]
@@ -298,13 +298,13 @@ def _validate_graph_spec_for_ui(
 
 
 def _convert_pydantic_errors(exc: ValidationError) -> list[WorkflowValidationIssue]:
-    """Pydantic ValidationError を UI 向け issue へ変換する。
+    """Converts a Pydantic ValidationError to UI-facing issues.
 
     Args:
-        exc: 変換対象の Pydantic 検証エラー。
+        exc: Pydantic validation error to convert.
 
     Returns:
-        変換後の issue 一覧。
+        List of converted issues.
     """
     issues: list[WorkflowValidationIssue] = []
     for error in exc.errors():
@@ -321,13 +321,13 @@ def _convert_pydantic_errors(exc: ValidationError) -> list[WorkflowValidationIss
 
 
 def _normalize_location(raw_loc: Any) -> Location:
-    """Pydantic の loc 値を `Location` 形式へ正規化する。
+    """Normalizes a Pydantic loc value to the `Location` format.
 
     Args:
-        raw_loc: Pydantic が返す location 値。
+        raw_loc: Location value returned by Pydantic.
 
     Returns:
-        正規化済み location タプル。
+        Normalized location tuple.
     """
     if not isinstance(raw_loc, tuple):
         return ()
@@ -345,10 +345,10 @@ def _format_validation_issues(issues: list[WorkflowValidationIssue]) -> str:
     """Converts the validation issue list into a newline-separated string.
 
     Args:
-        issues: 変換対象の問題一覧。
+        issues: List of issues to convert.
 
     Returns:
-        整形済みのメッセージ文字列。
+        Formatted message string.
     """
     lines: list[str] = ["workflow validation failed:"]
     for issue in issues:
@@ -358,13 +358,13 @@ def _format_validation_issues(issues: list[WorkflowValidationIssue]) -> str:
 
 
 def _format_location(location: Location) -> str:
-    """Location タプルをドット記法へ変換する。
+    """Converts a Location tuple to dot notation.
 
     Args:
-        location: 表示対象の location タプル。
+        location: Location tuple to display.
 
     Returns:
-        ドット記法化した location 文字列。
+        Location string in dot notation.
     """
     if not location:
         return "<root>"

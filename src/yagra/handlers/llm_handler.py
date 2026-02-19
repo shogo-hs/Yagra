@@ -84,7 +84,7 @@ def create_llm_handler(
                       temperature: 0.7
                   output_key: "response"
     """
-    # litellmをimport（グローバル変数として保存）
+    # Import litellm (stored as global variable)
     global litellm
     if litellm is None:
         try:
@@ -110,7 +110,7 @@ def create_llm_handler(
             LLMHandlerConfigError: If required parameters are missing.
             LLMHandlerCallError: If LLM invocation fails.
         """
-        # 1. パラメータ抽出と検証
+        # 1. Extract and validate parameters
         prompt = params.get("prompt")
         if not isinstance(prompt, dict):
             msg = "'prompt' must be a dict with 'system' and 'user' keys"
@@ -129,12 +129,12 @@ def create_llm_handler(
 
         output_key = params.get("output_key", "output")
 
-        # 2. プロンプトに変数を埋め込み
+        # 2. Interpolate variables into the prompt
         system_prompt = prompt.get("system", "")
         user_prompt_template = prompt.get("user", "")
 
-        # input_keys が明示指定されていればそちらを優先（後方互換）
-        # 未指定（None）の場合はプロンプトテンプレートから {変数名} を自動抽出
+        # If input_keys is explicitly specified, use it (backward compatibility);
+        # otherwise auto-extract {variable} patterns from the prompt template
         explicit_keys = params.get("input_keys")
         keys = (
             explicit_keys
@@ -142,17 +142,17 @@ def create_llm_handler(
             else re.findall(r"\{(\w+)\}", user_prompt_template)
         )
 
-        # stateから入力値を取得
+        # Retrieve input values from state
         input_values = {key: state.get(key, "") for key in keys}
 
-        # {variable}形式の変数を置換
+        # Replace {variable} format variables
         try:
             user_prompt = user_prompt_template.format(**input_values)
         except KeyError as e:
             msg = f"Missing key in state for prompt interpolation: {e}"
             raise LLMHandlerConfigError(msg) from e
 
-        # 3. LLM呼び出し（リトライ付き）
+        # 3. LLM invocation (with retry)
         messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
@@ -183,7 +183,7 @@ def create_llm_handler(
                 return {output_key: content}
 
             except LLMHandlerCallError:
-                # LLMレスポンスのエラーはリトライせず即座に送出
+                # LLM response errors are raised immediately without retry
                 raise
             except Exception as e:
                 last_error = e
@@ -201,41 +201,41 @@ def create_llm_handler(
 
 LLM_HANDLER_PARAMS_SCHEMA: dict = {
     "type": "object",
-    "description": "create_llm_handler で生成した LLM テキスト出力ハンドラーのパラメータ",
+    "description": "Parameters for the LLM text output handler created by create_llm_handler",
     "properties": {
         "prompt": {
             "oneOf": [
                 {
                     "type": "string",
-                    "description": "プロンプトテキスト。{変数名} でステートの値を展開できる",
+                    "description": "Prompt text. State values can be expanded using {variable_name}",
                 },
-                {"type": "object", "description": "role/content 形式のプロンプト辞書"},
-                {"type": "array", "description": "複数メッセージのリスト"},
+                {"type": "object", "description": "Prompt dictionary in role/content format"},
+                {"type": "array", "description": "List of multiple messages"},
             ],
-            "description": "プロンプト定義。prompt_ref と排他",
+            "description": "Prompt definition. Mutually exclusive with prompt_ref",
         },
         "prompt_ref": {
             "type": "string",
-            "description": "プロンプトファイルのパス（workflow YAML からの相対パスまたは絶対パス）。prompt と排他",
+            "description": "Path to the prompt file (relative or absolute path from the workflow YAML). Mutually exclusive with prompt",
             "examples": ["prompts/translate.txt", "./prompts/summarize.md"],
         },
         "model": {
             "type": "object",
-            "description": "LLM モデル設定。provider（litellm プロバイダー名）と name（モデル名）が必須。kwargs に litellm の追加パラメータを渡せる",
+            "description": "LLM model configuration. provider (litellm provider name) and name (model name) are required. Additional litellm parameters can be passed via kwargs",
             "properties": {
                 "provider": {
                     "type": "string",
-                    "description": "litellm プロバイダー名",
+                    "description": "litellm provider name",
                     "examples": ["openai", "anthropic", "google"],
                 },
                 "name": {
                     "type": "string",
-                    "description": "モデル名",
+                    "description": "Model name",
                     "examples": ["gpt-4o-mini", "claude-opus-4-6", "gemini-pro"],
                 },
                 "kwargs": {
                     "type": "object",
-                    "description": "litellm に渡す追加パラメータ（temperature 等）",
+                    "description": "Additional parameters to pass to litellm (e.g. temperature)",
                 },
             },
             "required": ["provider", "name"],
@@ -243,12 +243,12 @@ LLM_HANDLER_PARAMS_SCHEMA: dict = {
         "input_keys": {
             "type": "array",
             "items": {"type": "string"},
-            "description": "プロンプトに渡す state キーの明示指定。省略時はプロンプトテンプレートの {変数名} から自動抽出",
+            "description": "Explicit state keys to pass to the prompt. Auto-extracted from {variable_name} in the prompt template if omitted",
             "examples": [["text"], ["input", "context"]],
         },
         "output_key": {
             "type": "string",
-            "description": "LLM の出力を格納するステートキー名。省略時は 'output'",
+            "description": "State key name to store the LLM output. Defaults to 'output'",
             "default": "output",
             "examples": ["translation", "summary", "result"],
         },

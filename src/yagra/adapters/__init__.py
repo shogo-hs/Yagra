@@ -1,1 +1,1 @@
-"""Yagra のアダプタ層を提供するパッケージ。"""
+"""Package providing the adapter layer for Yagra."""

@@ -145,13 +145,13 @@ def test_explain_execution_paths_branch():
 
 
 # ---------------------------------------------------------------------------
-# _enumerate_paths: 孤立ノード・ループ検出
+# _enumerate_paths: isolated node and loop detection
 # ---------------------------------------------------------------------------
 
 
 def test_explain_execution_paths_isolated_node() -> None:
-    # start_at ノードがエッジなし・end_at にもない場合（孤立ノード）は
-    # そのままパスとして記録される
+    # When start_at node has no edges and is not in end_at (isolated node),
+    # it is recorded as-is in the paths
     spec = GraphSpec.model_validate(
         {
             "version": "1",
@@ -173,12 +173,12 @@ def test_explain_execution_paths_isolated_node() -> None:
         }
     )
     result = explain_workflow(spec)
-    # "solo" はエッジなし・end_at にないのでそのままパスとして打ち切られる
+    # "solo" has no edges and is not in end_at, so it is terminated as-is in the path
     assert ["solo"] in result["execution_paths"]
 
 
 def test_explain_execution_paths_loop_detected() -> None:
-    # a → b → a というループ構造。ループ検出で "...(loop:a)" として打ち切られる
+    # Loop structure a → b → a. Loop is detected and terminated as "...(loop:a)"
     spec = GraphSpec.model_validate(
         {
             "version": "1",
@@ -197,12 +197,12 @@ def test_explain_execution_paths_loop_detected() -> None:
     )
     result = explain_workflow(spec)
     paths = result["execution_paths"]
-    # ループが検出されてパスが "...(loop:a)" で打ち切られる
+    # Loop is detected and path is terminated with "...(loop:a)"
     assert any("...(loop:a)" in p for p in paths)
 
 
 def test_explain_execution_paths_loop_label_format() -> None:
-    # ループ打ち切りラベルのフォーマットが "...(loop:{node_name})" であることを確認
+    # Confirm that the loop termination label format is "...(loop:{node_name})"
     spec = GraphSpec.model_validate(
         {
             "version": "1",
@@ -236,12 +236,12 @@ def test_explain_execution_paths_loop_label_format() -> None:
     paths = result["execution_paths"]
     loop_paths = [p for p in paths if any("...(loop:" in node for node in p)]
     assert len(loop_paths) > 0
-    # ループ打ち切りエントリは "...(loop:router)" 形式
+    # Loop termination entry is in "...(loop:router)" format
     assert any(p[-1] == "...(loop:router)" for p in loop_paths)
 
 
 # ---------------------------------------------------------------------------
-# _extract_input_variables: prompt が str / dict / list の場合
+# _extract_input_variables: cases where prompt is str / dict / list
 # ---------------------------------------------------------------------------
 
 
@@ -318,7 +318,7 @@ def test_extract_input_variables_prompt_is_list_multiple_messages() -> None:
         }
     )
     result = _extract_input_variables(node)
-    # 重複なし・登場順で返される
+    # No duplicates, returned in order of appearance
     assert result == ["persona", "text", "lang"]
 
 
@@ -333,7 +333,7 @@ def test_extract_input_variables_prompt_is_list_deduplicates_vars() -> None:
         }
     )
     result = _extract_input_variables(node)
-    # {lang} は2回登場するが重複なし
+    # {lang} appears twice but no duplicates
     assert result.count("lang") == 1
     assert "text" in result
 
@@ -362,7 +362,7 @@ def test_extract_input_variables_prompt_is_list_non_dict_messages_skipped() -> N
         }
     )
     result = _extract_input_variables(node)
-    # 文字列要素はスキップ、dict要素のみ解析
+    # String elements are skipped; only dict elements are analyzed
     assert result == ["text"]
 
 
@@ -373,7 +373,7 @@ def test_extract_input_variables_no_prompt_returns_empty() -> None:
 
 
 def test_extract_input_variables_prompt_unsupported_type_returns_empty() -> None:
-    # prompt が str / dict / list 以外の型（int など）の場合は空リストを返す
+    # Returns an empty list when prompt is a type other than str / dict / list (e.g., int)
     node = _make_node({"model": "gpt-4o-mini", "prompt": 42})
     result = _extract_input_variables(node)
     assert result == []

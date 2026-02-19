@@ -261,7 +261,7 @@ def test_validate_workflow_for_ui_reports_error_when_inline_prompt_is_used(
     assert issue.location == ("nodes", 1, "params", "prompt")
 
 
-# ---  severity / context / fuzzy match テスト ---
+# --- severity / context / fuzzy match tests ---
 
 VALID_SPEC_DICT: dict[str, Any] = {
     "version": "1",
@@ -310,10 +310,10 @@ def test_workflow_validation_issue_to_dict_includes_context_when_set() -> None:
 
 
 def test_validate_workflow_structure_error_context_has_suggestion(tmp_path: Path) -> None:
-    """ノードIDを1文字変えた場合に context.suggestion へ候補が返る。"""
+    """Should return a suggestion in context.suggestion when the node ID has one character changed."""
     payload: dict[str, Any] = {
         "version": "1",
-        "start_at": "translat",  # 1文字欠落
+        "start_at": "translat",  # one character missing
         "end_at": ["translate"],
         "nodes": [{"id": "translate", "handler": "llm", "params": {}}],
         "edges": [],

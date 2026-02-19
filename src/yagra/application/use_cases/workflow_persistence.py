@@ -1,4 +1,4 @@
-"""Workflow 編集結果の保存とロールバックを提供する。"""
+"""Provides save and rollback operations for workflow edit results."""
 
 from __future__ import annotations
 
@@ -24,14 +24,14 @@ from yagra.application.use_cases.workflow_validation_reporter import (
 
 
 class WorkflowRevisionConflictError(ValueError):
-    """workflow 保存時に revision が競合した場合の例外。"""
+    """Exception raised when a revision conflict occurs during workflow save."""
 
     def __init__(self, expected_revision: str, actual_revision: str) -> None:
         """Initializes with conflict information.
 
         Args:
-            expected_revision: クライアントが想定した revision。
-            actual_revision: 現在の revision。
+            expected_revision: The revision the client expected.
+            actual_revision: The current revision on disk.
         """
         self.expected_revision = expected_revision
         self.actual_revision = actual_revision
@@ -42,7 +42,7 @@ class WorkflowRevisionConflictError(ValueError):
 
 @dataclass(frozen=True, slots=True)
 class WorkflowSaveResult:
-    """workflow 保存結果を保持する。"""
+    """Holds the result of a workflow save operation."""
 
     saved_revision: str
     backup_id: str
@@ -50,7 +50,7 @@ class WorkflowSaveResult:
 
 @dataclass(frozen=True, slots=True)
 class WorkflowRollbackResult:
-    """workflow ロールバック結果を保持する。"""
+    """Holds the result of a workflow rollback operation."""
 
     restored_revision: str
     backup_id: str
@@ -66,24 +66,24 @@ def save_workflow_with_backup(
     ui_state_path: str | PathLike[str] | None = None,
     backup_dir: str | PathLike[str] = ".yagra/backups",
 ) -> WorkflowSaveResult:
-    """Workflow 編集案を検証し、バックアップ付きで保存する。
+    """Validates a workflow edit proposal and saves it with a backup.
 
     Args:
-        workflow_path: 保存対象 workflow パス。
-        candidate_workflow: 保存候補 workflow データ。
-        candidate_ui_state: 保存候補 UI サイドカーデータ。
-        base_revision: 保存要求の基準 revision。
-        bundle_root: 分割参照解決の基準ディレクトリ。
-        ui_state_path: 保存対象 UI サイドカーパス。
-        backup_dir: バックアップ格納ルートディレクトリ。
+        workflow_path: Path to the workflow to save.
+        candidate_workflow: Candidate workflow data to save.
+        candidate_ui_state: Candidate UI sidecar data to save.
+        base_revision: The base revision of the save request.
+        bundle_root: Base directory for resolving split references.
+        ui_state_path: Path to the UI sidecar to save.
+        backup_dir: Root directory for storing backups.
 
     Returns:
-        保存結果を表す `WorkflowSaveResult`。
+        `WorkflowSaveResult` representing the save result.
 
     Raises:
-        ValueError: 入力データが辞書形式でない場合。
-        WorkflowRevisionConflictError: revision が一致しない場合。
-        WorkflowValidationFailedError: 保存候補の検証に失敗した場合。
+        ValueError: If input data is not in mapping format.
+        WorkflowRevisionConflictError: If the revision does not match.
+        WorkflowValidationFailedError: If validation of the candidate fails.
     """
     workflow_abspath = Path(workflow_path).expanduser().resolve()
     ui_state_abspath = resolve_ui_state_path(
@@ -150,16 +150,16 @@ def rollback_workflow_from_backup(
     """Restores workflow from the specified backup.
 
     Args:
-        workflow_path: 復元対象 workflow パス。
-        backup_id: 復元対象バックアップID。
-        ui_state_path: 復元対象 UI サイドカーパス。
-        backup_dir: バックアップ格納ルートディレクトリ。
+        workflow_path: Path to the workflow to restore.
+        backup_id: ID of the backup to restore.
+        ui_state_path: Path to the UI sidecar to restore.
+        backup_dir: Root directory for storing backups.
 
     Returns:
-        復元結果を表す `WorkflowRollbackResult`。
+        `WorkflowRollbackResult` representing the restore result.
 
     Raises:
-        WorkflowBackupNotFoundError: バックアップが存在しない場合。
+        WorkflowBackupNotFoundError: If the backup does not exist.
     """
     workflow_abspath = Path(workflow_path).expanduser().resolve()
     ui_state_abspath = resolve_ui_state_path(
@@ -216,14 +216,14 @@ def _ensure_mapping(payload: Mapping[str, Any], label: str) -> dict[str, Any]:
     """Validates that the input is dict-compatible and converts it to a dict.
 
     Args:
-        payload: 検証対象データ。
-        label: エラー文言で使う入力名。
+        payload: Data to validate.
+        label: Input name used in error messages.
 
     Returns:
-        shallow copy した辞書データ。
+        Shallow copy of the dictionary data.
 
     Raises:
-        ValueError: payload が辞書互換でない場合。
+        ValueError: If payload is not dict-compatible.
     """
     if not isinstance(payload, Mapping):
         raise ValueError(f"{label} must be a mapping")

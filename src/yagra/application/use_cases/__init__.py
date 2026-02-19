@@ -1,4 +1,4 @@
-"""Yagra のユースケース群を公開する。"""
+"""Exposes the use cases for Yagra."""
 
 from yagra.application.services import EdgeRuleIssue, collect_edge_rule_issues
 from yagra.application.use_cases.state_graph_builder import (

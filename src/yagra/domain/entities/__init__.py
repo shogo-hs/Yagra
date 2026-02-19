@@ -1,4 +1,4 @@
-"""Yagra YAML スキーマのエンティティ定義。"""
+"""Entity definitions for the Yagra YAML schema."""
 
 from yagra.domain.entities.graph_schema import EdgeSpec, GraphSpec, NodeSpec
 

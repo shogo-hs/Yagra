@@ -1,4 +1,4 @@
-"""GraphSpec から LangGraph StateGraph を構築する。"""
+"""Builds a LangGraph StateGraph from a GraphSpec."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ from yagra.ports.outbound.node_registry import NodeHandler
 
 
 class GraphBuildError(ValueError):
-    """StateGraph の構築に失敗した場合の例外。"""
+    """Exception raised when StateGraph construction fails."""
 
 
 def build_state_graph(
@@ -27,24 +27,24 @@ def build_state_graph(
     state_schema: Any = dict,
     checkpointer: BaseCheckpointSaver | None = None,
 ) -> CompiledStateGraph:
-    """`GraphSpec` と Registry からコンパイル済み StateGraph を構築する。
+    """Builds a compiled StateGraph from a `GraphSpec` and registry.
 
-    `spec.interrupt_before` / `spec.interrupt_after` が指定されている場合、
-    HITL（Human-in-the-Loop）を有効にするために checkpointer が必要となる。
-    checkpointer が None の場合、interrupt は設定されない。
+    If `spec.interrupt_before` / `spec.interrupt_after` are specified,
+    a checkpointer is required to enable HITL (Human-in-the-Loop).
+    If checkpointer is None, interrupt configuration is ignored.
 
     Args:
-        spec: 検証済みの workflow 定義。
-        registry: handler 名を callable へ解決するレジストリ。
+        spec: Validated workflow definition.
+        registry: Registry resolving handler names to callables.
         state_schema: LangGraph state schema. Defaults to `dict`.
-        checkpointer: LangGraph checkpointer。interrupt を使用する場合は必須。
-            None の場合は interrupt_before/interrupt_after を無視する。
+        checkpointer: LangGraph checkpointer. Required when using interrupts.
+            If None, interrupt_before/interrupt_after are ignored.
 
     Returns:
-        コンパイル済みの `CompiledStateGraph`。
+        Compiled `CompiledStateGraph`.
 
     Raises:
-        GraphBuildError: エッジ定義不整合や条件分岐解決不正がある場合。
+        GraphBuildError: If edge definitions are inconsistent or conditional routing is invalid.
     """
     state_graph = StateGraph(state_schema)
 
@@ -81,7 +81,7 @@ def build_state_graph(
     for end_node in spec.end_at:
         state_graph.set_finish_point(end_node)
 
-    # interrupt_before / interrupt_after は checkpointer がある場合のみ有効
+    # interrupt_before / interrupt_after are only effective when a checkpointer is provided
     interrupt_before = list(spec.interrupt_before) if checkpointer is not None else []
     interrupt_after = list(spec.interrupt_after) if checkpointer is not None else []
 
@@ -99,17 +99,17 @@ def build_from_workflow_path(
     state_schema: Any = dict,
     checkpointer: BaseCheckpointSaver | None = None,
 ) -> CompiledStateGraph:
-    """Workflow パスを入口に `CompiledStateGraph` を構築する。
+    """Builds a `CompiledStateGraph` starting from a workflow path.
 
     Args:
-        workflow_path: 入口 workflow ファイルのパス。
-        registry: handler 名を callable へ解決するレジストリ。
-        bundle_root: 分割参照時の基準ディレクトリ。未指定時は workflow 親を使う。
+        workflow_path: Path to the entry workflow file.
+        registry: Registry resolving handler names to callables.
+        bundle_root: Base directory for split references. Defaults to workflow parent directory.
         state_schema: LangGraph state schema. Defaults to `dict`.
-        checkpointer: LangGraph checkpointer。interrupt を使用する場合は必須。
+        checkpointer: LangGraph checkpointer. Required when using interrupts.
 
     Returns:
-        コンパイル済みの `CompiledStateGraph`。
+        Compiled `CompiledStateGraph`.
     """
     spec = load_graph_spec_from_workflow(workflow_path=workflow_path, bundle_root=bundle_root)
     return build_state_graph(
@@ -156,10 +156,10 @@ def _build_node_runner(
     """Returns a wrapper callable for node execution.
 
     Args:
-        handler: ノードハンドラー callable。
-        node_params: ノードの params 辞書。
-        is_cond_source: このノードが conditional edge の source かどうか。
-            True の場合、``output_key`` が未指定なら ``"__next__"`` を自動設定する。
+        handler: Node handler callable.
+        node_params: Node params dictionary.
+        is_cond_source: Whether this node is the source of a conditional edge.
+            If True and ``output_key`` is not specified, ``"__next__"`` is set automatically.
     """
     frozen_params = _normalize_runtime_params(node_params, is_cond_source=is_cond_source)
 
@@ -180,13 +180,13 @@ def _normalize_runtime_params(
 ) -> dict[str, Any]:
     """Normalizes node params passed to the handler at execution time.
 
-    conditional edge の source ノードで ``output_key`` が未指定の場合、
-    ``"__next__"`` を自動設定する。LLM ハンドラーはこの値を state に書き込み、
-    ルーターが ``state["__next__"]`` を読み取って分岐先を決定する。
+    For conditional edge source nodes where ``output_key`` is not specified,
+    ``"__next__"`` is set automatically. The LLM handler writes this value to state,
+    and the router reads ``state["__next__"]`` to determine the next branch.
 
     Args:
-        node_params: ノードの params 辞書。
-        is_cond_source: conditional edge の source ノードの場合 True。
+        node_params: Node params dictionary.
+        is_cond_source: True if this node is the source of a conditional edge.
     """
     normalized = deepcopy(dict(node_params))
     normalized.pop("prompt_ref", None)
@@ -200,7 +200,7 @@ def _invoke_handler(
     state: Mapping[str, Any],
     node_params: Mapping[str, Any],
 ) -> Any:
-    """Handler を `handler(state, params)` 優先で呼び出す。"""
+    """Invokes a handler preferring the `handler(state, params)` signature."""
     try:
         return handler(dict(state), dict(node_params))
     except TypeError:
@@ -214,7 +214,7 @@ def _invoke_handler(
 
 
 def _build_router(source: str, route_map: Mapping[str, str]) -> NodeHandler:
-    """`__next__` キーから条件遷移先を選択するルーターを返す。"""
+    """Returns a router that selects the conditional transition target from the `__next__` key."""
     allowed = sorted(route_map.keys())
 
     def _route(state: Mapping[str, Any]) -> str:

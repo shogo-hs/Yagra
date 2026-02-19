@@ -1,4 +1,4 @@
-"""Workflow Studio 用のローカル HTTP サーバーを提供する。"""
+"""Provides the local HTTP server for Workflow Studio."""
 
 from __future__ import annotations
 
@@ -29,10 +29,10 @@ def _load_web_asset(asset_path: str) -> tuple[bytes, str] | None:
     """Loads bundled web assets.
 
     Args:
-        asset_path: `/assets/` 以降の相対パス。
+        asset_path: Relative path after `/assets/`.
 
     Returns:
-        `(body, content_type)`。不正パスや未存在時は `None`。
+        `(body, content_type)`. Returns `None` for invalid paths or missing files.
     """
     normalized = asset_path.strip().replace("\\", "/")
     if not normalized:
@@ -68,14 +68,14 @@ def _resolve_workspace_root_path(
     workflow_abspath: Path | None,
     workspace_root: str | PathLike[str] | None,
 ) -> Path:
-    """Studio のデフォルト workspace_root を決定する。
+    """Determines the default workspace_root for Studio.
 
     Args:
-        workflow_abspath: 編集対象 workflow の絶対パス。
-        workspace_root: CLI から明示指定された workspace_root。
+        workflow_abspath: Absolute path to the workflow being edited.
+        workspace_root: workspace_root explicitly specified from the CLI.
 
     Returns:
-        使用する workspace_root の絶対パス。
+        Absolute path to the workspace_root to use.
     """
     if workspace_root is not None:
         return Path(workspace_root).expanduser().resolve()
@@ -99,19 +99,19 @@ def create_workflow_studio_server(
     host: str = "127.0.0.1",
     port: int = 8787,
 ) -> ThreadingHTTPServer:
-    """Workflow Studio ローカルサーバーを生成する。
+    """Creates the Workflow Studio local server.
 
     Args:
-        workflow_path: 編集対象 workflow パス。未指定時は UI ランチャーから選択/作成する。
-        bundle_root: 分割参照解決の基準ディレクトリ。
-        ui_state_path: UI サイドカーパス。
-        workspace_root: workflow 探索/作成を許可するワークスペースルート。
-        backup_dir: バックアップ格納ディレクトリ。
-        host: バインドホスト。
-        port: バインドポート。
+        workflow_path: Path to the workflow to edit. Select/create from the UI launcher if not specified.
+        bundle_root: Base directory for resolving split references.
+        ui_state_path: UI sidecar path.
+        workspace_root: Workspace root where workflow exploration/creation is permitted.
+        backup_dir: Directory for storing backups.
+        host: Bind host.
+        port: Bind port.
 
     Returns:
-        設定済み `ThreadingHTTPServer`。
+        Configured `ThreadingHTTPServer`.
     """
     workflow_abspath = (
         Path(workflow_path).expanduser().resolve() if workflow_path is not None else None
@@ -154,13 +154,13 @@ def _build_handler_class(
     """Creates an HTTP Handler class encapsulating configuration.
 
     Args:
-        studio: Studio inbound port 実装。
+        studio: Studio inbound port implementation.
 
     Returns:
-        `BaseHTTPRequestHandler` 派生クラス。
+        Derived class of `BaseHTTPRequestHandler`.
     """
-    # ── ルーティングテーブル ──────────────────────────────────
-    # GET: パス → 引数なしのサービスメソッド名
+    # ── Routing table ──────────────────────────────────────────
+    # GET: path → service method name (no arguments)
     _get_routes: dict[str, str] = {
         "/api/studio/target": "get_studio_target",
         "/api/studio/files": "get_studio_files",
@@ -168,7 +168,7 @@ def _build_handler_class(
         "/api/workflow": "get_workflow",
     }
 
-    # POST: パス → body を受け取るサービスメソッド名
+    # POST: path → service method name (receives body)
     _post_routes: dict[str, str] = {
         "/api/workflow/diff": "diff",
         "/api/workflow/form/preview": "form_preview",
@@ -182,7 +182,7 @@ def _build_handler_class(
     }
 
     class WorkflowStudioHandler(BaseHTTPRequestHandler):
-        """Workflow Studio API のリクエストを処理する。"""
+        """Handles requests to the Workflow Studio API."""
 
         _studio = studio
 
@@ -191,7 +191,7 @@ def _build_handler_class(
             _ = (format, args)
 
         def do_GET(self) -> None:  # noqa: N802
-            """GET リクエストを処理する。"""
+            """Handles GET requests."""
             path = urlparse(self.path).path
             if path == "/":
                 self._write_html(_studio_html())
@@ -211,7 +211,7 @@ def _build_handler_class(
             self._write_json(404, {"error": "not_found"})
 
         def do_POST(self) -> None:  # noqa: N802
-            """POST リクエストを処理する。"""
+            """Handles POST requests."""
             path = urlparse(self.path).path
             try:
                 body = self._read_json_body()
@@ -247,7 +247,7 @@ def _build_handler_class(
             self,
             operation: Callable[[], dict[str, Any]],
         ) -> dict[str, Any] | None:
-            """Studio サービス呼び出しを実行し、エラーを HTTP 応答へ変換する。"""
+            """Executes a Studio service call and converts errors to HTTP responses."""
             try:
                 return operation()
             except (
@@ -289,7 +289,7 @@ def _build_handler_class(
             return parsed
 
         def _write_json(self, status_code: int, payload: dict[str, Any]) -> None:
-            """JSON レスポンスを書き込む。"""
+            """Writes a JSON response."""
             body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
             self.send_response(status_code)
             self.send_header("Content-Type", "application/json; charset=utf-8")
@@ -298,7 +298,7 @@ def _build_handler_class(
             self.wfile.write(body)
 
         def _write_html(self, html_text: str) -> None:
-            """HTML レスポンスを書き込む。"""
+            """Writes an HTML response."""
             body = html_text.encode("utf-8")
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
@@ -310,7 +310,7 @@ def _build_handler_class(
 
 
 def _studio_html() -> str:
-    """Workflow Studio のフォーム編集 UI HTML を返す。"""
+    """Returns the form editing UI HTML for Workflow Studio."""
     return """<!doctype html>
 <html lang="ja">
 <head>
@@ -335,24 +335,24 @@ def _studio_html() -> str:
   />
   <style>
     :root {
-      /* ===== 配色システム ===== */
-      /* 背景・パネル */
+      /* ===== Color system ===== */
+      /* Background / panel */
       --bg: #f3f7fb;
       --panel: #ffffff;
       --line: #d5deea;
 
-      /* テキスト */
+      /* Text */
       --text: #1d2735;
       --text-secondary: #5d6d84;
-      --muted: #5d6d84; /* 互換性のため残す */
+      --muted: #5d6d84; /* kept for compatibility */
 
-      /* プライマリ（青系） */
+      /* Primary (blue) */
       --primary: #0a6fd8;
       --primary-hover: #0858b0;
       --primary-active: #064488;
-      --accent: #0a6fd8; /* 互換性のため残す */
+      --accent: #0a6fd8; /* kept for compatibility */
 
-      /* セマンティックカラー */
+      /* Semantic colors */
       --success: #2e7d32;
       --success-bg: #e8f5e9;
       --warning: #f57c00;
@@ -361,10 +361,10 @@ def _studio_html() -> str:
       --danger-bg: #ffebee;
       --info: #1976d2;
       --info-bg: #e3f2fd;
-      --ok: #2e7d32; /* 互換性のため残す */
+      --ok: #2e7d32; /* kept for compatibility */
       --warn: #e65100;
 
-      /* Diff表示用 */
+      /* For diff display */
       --diff-add: #e6ffed;
       --diff-add-text: #1b5e20;
       --diff-del: #ffeef0;
@@ -372,19 +372,19 @@ def _studio_html() -> str:
       --diff-meta: #f0f4ff;
       --diff-meta-text: #1565c0;
 
-      /* Toast通知用 */
+      /* For toast notifications */
       --toast-success: #2e7d32;
       --toast-error: #c62828;
 
-      /* サブセクション用 */
+      /* For subsections */
       --subsection-bg: #f8fafd;
       --subsection-border: #e4ecf5;
 
-      /* 保存ボタン用 */
+      /* For save button */
       --save-bg: #d32f2f;
       --save-border: #b71c1c;
 
-      /* ===== 余白スケール ===== */
+      /* ===== Spacing scale ===== */
       --spacing-xs: 4px;
       --spacing-sm: 8px;
       --spacing-md: 12px;
@@ -392,7 +392,7 @@ def _studio_html() -> str:
       --spacing-xl: 24px;
       --spacing-2xl: 32px;
 
-      /* ===== タイポグラフィスケール ===== */
+      /* ===== Typography scale ===== */
       --font-size-xs: 11px;
       --font-size-sm: 12px;
       --font-size-base: 14px;
@@ -410,7 +410,7 @@ def _studio_html() -> str:
       --font-weight-bold: 700;
       --font-weight-extrabold: 800;
 
-      /* ===== その他 ===== */
+      /* ===== Miscellaneous ===== */
       --border-radius-sm: 8px;
       --border-radius-md: 10px;
       --border-radius-lg: 12px;
@@ -892,7 +892,7 @@ def _studio_html() -> str:
       line-height: var(--line-height-base);
       overflow-wrap: anywhere;
     }
-    /* データフロー変数バッジ */
+    /* Data flow variable badges */
     .node-vars-section {
       display: flex;
       align-items: flex-start;
@@ -939,7 +939,7 @@ def _studio_html() -> str:
       cursor: default;
       padding: 2px 4px;
     }
-    /* ツールバーのトグルラベル */
+    /* Toolbar toggle label */
     .var-toggle-label {
       display: inline-flex;
       align-items: center;
@@ -2323,7 +2323,7 @@ def _studio_html() -> str:
         const isStructuredLlm = computed(() => nodeEditor.handlerType === "structured_llm");
         const isStreamingLlm = computed(() => nodeEditor.handlerType === "streaming_llm");
 
-        // データフロー変数バッジの表示トグル
+        // Toggle display of data flow variable badges
         const showInputVars = ref(true);
         const showOutputVars = ref(true);
 
@@ -2890,11 +2890,11 @@ def _studio_html() -> str:
           if (selectedEdgeId.value && !edges.value.some(edge => edge.id === selectedEdgeId.value)) {
             selectedEdgeId.value = null;
           }
-          // conditional edge の変更に伴い、ノードの outputVars を再計算
+          // Recalculate outputVars for nodes following conditional edge changes
           refreshNodeOutputVars();
         }
 
-        /** conditional source set を再計算し、各ノードの outputVars を更新する */
+        /** Recalculates the conditional source set and updates outputVars for each node */
         function refreshNodeOutputVars() {
           const condSources = new Set(
             edges.value
@@ -2919,7 +2919,7 @@ def _studio_html() -> str:
           });
         }
 
-        /** params に prompt(dict) または prompt_ref(str) が存在するか判定する */
+        /** Returns whether params contains a prompt (dict) or prompt_ref (str) */
         function hasPrompt(params) {
           if (!params || typeof params !== "object") return false;
           const p = params.prompt;
@@ -2928,19 +2928,19 @@ def _studio_html() -> str:
           return false;
         }
 
-        /** params に output_key が明示指定されているか判定する */
+        /** Returns whether output_key is explicitly specified in params */
         function hasExplicitOutputKey(params) {
           return params && typeof params === "object" && "output_key" in params;
         }
 
-        /** rawNode.params から入力変数名リストを返す（prompt_variable_validator のロジックをミラー） */
+        /** Returns the list of input variable names from rawNode.params (mirrors prompt_variable_validator logic) */
         function extractInputVars(params, promptUserFallback) {
           if (!params || typeof params !== "object") return [];
           const explicitKeys = params.input_keys;
           if (explicitKeys !== undefined && explicitKeys !== null) {
             return Array.isArray(explicitKeys) ? explicitKeys.map(String) : [];
           }
-          // インライン prompt.user を優先し、なければ formItem.prompt_user（prompt_ref 解決済みテキスト）を使う
+          // Prefer inline prompt.user; fall back to formItem.prompt_user (resolved prompt_ref text) if absent
           const prompt = params.prompt;
           const userTemplate = (prompt && typeof prompt === "object" && typeof prompt.user === "string")
             ? prompt.user
@@ -2953,7 +2953,7 @@ def _studio_html() -> str:
           return matches;
         }
 
-        /** rawNode.params から出力変数名を返す（デフォルト "output"） */
+        /** Returns the output variable name from rawNode.params (defaults to "output") */
         function extractOutputVar(params) {
           if (!params || typeof params !== "object") return "output";
           const key = params.output_key;
@@ -3315,18 +3315,18 @@ def _studio_html() -> str:
               }
               const current = isRecord(node.data) ? node.data : {};
               const nextHandler = normalizeText(nodeEditor.handler);
-              // バッジ再計算: output_key は finalParams から、入力変数は promptUser から
+              // Badge recalculation: output_key from finalParams, input variables from promptUser
               const nextRawParams = {
                 ...(isRecord(isRecord(node.data) ? node.data.rawNode?.params : {}) ? node.data.rawNode.params : {}),
                 ...(finalParams || {}),
                 prompt: { system: normalizeText(nodeEditor.promptSystem), user: normalizeText(nodeEditor.promptUser) },
               };
-              // prompt_ref がある場合もパラメータに含める
+              // Include prompt_ref in params when present
               if (promptRef) {
                 nextRawParams.prompt_ref = promptRef;
               }
               const nodeHasPrompt = hasPrompt(nextRawParams) || (normalizeText(nodeEditor.promptUser));
-              // conditional edge source の判定
+              // Determine conditional edge sources
               const condSources = new Set(
                 edges.value
                   .filter(e => isRecord(e.data) && typeof e.data?.rawEdge?.condition === "string")

@@ -1,4 +1,4 @@
-"""Workflow フォーム編集向けの表示モデルを生成する。"""
+"""Generates display models for workflow form editing."""
 
 from __future__ import annotations
 
@@ -26,10 +26,10 @@ class WorkflowNodeFormItem:
     model: dict[str, Any] | None
 
     def to_dict(self) -> dict[str, Any]:
-        """API 応答形式の辞書へ変換する。
+        """Converts to a dict in API response format.
 
         Returns:
-            id, handler, prompt_ref, prompt_user, model を含む辞書。
+            Dictionary containing id, handler, prompt_ref, prompt_user, and model.
         """
         return {
             "id": self.id,
@@ -50,10 +50,10 @@ class WorkflowEdgeFormItem:
     condition: str | None
 
     def to_dict(self) -> dict[str, Any]:
-        """API 応答形式の辞書へ変換する。
+        """Converts to a dict in API response format.
 
         Returns:
-            index, source, target, condition を含む辞書。
+            Dictionary containing index, source, target, and condition.
         """
         return {
             "index": self.index,
@@ -73,10 +73,10 @@ class WorkflowFormView:
     prompt_catalog_keys: tuple[str, ...]
 
     def to_dict(self) -> dict[str, Any]:
-        """API 応答形式の辞書へ変換する。
+        """Converts to a dict in API response format.
 
         Returns:
-            revision, nodes, edges, prompt_catalog_keys を含む辞書。
+            Dictionary containing revision, nodes, edges, and prompt_catalog_keys.
         """
         return {
             "revision": self.revision,
@@ -88,34 +88,34 @@ class WorkflowFormView:
 
 @dataclass(frozen=True, slots=True)
 class WorkflowCatalogIssue:
-    """catalog 読み込み時の問題を表す。"""
+    """Represents an issue encountered while loading a catalog."""
 
     code: str
     message: str
     location: tuple[str | int, ...]
 
     def to_dict(self) -> dict[str, Any]:
-        """API 応答形式の辞書へ変換する。
+        """Converts to a dict in API response format.
 
         Returns:
-            code, message, location を含む辞書。
+            Dictionary containing code, message, and location.
         """
         return {"code": self.code, "message": self.message, "location": list(self.location)}
 
 
 @dataclass(frozen=True, slots=True)
 class WorkflowCatalogPreview:
-    """workflow.params の catalog 設定プレビューを表す。"""
+    """Represents a preview of the catalog configuration in workflow.params."""
 
     prompt_catalog_path: str | None
     prompt_catalog_keys: tuple[str, ...]
     issues: tuple[WorkflowCatalogIssue, ...]
 
     def to_dict(self) -> dict[str, Any]:
-        """API 応答形式の辞書へ変換する。
+        """Converts to a dict in API response format.
 
         Returns:
-            prompt_catalog_path, prompt_catalog_keys, issues を含む辞書。
+            Dictionary containing prompt_catalog_path, prompt_catalog_keys, and issues.
         """
         return {
             "prompt_catalog_path": self.prompt_catalog_path,
@@ -130,24 +130,24 @@ def build_workflow_form_view(
     workflow_path: str | PathLike[str],
     bundle_root: str | PathLike[str] | None = None,
 ) -> WorkflowFormView:
-    """Workflow と UI 状態からフォーム編集向け表示モデルを生成する。
+    """Builds a form editing display model from a workflow and UI state.
 
     Args:
-        workflow: 表示対象の workflow データ。
-        ui_state: 現在の UI サイドカーデータ。
-        workflow_path: workflow ファイルパス。
-        bundle_root: 分割参照解決の基準ディレクトリ。
+        workflow: Workflow data to display.
+        ui_state: Current UI sidecar data.
+        workflow_path: Path to the workflow file.
+        bundle_root: Base directory for split reference resolution.
 
     Returns:
-        フォーム表示に必要な情報を含む `WorkflowFormView`。
+        `WorkflowFormView` containing the information required for form display.
 
     Raises:
-        ValueError: workflow の構造が想定外の場合。
+        ValueError: If the workflow structure is unexpected.
     """
     workflow_abspath = Path(workflow_path).expanduser().resolve()
     bundle_root_path = Path(bundle_root).expanduser().resolve() if bundle_root is not None else None
 
-    # prompt_ref を解決して prompt.user を取得できるようにする
+    # Resolve prompt_ref to allow retrieval of prompt.user
     try:
         resolved_workflow = resolve_workflow_references(
             payload=dict(workflow),
@@ -191,7 +191,7 @@ def build_workflow_form_view(
         if not isinstance(params, Mapping):
             continue
         params_mapping = dict(params)
-        # 解決済みノードから prompt.user を取得
+        # Retrieve prompt.user from the resolved node
         resolved_node = resolved_by_id.get(node_id, {})
         resolved_params = resolved_node.get("params") or {}
         resolved_prompt = (
@@ -254,15 +254,15 @@ def build_workflow_catalog_preview(
     workflow_path: str | PathLike[str],
     bundle_root: str | PathLike[str] | None = None,
 ) -> WorkflowCatalogPreview:
-    """workflow.params の catalog 設定を解決し、候補キーと問題を返す。
+    """Resolves the catalog configuration in workflow.params and returns candidate keys and issues.
 
     Args:
-        workflow: workflow データ。
-        workflow_path: workflow ファイルパス。
-        bundle_root: 分割参照解決の基準ディレクトリ。
+        workflow: Workflow data.
+        workflow_path: Path to the workflow file.
+        bundle_root: Base directory for split reference resolution.
 
     Returns:
-        catalog 設定プレビュー。
+        Catalog configuration preview.
     """
     workflow_mapping = _ensure_mapping(workflow, label="workflow")
     workflow_abspath = Path(workflow_path).expanduser().resolve()
@@ -378,15 +378,15 @@ def _resolve_catalog_setting(
 def _resolve_catalog_path(
     catalog_path: str, workflow_abspath: Path, bundle_root: Path | None
 ) -> Path:
-    """Catalog パスを workflow 基準で絶対パスへ解決する。
+    """Resolves a catalog path to an absolute path relative to the workflow.
 
     Args:
-        catalog_path: workflow で指定された catalog パス。
-        workflow_abspath: workflow 絶対パス。
-        bundle_root: 分割参照解決の基準ディレクトリ。
+        catalog_path: Catalog path specified in the workflow.
+        workflow_abspath: Absolute path to the workflow file.
+        bundle_root: Base directory for split reference resolution.
 
     Returns:
-        解決後の絶対パス。
+        Resolved absolute path.
     """
     raw_path = Path(catalog_path)
     if raw_path.is_absolute():
@@ -400,11 +400,11 @@ def _collect_key_paths(payload: dict[str, Any], prefix: str) -> list[str]:
     """Recursively traverses a dict and returns a list of keys in `a.b.c` format.
 
     Args:
-        payload: 走査対象の辞書。
-        prefix: 親キー接頭辞。
+        payload: Dictionary to traverse.
+        prefix: Parent key prefix.
 
     Returns:
-        収集したキー一覧。
+        Collected list of key paths.
     """
     paths: list[str] = []
     for key, value in payload.items():
@@ -421,10 +421,10 @@ def _as_optional_mapping(value: Any) -> dict[str, Any] | None:
     """Normalizes the value as an arbitrary dict.
 
     Args:
-        value: 変換対象値。
+        value: Value to convert.
 
     Returns:
-        辞書値、または `None`。
+        Dictionary value, or `None`.
     """
     if not isinstance(value, Mapping):
         return None
@@ -435,10 +435,10 @@ def _as_optional_string(value: Any) -> str | None:
     """Normalizes the value as an arbitrary string.
 
     Args:
-        value: 変換対象値。
+        value: Value to convert.
 
     Returns:
-        文字列値、または `None`。
+        String value, or `None`.
     """
     if not isinstance(value, str):
         return None
@@ -452,14 +452,14 @@ def _ensure_mapping(payload: Mapping[str, Any], label: str) -> dict[str, Any]:
     """Validates that the input is dict-compatible and converts it to a dict.
 
     Args:
-        payload: 検証対象データ。
-        label: エラー文言で使う入力名。
+        payload: Data to validate.
+        label: Input name used in error messages.
 
     Returns:
-        shallow copy した辞書データ。
+        Shallow-copied dictionary data.
 
     Raises:
-        ValueError: payload が辞書互換でない場合。
+        ValueError: If payload is not dict-compatible.
     """
     if not isinstance(payload, Mapping):
         raise ValueError(f"{label} must be a mapping")

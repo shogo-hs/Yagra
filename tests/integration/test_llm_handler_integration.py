@@ -1,6 +1,6 @@
 """Integration tests for LLM handler with workflow execution.
 
-このテストは、LLM ハンドラーが YAML ワークフローと統合して正しく動作することを検証します。
+This test validates that the LLM handler works correctly when integrated with a YAML workflow.
 """
 
 import tempfile
@@ -9,10 +9,10 @@ from unittest.mock import MagicMock, patch
 
 
 class TestLLMHandlerIntegration:
-    """LLM handler の結合テスト."""
+    """Integration tests for the LLM handler."""
 
     def test_llm_handler_with_prompt_ref(self) -> None:
-        """prompt_ref を使った外部プロンプト参照が動作すること."""
+        """External prompt reference using prompt_ref should work correctly."""
         # Prompts YAML
         prompts_yaml = """
 greeting:
@@ -20,7 +20,7 @@ greeting:
   user: "Hello {user_name}"
 """
 
-        # Workflow YAML（正しいスキーマ形式）
+        # Workflow YAML (correct schema format)
         workflow_yaml = """
 version: "1.0"
 start_at: "chat"
@@ -65,14 +65,14 @@ params:
                 assert "response" in result
                 assert result["response"] == "Hi Bob!"
 
-                # プロンプトが正しく読み込まれたことを検証
+                # Verify that the prompt was loaded correctly
                 call_args = mock_litellm.completion.call_args
                 messages = call_args.kwargs["messages"]
                 assert messages[0]["content"] == "You are a friendly assistant"
                 assert messages[1]["content"] == "Hello Bob"
 
     def test_llm_handler_with_model_kwargs(self) -> None:
-        """model.kwargs が正しく LLM に渡されること."""
+        """model.kwargs should be passed correctly to the LLM."""
         # Prompts YAML
         prompts_yaml = """
 test:
@@ -125,13 +125,13 @@ edges: []
 
                 assert result["response"] == "Response"
 
-                # model.kwargs が正しく渡されたことを検証
+                # Verify that model.kwargs was passed correctly
                 call_args = mock_litellm.completion.call_args
                 assert call_args.kwargs["temperature"] == 0.5
                 assert call_args.kwargs["max_tokens"] == 100
 
     def test_llm_handler_with_multiple_prompt_variables(self) -> None:
-        """複数のプロンプト変数が自動検出されて正しく処理されること."""
+        """Multiple prompt variables should be auto-detected and processed correctly."""
         # Prompts YAML
         prompts_yaml = """
 multi_input:
@@ -185,7 +185,7 @@ params:
 
                 assert result["response"] == "OK"
 
-                # プロンプトが正しく補間されたことを検証
+                # Verify that the prompt was interpolated correctly
                 call_args = mock_litellm.completion.call_args
                 messages = call_args.kwargs["messages"]
                 assert messages[1]["content"] == "Name: Alice, Age: 30, City: Tokyo"
