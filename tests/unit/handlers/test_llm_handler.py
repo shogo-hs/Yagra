@@ -408,9 +408,7 @@ class TestLLMHandlerAutoDetect:
 class TestLLMHandlerValidationErrors:
     """パラメータバリデーションエラーのテスト（patch コンテキストで動作確認）."""
 
-    def test_handler_prompt_not_dict_raises_config_error(
-        self, mock_litellm_import: None
-    ) -> None:
+    def test_handler_prompt_not_dict_raises_config_error(self, mock_litellm_import: None) -> None:
         """prompt が dict でない場合に LLMHandlerConfigError が発生すること."""
         with patch("yagra.handlers.llm_handler.litellm") as _mock_litellm:
             handler = create_llm_handler(retry=1, timeout=10)
@@ -424,9 +422,7 @@ class TestLLMHandlerValidationErrors:
             with pytest.raises(LLMHandlerConfigError, match="'prompt' must be a dict"):
                 handler(state, params)
 
-    def test_handler_model_not_dict_raises_config_error(
-        self, mock_litellm_import: None
-    ) -> None:
+    def test_handler_model_not_dict_raises_config_error(self, mock_litellm_import: None) -> None:
         """model が dict でない場合に LLMHandlerConfigError が発生すること."""
         with patch("yagra.handlers.llm_handler.litellm") as _mock_litellm:
             handler = create_llm_handler(retry=1, timeout=10)
@@ -508,9 +504,7 @@ class TestLLMHandlerValidationErrors:
 class TestLLMHandlerCallErrors:
     """LLM 呼び出しエラーのテスト（patch コンテキストで動作確認）."""
 
-    def test_handler_empty_choices_raises_call_error(
-        self, mock_litellm_import: None
-    ) -> None:
+    def test_handler_empty_choices_raises_call_error(self, mock_litellm_import: None) -> None:
         """LLM が空の choices を返した場合に LLMHandlerCallError が発生すること."""
         with patch("yagra.handlers.llm_handler.litellm") as mock_litellm:
             handler = create_llm_handler(retry=1, timeout=10)
@@ -528,9 +522,7 @@ class TestLLMHandlerCallErrors:
             with pytest.raises(LLMHandlerCallError, match="LLM returned empty response"):
                 handler(state, params)
 
-    def test_handler_none_content_raises_call_error(
-        self, mock_litellm_import: None
-    ) -> None:
+    def test_handler_none_content_raises_call_error(self, mock_litellm_import: None) -> None:
         """LLM が None コンテンツを返した場合に LLMHandlerCallError が発生すること."""
         with patch("yagra.handlers.llm_handler.litellm") as mock_litellm:
             handler = create_llm_handler(retry=1, timeout=10)
@@ -573,9 +565,7 @@ class TestLLMHandlerCallErrors:
             # リトライされず1回だけ呼ばれること
             assert mock_litellm.completion.call_count == 1
 
-    def test_handler_api_error_retried_and_finally_fails(
-        self, mock_litellm_import: None
-    ) -> None:
+    def test_handler_api_error_retried_and_finally_fails(self, mock_litellm_import: None) -> None:
         """API 呼び出し失敗がリトライされ、最終的に LLMHandlerCallError が発生すること."""
         with patch("yagra.handlers.llm_handler.litellm") as mock_litellm:
             with patch("yagra.handlers.llm_handler.time.sleep"):
@@ -590,9 +580,7 @@ class TestLLMHandlerCallErrors:
                     "output_key": "output",
                 }
 
-                with pytest.raises(
-                    LLMHandlerCallError, match="LLM call failed after 2 attempts"
-                ):
+                with pytest.raises(LLMHandlerCallError, match="LLM call failed after 2 attempts"):
                     handler(state, params)
 
                 # retry=2 なので completion が2回呼ばれること

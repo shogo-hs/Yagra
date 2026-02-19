@@ -246,9 +246,7 @@ def test_explain_execution_paths_loop_label_format() -> None:
 
 
 def _make_node(params: dict) -> NodeSpec:
-    return NodeSpec.model_validate(
-        {"id": "test_node", "handler": "llm", "params": params}
-    )
+    return NodeSpec.model_validate({"id": "test_node", "handler": "llm", "params": params})
 
 
 def test_extract_input_variables_prompt_is_string() -> None:
