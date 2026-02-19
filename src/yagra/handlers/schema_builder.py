@@ -1,9 +1,9 @@
-r"""YAML スキーマ定義から Pydantic BaseModel を動的に生成するユーティリティ。
+r"""Utility for dynamically generating Pydantic BaseModel from YAML schema definitions.
 
-WebUI の Schema Settings テキストエリアに入力された YAML を
-Pydantic モデルに変換し、structured_llm ハンドラーで使用する。
+Converts YAML entered in the Schema Settings text area of the WebUI
+into a Pydantic model for use in the structured_llm handler.
 
-YAML フォーマット例::
+YAML format example::
 
     name: str
     age: int
@@ -11,7 +11,7 @@ YAML フォーマット例::
     tags: list[str]
 
 Examples:
-    基本的な使用方法:
+    Basic usage:
 
     >>> from yagra.handlers.schema_builder import build_model_from_schema_yaml
     >>> schema_yaml = "name: str\\nage: int"
@@ -26,24 +26,24 @@ from typing import Any
 import yaml
 from pydantic import BaseModel, create_model
 
-# 安全な型マッピング辞書。eval() を使用せず、
-# ホワイトリスト方式で型文字列を Python 型に解決する。
+# Safe type mapping dictionary. Resolves type strings to Python types
+# using a whitelist approach without eval().
 TYPE_MAP: dict[str, Any] = {
-    # プリミティブ型
+    # Primitive types
     "str": str,
     "int": int,
     "float": float,
     "bool": bool,
-    # コレクション型
+    # Collection types
     "list[str]": list[str],
     "list[int]": list[int],
     "list[float]": list[float],
     "list[bool]": list[bool],
-    # 辞書型
+    # Dictionary types
     "dict[str, str]": dict[str, str],
     "dict[str, int]": dict[str, int],
     "dict[str, Any]": dict[str, Any],
-    # Optional 型
+    # Optional types
     "str | None": str | None,
     "int | None": int | None,
     "float | None": float | None,
@@ -52,10 +52,10 @@ TYPE_MAP: dict[str, Any] = {
 
 
 class SchemaYamlError(ValueError):
-    """schema_yaml のパースまたはモデル生成に失敗した場合の例外。
+    """Exception raised when parsing schema_yaml or generating a model fails.
 
-    YAML 構文エラー、未サポートの型指定、不正なフォーマットなど、
-    動的スキーマ生成に関連するすべてのエラーをこの例外で表現する。
+    Represents all errors related to dynamic schema generation, including
+    YAML syntax errors, unsupported type specifications, and invalid formats.
     """
 
 
@@ -63,12 +63,12 @@ def build_model_from_schema_yaml(
     schema_yaml: str,
     model_name: str = "DynamicSchema",
 ) -> type[BaseModel]:
-    r"""YAML 文字列から Pydantic BaseModel サブクラスを動的に生成する。
+    r"""Dynamically generates a Pydantic BaseModel subclass from a YAML string.
 
-    フラットな ``key: type`` 形式の YAML を受け取り、各フィールドの型を
-    安全な TYPE_MAP で解決して ``pydantic.create_model()`` でモデルを生成する。
+    Accepts flat ``key: type`` format YAML, resolves each field's type using
+    the safe TYPE_MAP, and generates the model with ``pydantic.create_model()``.
 
-    入力例::
+    Input example::
 
         name: str
         age: int
@@ -76,15 +76,15 @@ def build_model_from_schema_yaml(
         nickname: str | None
 
     Args:
-        schema_yaml: YAML 形式のスキーマ定義文字列（フラットな key: type 形式）。
-        model_name: 生成するモデルのクラス名。デフォルトは ``"DynamicSchema"``。
+        schema_yaml: Schema definition string in YAML format (flat key: type format).
+        model_name: Class name for the generated model. Defaults to ``"DynamicSchema"``.
 
     Returns:
-        動的に生成された Pydantic BaseModel サブクラス。
+        Dynamically generated Pydantic BaseModel subclass.
 
     Raises:
-        SchemaYamlError: YAML パースエラー、未サポート型、空フィールド、
-            不正なフォーマットの場合に送出する。
+        SchemaYamlError: Raised on YAML parse errors, unsupported types, empty fields,
+            or invalid formats.
 
     Examples:
         >>> Model = build_model_from_schema_yaml("name: str\\nage: int")
@@ -92,14 +92,14 @@ def build_model_from_schema_yaml(
         >>> instance.name
         'Alice'
     """
-    # 1. YAML パース
+    # 1. Parse YAML
     try:
         parsed = yaml.safe_load(schema_yaml)
     except yaml.YAMLError as e:
         msg = f"Invalid YAML syntax in schema_yaml: {e}"
         raise SchemaYamlError(msg) from e
 
-    # 2. パース結果のバリデーション
+    # 2. Validate parse result
     if not isinstance(parsed, dict):
         msg = "schema_yaml must be a YAML mapping of field_name: type (e.g. 'name: str')"
         raise SchemaYamlError(msg)
@@ -108,7 +108,7 @@ def build_model_from_schema_yaml(
         msg = "schema_yaml must define at least one field"
         raise SchemaYamlError(msg)
 
-    # 3. 各フィールドの型解決と Pydantic フィールド定義の構築
+    # 3. Resolve each field's type and build Pydantic field definitions
     field_definitions: dict[str, Any] = {}
     supported_types = ", ".join(sorted(TYPE_MAP.keys()))
 
@@ -134,11 +134,11 @@ def build_model_from_schema_yaml(
             )
             raise SchemaYamlError(msg)
 
-        # Optional 型の場合はデフォルト値を None に設定
+        # Set default value to None for Optional types
         if "| None" in type_str_normalized:
             field_definitions[field_name] = (resolved_type, None)
         else:
             field_definitions[field_name] = (resolved_type, ...)
 
-    # 4. pydantic.create_model() でモデル生成
+    # 4. Generate model with pydantic.create_model()
     return create_model(model_name, **field_definitions)

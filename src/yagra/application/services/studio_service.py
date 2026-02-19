@@ -131,7 +131,7 @@ def _to_workspace_relative_path(path: Path, workspace_root: Path) -> str:
 
 
 def _collect_yaml_key_paths(payload: Any, prefix: str = "") -> list[str]:
-    """YAML マッピングから `a.b.c` 形式のキー一覧を返す。"""
+    """Returns a list of keys in `a.b.c` format from a YAML mapping."""
     if not isinstance(payload, dict):
         return []
     key_paths: list[str] = []
@@ -145,7 +145,7 @@ def _collect_yaml_key_paths(payload: Any, prefix: str = "") -> list[str]:
 
 
 def _collect_prompt_entries(payload: Any, prefix: str = "") -> list[dict[str, str]]:
-    """YAML マッピングから prompt エントリ一覧を抽出する。"""
+    """Extracts a list of prompt entries from a YAML mapping."""
     if not isinstance(payload, dict):
         return []
     entries: list[dict[str, str]] = []
@@ -194,7 +194,7 @@ class StudioService(StudioPort):
         self._config = config
 
     def get_studio_target(self) -> dict[str, Any]:
-        """Studio の現在ターゲット情報を返す。"""
+        """Returns the current target information for Studio."""
         with self._config.lock:
             target_paths = self._active_target_paths()
             workflow_path = str(target_paths[0]) if target_paths is not None else None

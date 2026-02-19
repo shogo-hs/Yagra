@@ -1,4 +1,4 @@
-"""Workflow 編集セッションの読み込みと差分生成を提供する。"""
+"""Provides loading of workflow editing sessions and diff generation."""
 
 from __future__ import annotations
 
@@ -44,10 +44,10 @@ class WorkflowChange:
     after: Any | None
 
     def to_dict(self) -> dict[str, Any]:
-        """API 応答形式の辞書へ変換する。
+        """Converts to a dictionary in API response format.
 
         Returns:
-            kind, path, before, after を含む辞書。
+            Dictionary containing kind, path, before, and after.
         """
         return {
             "kind": self.kind,
@@ -69,10 +69,10 @@ class WorkflowDiffResult:
     validation_report: WorkflowValidationReport
 
     def to_dict(self) -> dict[str, Any]:
-        """API 応答形式の辞書へ変換する。
+        """Converts to a dictionary in API response format.
 
         Returns:
-            差分情報と検証レポートを含む辞書。
+            Dictionary containing diff information and the validation report.
         """
         return {
             "base_revision": self.base_revision,
@@ -88,14 +88,14 @@ def resolve_ui_state_path(
     workflow_path: str | PathLike[str],
     ui_state_path: str | PathLike[str] | None = None,
 ) -> Path:
-    """Workflow に紐づく UI サイドカーファイルの絶対パスを返す。
+    """Returns the absolute path of the UI sidecar file associated with the workflow.
 
     Args:
-        workflow_path: 対象 workflow ファイルパス。
-        ui_state_path: 明示指定の UI サイドカーパス。
+        workflow_path: Target workflow file path.
+        ui_state_path: Explicitly specified UI sidecar path.
 
     Returns:
-        UI サイドカーファイルの絶対パス。
+        Absolute path of the UI sidecar file.
     """
     if ui_state_path is not None:
         return Path(ui_state_path).expanduser().resolve()
@@ -108,18 +108,18 @@ def load_workflow_edit_session(
     bundle_root: str | PathLike[str] | None = None,
     ui_state_path: str | PathLike[str] | None = None,
 ) -> WorkflowEditSession:
-    """Workflow と UI サイドカーを読み込み編集セッションを返す。
+    """Loads the workflow and UI sidecar and returns an editing session.
 
     Args:
-        workflow_path: 読み込み対象 workflow ファイルパス。
-        bundle_root: 分割参照解決の基準ディレクトリ。
-        ui_state_path: UI サイドカーファイルパス。
+        workflow_path: File path of the workflow to load.
+        bundle_root: Base directory for split reference resolution.
+        ui_state_path: UI sidecar file path.
 
     Returns:
-        現在状態を保持した `WorkflowEditSession`。
+        A `WorkflowEditSession` holding the current state.
 
     Raises:
-        ValueError: workflow/ui_state が辞書として読み込めない場合。
+        ValueError: If the workflow or ui_state cannot be loaded as a dictionary.
     """
     workflow_abspath = Path(workflow_path).expanduser().resolve()
     ui_state_abspath = resolve_ui_state_path(
@@ -151,21 +151,21 @@ def build_workflow_diff(
     workflow_path: str | PathLike[str],
     bundle_root: str | PathLike[str] | None = None,
 ) -> WorkflowDiffResult:
-    """Workflow 編集案の差分情報を生成する。
+    """Generates diff information for a workflow editing proposal.
 
     Args:
-        base_workflow: 現在の workflow データ。
-        candidate_workflow: 編集後 workflow データ。
-        base_ui_state: 現在の UI サイドカー。
-        candidate_ui_state: 編集後 UI サイドカー。
-        workflow_path: workflow ファイルパス。
-        bundle_root: 分割参照解決の基準ディレクトリ。
+        base_workflow: Current workflow data.
+        candidate_workflow: Post-edit workflow data.
+        base_ui_state: Current UI sidecar.
+        candidate_ui_state: Post-edit UI sidecar.
+        workflow_path: Workflow file path.
+        bundle_root: Base directory for split reference resolution.
 
     Returns:
-        差分と検証結果を保持した `WorkflowDiffResult`。
+        A `WorkflowDiffResult` holding the diff and validation results.
 
     Raises:
-        ValueError: workflow/ui_state が辞書形式でない場合。
+        ValueError: If the workflow or ui_state is not in dictionary format.
     """
     base_workflow_mapping = _ensure_mapping(base_workflow, label="base workflow")
     candidate_workflow_mapping = _ensure_mapping(candidate_workflow, label="candidate workflow")
@@ -212,14 +212,14 @@ def compute_workflow_revision(
     workflow: Mapping[str, Any],
     ui_state: Mapping[str, Any],
 ) -> str:
-    """Workflow と UI サイドカーの内容から revision を計算する。
+    """Calculates the revision from the contents of the workflow and UI sidecar.
 
     Args:
-        workflow: workflow データ。
-        ui_state: UI サイドカーデータ。
+        workflow: Workflow data.
+        ui_state: UI sidecar data.
 
     Returns:
-        SHA256 ベースの revision 文字列。
+        A SHA256-based revision string.
     """
     workflow_mapping = _ensure_mapping(workflow, label="workflow")
     ui_state_mapping = _ensure_mapping(ui_state, label="ui_state")
@@ -229,43 +229,43 @@ def compute_workflow_revision(
 
 
 def _load_workflow_mapping(path: Path) -> dict[str, Any]:
-    """Workflow YAML を辞書として読み込む。
+    """Loads the workflow YAML as a dictionary.
 
     Args:
-        path: 読み込み対象の workflow パス。
+        path: Path to the workflow to load.
 
     Returns:
-        読み込んだ workflow 辞書。
+        The loaded workflow dictionary.
 
     Raises:
-        ValueError: YAML の読み込みに失敗した場合。
+        ValueError: If loading the YAML fails.
     """
     try:
         with path.open("r", encoding="utf-8") as handle:
             payload = yaml.safe_load(handle)
     except (OSError, yaml.YAMLError) as exc:
-        raise ValueError(f"workflow の読み込みに失敗しました: {path}: {exc}") from exc
+        raise ValueError(f"Failed to load workflow: {path}: {exc}") from exc
     return _ensure_mapping(payload, label=f"workflow: {path}")
 
 
 def _load_ui_state_mapping(path: Path) -> dict[str, Any]:
-    """UI サイドカー JSON を辞書として読み込む。
+    """Loads the UI sidecar JSON as a dictionary.
 
     Args:
-        path: 読み込み対象の UI サイドカーパス。
+        path: Path to the UI sidecar to load.
 
     Returns:
-        読み込んだ UI サイドカー辞書。未存在時は空辞書。
+        The loaded UI sidecar dictionary. Returns an empty dictionary if the file does not exist.
 
     Raises:
-        ValueError: JSON が辞書形式でない場合。
+        ValueError: If the JSON is not in dictionary format.
     """
     if not path.exists():
         return {}
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
-        raise ValueError(f"ui_state の読み込みに失敗しました: {path}: {exc}") from exc
+        raise ValueError(f"Failed to load ui_state: {path}: {exc}") from exc
     return _ensure_mapping(payload, label=f"ui_state: {path}")
 
 
@@ -273,14 +273,14 @@ def _ensure_mapping(payload: Any, label: str) -> dict[str, Any]:
     """Validates that the format is dict and returns it.
 
     Args:
-        payload: 検証対象データ。
-        label: エラーメッセージに含める対象名。
+        payload: Data to validate.
+        label: Target name to include in error messages.
 
     Returns:
-        辞書化されたデータの shallow copy。
+        Shallow copy of the data converted to a dictionary.
 
     Raises:
-        ValueError: payload が辞書でない場合。
+        ValueError: If payload is not a dictionary.
     """
     if not isinstance(payload, Mapping):
         raise ValueError(f"{label} must be a mapping")
@@ -288,15 +288,15 @@ def _ensure_mapping(payload: Any, label: str) -> dict[str, Any]:
 
 
 def _collect_changes(before: Any, after: Any, path: Location) -> list[WorkflowChange]:
-    """2つの値を再帰比較して変更イベントを抽出する。
+    """Recursively compares two values and extracts change events.
 
     Args:
-        before: 変更前の値。
-        after: 変更後の値。
-        path: 現在の走査パス。
+        before: The value before the change.
+        after: The value after the change.
+        path: The current traversal path.
 
     Returns:
-        抽出した変更イベント一覧。
+        List of extracted change events.
     """
     if isinstance(before, Mapping) and isinstance(after, Mapping):
         changes: list[WorkflowChange] = []
@@ -385,10 +385,10 @@ def _build_summary(changes: list[WorkflowChange]) -> dict[str, int]:
     """Aggregates change events into category counts.
 
     Args:
-        changes: 集計対象の変更イベント一覧。
+        changes: List of change events to aggregate.
 
     Returns:
-        カテゴリ別件数を保持する辞書。
+        Dictionary holding the count per category.
     """
     summary = {
         "total": len(changes),
@@ -417,14 +417,14 @@ def _build_summary(changes: list[WorkflowChange]) -> dict[str, int]:
 
 
 def _build_yaml_unified_diff(before: dict[str, Any], after: dict[str, Any]) -> str:
-    """Workflow YAML の unified diff 文字列を生成する。
+    """Generates a unified diff string for the workflow YAML.
 
     Args:
-        before: 変更前 workflow。
-        after: 変更後 workflow。
+        before: Workflow before the change.
+        after: Workflow after the change.
 
     Returns:
-        unified diff 文字列。差分がない場合は空文字列。
+        Unified diff string. Returns an empty string if there are no differences.
     """
     before_text = yaml.safe_dump(before, sort_keys=False, allow_unicode=True)
     after_text = yaml.safe_dump(after, sort_keys=False, allow_unicode=True)
@@ -442,10 +442,10 @@ def _path_token(value: Any) -> str | int:
     """Normalizes dict keys to change path tokens.
 
     Args:
-        value: 変換対象の辞書キー。
+        value: The dictionary key to convert.
 
     Returns:
-        パス表現に利用するトークン。
+        Token used in the path representation.
     """
     if isinstance(value, (str, int)):
         return value

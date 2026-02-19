@@ -1,4 +1,4 @@
-"""Workflow フォーム入力を workflow データへ適用する。"""
+"""Applies workflow form input to workflow data."""
 
 from __future__ import annotations
 
@@ -18,18 +18,18 @@ def apply_form_edits(
     """Applies form editing content to the workflow and returns new data.
 
     Args:
-        workflow: 変更対象 workflow データ。
-        node_creates: ノード追加の一覧。
-        node_edits: ノード編集の一覧。
-        edge_creates: エッジ追加の一覧。
-        edge_rewires: エッジ再接続の一覧。
-        edge_edits: エッジ編集の一覧。
+        workflow: Workflow data to modify.
+        node_creates: List of node additions.
+        node_edits: List of node edits.
+        edge_creates: List of edge additions.
+        edge_rewires: List of edge rewirings.
+        edge_edits: List of edge edits.
 
     Returns:
-        編集結果の workflow データ。
+        Edited workflow data.
 
     Raises:
-        ValueError: 編集入力が不正な場合。
+        ValueError: If any edit input is invalid.
     """
     workflow_mapping = _ensure_mapping(workflow, label="workflow")
     patched = deepcopy(workflow_mapping)
@@ -53,11 +53,11 @@ def _apply_node_creates(nodes: list[Any], node_creates: Sequence[Mapping[str, An
     """Applies the node creation list to workflow.nodes.
 
     Args:
-        nodes: workflow のノード配列。
-        node_creates: ノード追加一覧。
+        nodes: Node array of the workflow.
+        node_creates: List of node additions.
 
     Raises:
-        ValueError: ノード追加入力が不正な場合。
+        ValueError: If any node creation input is invalid.
     """
     node_indexes = _build_node_index(nodes)
     for create in node_creates:
@@ -88,11 +88,11 @@ def _apply_node_edits(nodes: list[Any], node_edits: Sequence[Mapping[str, Any]])
     """Applies the node editing list to workflow.nodes.
 
     Args:
-        nodes: workflow のノード配列。
-        node_edits: ノード編集一覧。
+        nodes: Node array of the workflow.
+        node_edits: List of node edits.
 
     Raises:
-        ValueError: ノード編集入力が不正な場合。
+        ValueError: If any node edit input is invalid.
     """
     node_indexes = _build_node_index(nodes)
     for edit in node_edits:
@@ -121,11 +121,11 @@ def _apply_edge_edits(edges: list[Any], edge_edits: Sequence[Mapping[str, Any]])
     """Applies the edge editing list to workflow.edges.
 
     Args:
-        edges: workflow のエッジ配列。
-        edge_edits: エッジ編集一覧。
+        edges: Edge array of the workflow.
+        edge_edits: List of edge edits.
 
     Raises:
-        ValueError: エッジ編集入力が不正な場合。
+        ValueError: If any edge edit input is invalid.
     """
     for edit in edge_edits:
         edit_mapping = _ensure_mapping(edit, label="edge edit")
@@ -159,12 +159,12 @@ def _apply_edge_creates(
     """Applies the edge creation list to workflow.edges.
 
     Args:
-        nodes: workflow のノード配列。
-        edges: workflow のエッジ配列。
-        edge_creates: エッジ追加一覧。
+        nodes: Node array of the workflow.
+        edges: Edge array of the workflow.
+        edge_creates: List of edge additions.
 
     Raises:
-        ValueError: エッジ追加入力が不正な場合。
+        ValueError: If any edge creation input is invalid.
     """
     known_node_ids = set(_build_node_index(nodes))
     for create in edge_creates:
@@ -199,12 +199,12 @@ def _apply_edge_rewires(
     """Applies the edge rewiring list to workflow.edges.
 
     Args:
-        nodes: workflow のノード配列。
-        edges: workflow のエッジ配列。
-        edge_rewires: エッジ再接続一覧。
+        nodes: Node array of the workflow.
+        edges: Edge array of the workflow.
+        edge_rewires: List of edge rewirings.
 
     Raises:
-        ValueError: エッジ再接続入力が不正な場合。
+        ValueError: If any edge rewiring input is invalid.
     """
     known_node_ids = set(_build_node_index(nodes))
     for rewire in edge_rewires:
@@ -252,12 +252,12 @@ def _apply_optional_string_field(
     """Applies arbitrary string fields to params.
 
     Args:
-        edit: 変更入力。
-        params: 適用対象 params。
-        field_name: 対象フィールド名。
+        edit: Edit input.
+        params: Target params to apply to.
+        field_name: Name of the target field.
 
     Raises:
-        ValueError: 値が不正な場合。
+        ValueError: If the value is invalid.
     """
     if field_name not in edit:
         return
@@ -282,12 +282,12 @@ def _apply_optional_mapping_field(
     """Applies arbitrary dict fields to params.
 
     Args:
-        edit: 変更入力。
-        params: 適用対象 params。
-        field_name: 対象フィールド名。
+        edit: Edit input.
+        params: Target params to apply to.
+        field_name: Name of the target field.
 
     Raises:
-        ValueError: 値が不正な場合。
+        ValueError: If the value is invalid.
     """
     if field_name not in edit:
         return
@@ -304,13 +304,13 @@ def _build_node_index(nodes: list[Any]) -> dict[str, int]:
     """Creates a dict mapping node IDs to array indices.
 
     Args:
-        nodes: workflow のノード配列。
+        nodes: Node array of the workflow.
 
     Returns:
-        ノードID-index マップ。
+        Node ID to index map.
 
     Raises:
-        ValueError: ノードIDが不正、または重複している場合。
+        ValueError: If a node ID is invalid or duplicated.
     """
     index_map: dict[str, int] = {}
     for index, node_raw in enumerate(nodes):
@@ -334,15 +334,15 @@ def _required_node_reference(
     """Validates and normalizes node reference strings.
 
     Args:
-        value: 入力値。
-        field_name: 対象フィールド名。
-        known_node_ids: 既知ノードID集合。
+        value: Input value.
+        field_name: Name of the target field.
+        known_node_ids: Set of known node IDs.
 
     Returns:
-        検証済みノードID。
+        Validated node ID.
 
     Raises:
-        ValueError: 参照が不正、または未定義ノードの場合。
+        ValueError: If the reference is invalid or refers to an undefined node.
     """
     if not isinstance(value, str) or not value.strip():
         raise ValueError(f"edge {field_name} must be a non-empty string")
@@ -353,17 +353,17 @@ def _required_node_reference(
 
 
 def _normalize_optional_condition(value: Any, edge_index: int) -> str | None:
-    """Condition 入力を正規化する。
+    """Normalizes a condition input.
 
     Args:
-        value: 入力値。
-        edge_index: 対象エッジindex。
+        value: Input value.
+        edge_index: Index of the target edge.
 
     Returns:
-        正規化済み condition。未設定相当は `None`。
+        Normalized condition. Returns `None` when unset.
 
     Raises:
-        ValueError: condition 型が不正な場合。
+        ValueError: If the condition type is invalid.
     """
     if value is None:
         return None
@@ -377,14 +377,14 @@ def _ensure_mapping(payload: Any, label: str) -> dict[str, Any]:
     """Validates that the input is dict-compatible and converts it to a dict.
 
     Args:
-        payload: 検証対象データ。
-        label: エラー文言で使う入力名。
+        payload: Data to validate.
+        label: Input name used in error messages.
 
     Returns:
-        shallow copy した辞書データ。
+        Shallow-copied dictionary data.
 
     Raises:
-        ValueError: payload が辞書互換でない場合。
+        ValueError: If payload is not dict-compatible.
     """
     if not isinstance(payload, Mapping):
         raise ValueError(f"{label} must be a mapping")

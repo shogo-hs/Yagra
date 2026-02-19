@@ -1,4 +1,4 @@
-"""Yagra YAML の構造整合性検証を提供する。"""
+"""Provides structural integrity validation for Yagra YAML graph specs."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ type Location = tuple[str | int, ...]
 
 @dataclass(frozen=True, slots=True)
 class GraphStructureIssue:
-    """GraphSpec 構造検証で検知した単一問題。"""
+    """A single issue detected during GraphSpec structural validation."""
 
     message: str
     location: Location
@@ -22,26 +22,26 @@ class GraphStructureIssue:
 
 
 def _fuzzy_candidates(target: str, candidates: set[str]) -> list[str]:
-    """ファジーマッチで類似候補を返す。
+    """Return similar candidates via fuzzy matching.
 
     Args:
-        target: 検索対象の文字列。
-        candidates: 候補として使用する文字列のセット。
+        target: The string to search for.
+        candidates: Set of strings to match against.
 
     Returns:
-        類似度が高い順に最大 3 件の候補リスト。
+        Up to 3 candidates sorted by similarity (highest first).
     """
     return difflib.get_close_matches(target, candidates, n=3, cutoff=0.6)
 
 
 def collect_graph_structure_issues(spec: GraphSpec) -> list[GraphStructureIssue]:
-    """GraphSpec の参照整合性と一意性違反を収集する。
+    """Collect reference integrity and uniqueness violations in a GraphSpec.
 
     Args:
-        spec: 構造整合性を検証する `GraphSpec` オブジェクト。
+        spec: The `GraphSpec` object to validate for structural integrity.
 
     Returns:
-        検知した構造問題の一覧。問題がなければ空リスト。
+        List of detected structural issues. Empty list if no issues found.
     """
     node_ids = [node.id for node in spec.nodes]
     node_id_set = set(node_ids)
@@ -52,7 +52,7 @@ def collect_graph_structure_issues(spec: GraphSpec) -> list[GraphStructureIssue]
         if node_id in duplicated_ids:
             issues.append(
                 GraphStructureIssue(
-                    message=f"ノードIDが重複しています: {node_id}",
+                    message=f"Duplicate node ID: {node_id}",
                     location=("nodes", index, "id"),
                 )
             )
@@ -61,7 +61,7 @@ def collect_graph_structure_issues(spec: GraphSpec) -> list[GraphStructureIssue]
         candidates = _fuzzy_candidates(spec.start_at, node_id_set)
         issues.append(
             GraphStructureIssue(
-                message=f"start_at が未定義ノードを参照しています: {spec.start_at}",
+                message=f"start_at references an undefined node: {spec.start_at}",
                 location=("start_at",),
                 context={
                     "actual_value": spec.start_at,
@@ -76,7 +76,7 @@ def collect_graph_structure_issues(spec: GraphSpec) -> list[GraphStructureIssue]
             candidates = _fuzzy_candidates(node_id, node_id_set)
             issues.append(
                 GraphStructureIssue(
-                    message=f"end_at が未定義ノードを参照しています: {node_id}",
+                    message=f"end_at references an undefined node: {node_id}",
                     location=("end_at", index),
                     context={
                         "actual_value": node_id,
@@ -91,7 +91,7 @@ def collect_graph_structure_issues(spec: GraphSpec) -> list[GraphStructureIssue]
             candidates = _fuzzy_candidates(node_id, node_id_set)
             issues.append(
                 GraphStructureIssue(
-                    message=f"interrupt_before が未定義ノードを参照しています: {node_id}",
+                    message=f"interrupt_before references an undefined node: {node_id}",
                     location=("interrupt_before", index),
                     context={
                         "actual_value": node_id,
@@ -106,7 +106,7 @@ def collect_graph_structure_issues(spec: GraphSpec) -> list[GraphStructureIssue]
             candidates = _fuzzy_candidates(node_id, node_id_set)
             issues.append(
                 GraphStructureIssue(
-                    message=f"interrupt_after が未定義ノードを参照しています: {node_id}",
+                    message=f"interrupt_after references an undefined node: {node_id}",
                     location=("interrupt_after", index),
                     context={
                         "actual_value": node_id,
@@ -116,12 +116,26 @@ def collect_graph_structure_issues(spec: GraphSpec) -> list[GraphStructureIssue]
                 )
             )
 
+    end_at_set = set(spec.end_at)
+    for index, edge in enumerate(spec.edges):
+        if edge.source in end_at_set:
+            issues.append(
+                GraphStructureIssue(
+                    message=f"end_at node cannot be used as an edge source: {edge.source}",
+                    location=("edges", index, "source"),
+                    context={
+                        "actual_value": edge.source,
+                        "end_at_nodes": sorted(end_at_set),
+                    },
+                )
+            )
+
     for index, edge in enumerate(spec.edges):
         if edge.source not in node_id_set:
             candidates = _fuzzy_candidates(edge.source, node_id_set)
             issues.append(
                 GraphStructureIssue(
-                    message=f"edge.source が未定義ノードを参照しています: {edge.source}",
+                    message=f"edge.source references an undefined node: {edge.source}",
                     location=("edges", index, "source"),
                     context={
                         "actual_value": edge.source,
@@ -134,7 +148,7 @@ def collect_graph_structure_issues(spec: GraphSpec) -> list[GraphStructureIssue]
             candidates = _fuzzy_candidates(edge.target, node_id_set)
             issues.append(
                 GraphStructureIssue(
-                    message=f"edge.target が未定義ノードを参照しています: {edge.target}",
+                    message=f"edge.target references an undefined node: {edge.target}",
                     location=("edges", index, "target"),
                     context={
                         "actual_value": edge.target,

@@ -1,4 +1,4 @@
-"""Workflow 可視化用の Read Only HTML を生成する。"""
+"""Generates read-only HTML for workflow visualization."""
 
 from __future__ import annotations
 
@@ -60,18 +60,18 @@ def render_workflow_visualization_html(
     bundle_root: str | PathLike[str] | None = None,
     title: str | None = None,
 ) -> str:
-    """Workflow を可視化する Read Only HTML を生成する。
+    """Generates read-only HTML that visualizes a workflow.
 
     Args:
-        workflow_path: 可視化対象の workflow YAML パス。
-        bundle_root: 分割参照解決の基準ディレクトリ。
-        title: HTML タイトル。未指定時は workflow ファイル名を使用。
+        workflow_path: Path to the workflow YAML to visualize.
+        bundle_root: Base directory for split reference resolution.
+        title: HTML title. Defaults to the workflow filename if not specified.
 
     Returns:
-        可視化用 HTML 文字列。
+        HTML string for visualization.
 
     Raises:
-        ValueError: workflow 検証に失敗した場合。
+        ValueError: If workflow validation fails.
     """
     try:
         view = build_workflow_visualization_view(
@@ -85,25 +85,25 @@ def render_workflow_visualization_html(
 
 
 def _has_prompt(params: dict[str, object]) -> bool:
-    """prompt(dict) または prompt_ref(str) がパラメータに存在するか判定する。
+    """Returns whether prompt (dict) or prompt_ref (str) is present in the parameters.
 
     Args:
-        params: ノードのパラメータ辞書。
+        params: Node parameter dictionary.
 
     Returns:
-        プロンプト定義が存在する場合 True。
+        True if a prompt definition exists.
     """
     return isinstance(params.get("prompt"), dict) or isinstance(params.get("prompt_ref"), str)
 
 
 def _has_explicit_output_key(params: dict[str, object]) -> bool:
-    """output_key がパラメータに明示指定されているか判定する。
+    """Returns whether output_key is explicitly specified in the parameters.
 
     Args:
-        params: ノードのパラメータ辞書。
+        params: Node parameter dictionary.
 
     Returns:
-        output_key が明示されている場合 True。
+        True if output_key is explicitly specified.
     """
     return "output_key" in params
 
@@ -113,19 +113,19 @@ def _build_node_view(
     cond_sources: frozenset[str],
     spec: GraphSpec,
 ) -> WorkflowNodeView:
-    """ノードの IN/OUT バッジをパラメータベースで構築する。
+    """Builds the IN/OUT badges for a node based on its parameters.
 
-    IN: prompt(dict) または prompt_ref(str) があればテンプレート変数を抽出。
-    OUT: output_key が明示指定されていればその値を表示。
-         conditional edge の source ノードには ``__next__`` を追加。
+    IN: Extracts template variables if prompt (dict) or prompt_ref (str) is present.
+    OUT: Displays the value of output_key if explicitly specified.
+         Appends ``__next__`` for source nodes of conditional edges.
 
     Args:
-        node: GraphSpec 内の NodeSpec。
-        cond_sources: conditional edge の source ノード ID 集合。
-        spec: GraphSpec（将来の拡張用）。
+        node: NodeSpec within the GraphSpec.
+        cond_sources: Set of source node IDs for conditional edges.
+        spec: GraphSpec (reserved for future use).
 
     Returns:
-        可視化用ノード表示モデル。
+        Node display model for visualization.
     """
     input_vars = tuple(_extract_required_vars(node.params)) if _has_prompt(node.params) else ()
 
@@ -150,15 +150,15 @@ def build_workflow_visualization_view(
     bundle_root: str | PathLike[str] | None = None,
     title: str | None = None,
 ) -> WorkflowVisualizationView:
-    """Workflow から可視化表示モデルを構築する。
+    """Builds a visualization display model from a workflow.
 
     Args:
-        workflow_path: 可視化対象の workflow YAML パス。
-        bundle_root: 分割参照解決の基準ディレクトリ。
-        title: 画面タイトル。未指定時は workflow ファイル名を使用。
+        workflow_path: Path to the workflow YAML to visualize.
+        bundle_root: Base directory for split reference resolution.
+        title: Screen title. Defaults to the workflow filename if not specified.
 
     Returns:
-        可視化表示モデル。
+        Visualization display model.
     """
     workflow_abspath = Path(workflow_path).expanduser().resolve()
     spec = load_validated_graph_spec(workflow_path=workflow_abspath, bundle_root=bundle_root)
@@ -295,7 +295,7 @@ def _load_mermaid_bundle_source() -> str:
 
 
 def _build_mermaid_graph(view: WorkflowVisualizationView) -> str:
-    """Mermaid 形式のグラフ文字列を生成する。"""
+    """Generates a graph string in Mermaid format."""
     lines = ["flowchart LR"]
     for node in view.nodes:
         safe_id = _safe_mermaid_id(node.id)
@@ -315,7 +315,7 @@ def _build_mermaid_graph(view: WorkflowVisualizationView) -> str:
 
 
 def _safe_mermaid_id(node_id: str) -> str:
-    """Mermaid ノードIDとして安全な識別子へ変換する。"""
+    """Converts a node ID to a safe identifier for use in Mermaid."""
     normalized = [ch if ch.isalnum() else "_" for ch in node_id]
     if not normalized:
         return "node"

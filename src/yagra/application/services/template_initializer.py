@@ -15,12 +15,12 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True)
 class TemplateInfo:
-    """テンプレートのメタ情報。
+    """Metadata for a template.
 
     Attributes:
-        name: テンプレート名（ディレクトリ名）。
-        description: ユースケース説明（template.yaml から読み込み）。
-        use_case: 対象ユースケース（template.yaml から読み込み）。
+        name: Template name (directory name).
+        description: Use-case description (loaded from template.yaml).
+        use_case: Target use case (loaded from template.yaml).
     """
 
     name: str
@@ -35,13 +35,12 @@ class TemplateNotFoundError(ValueError):
         """Initializes the exception.
 
         Args:
-            template_name: 指定されたテンプレート名。
-            available_templates: 利用可能なテンプレート一覧。
+            template_name: Specified template name.
+            available_templates: List of available templates.
         """
         available_str = ", ".join(available_templates)
         super().__init__(
-            f"テンプレート '{template_name}' が見つかりません。"
-            f"利用可能なテンプレート: {available_str}"
+            f"Template '{template_name}' not found. Available templates: {available_str}"
         )
         self.template_name = template_name
         self.available_templates = list(available_templates)
@@ -54,12 +53,12 @@ class FileAlreadyExistsError(FileExistsError):
         """Initializes the exception.
 
         Args:
-            existing_files: 既に存在するファイルのリスト。
+            existing_files: List of files that already exist.
         """
         files_str = "\n".join(f"  - {f}" for f in existing_files)
         super().__init__(
-            f"出力先に既にファイルが存在します:\n{files_str}\n"
-            f"上書きする場合は --force フラグを使用してください。"
+            f"Files already exist at the output destination:\n{files_str}\n"
+            f"Use the --force flag to overwrite."
         )
         self.existing_files = list(existing_files)
 
@@ -68,7 +67,7 @@ def list_templates() -> list[str]:
     """Returns a list of available templates.
 
     Returns:
-        テンプレート名のリスト。
+        List of template names.
     """
     templates_dir = _get_templates_root()
     if not templates_dir.exists():
@@ -85,11 +84,11 @@ def list_templates() -> list[str]:
 def list_templates_with_info() -> list[TemplateInfo]:
     """Returns a list of available templates with metadata.
 
-    各テンプレートディレクトリ内の `template.yaml` からメタ情報を読み込む。
-    `template.yaml` が存在しない場合はテンプレート名のみを返す。
+    Loads metadata from `template.yaml` in each template directory.
+    Returns only the template name if `template.yaml` does not exist.
 
     Returns:
-        テンプレートのメタ情報リスト。
+        List of template metadata.
     """
     templates_dir = _get_templates_root()
     if not templates_dir.exists():
@@ -127,13 +126,13 @@ def initialize_from_template(
     """Initializes a workflow from the specified template.
 
     Args:
-        template_name: テンプレート名（例: "branch", "loop", "rag"）。
-        output_dir: 出力先ディレクトリの絶対パス。
-        force: True の場合、既存ファイルを上書きする。
+        template_name: Template name (e.g. "branch", "loop", "rag").
+        output_dir: Absolute path to the output directory.
+        force: If True, overwrites existing files.
 
     Raises:
-        TemplateNotFoundError: 指定されたテンプレートが存在しない場合。
-        FileAlreadyExistsError: 出力先に既にファイルが存在し、force=False の場合。
+        TemplateNotFoundError: If the specified template does not exist.
+        FileAlreadyExistsError: If files already exist at the output destination and force=False.
     """
     available_templates = list_templates()
     if template_name not in available_templates:
@@ -143,13 +142,13 @@ def initialize_from_template(
     output_dir = output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # 既存ファイルチェック
+    # Check for existing files
     if not force:
         existing_files = _check_existing_files(template_dir, output_dir)
         if existing_files:
             raise FileAlreadyExistsError(existing_files)
 
-    # テンプレートファイルをコピー（template.yaml は除く）
+    # Copy template files (excluding template.yaml)
     _copy_template_files(template_dir, output_dir)
 
 
@@ -157,7 +156,7 @@ def _get_templates_root() -> Path:
     """Returns the path to the template root directory.
 
     Returns:
-        テンプレートルートディレクトリの絶対パス。
+        Absolute path to the template root directory.
     """
     return Path(__file__).parent.parent.parent / "templates"
 
@@ -166,11 +165,11 @@ def _check_existing_files(template_dir: Path, output_dir: Path) -> list[Path]:
     """Checks for files that already exist at the output destination.
 
     Args:
-        template_dir: テンプレートディレクトリ。
-        output_dir: 出力先ディレクトリ。
+        template_dir: Template directory.
+        output_dir: Output destination directory.
 
     Returns:
-        既に存在するファイルのリスト。
+        List of files that already exist.
     """
     existing_files = []
 
@@ -187,11 +186,11 @@ def _check_existing_files(template_dir: Path, output_dir: Path) -> list[Path]:
 def _copy_template_files(template_dir: Path, output_dir: Path) -> None:
     """Copies template files to the output destination.
 
-    `template.yaml`（メタ情報ファイル）はコピー対象から除外する。
+    Excludes `template.yaml` (metadata file) from the copy targets.
 
     Args:
-        template_dir: テンプレートディレクトリ。
-        output_dir: 出力先ディレクトリ。
+        template_dir: Template directory.
+        output_dir: Output destination directory.
     """
     for item in template_dir.rglob("*"):
         if item.is_file() and item.name != "template.yaml":

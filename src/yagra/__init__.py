@@ -58,16 +58,16 @@ class Yagra:
     ) -> Yagra:
         """Creates a `Yagra` instance from a workflow file.
 
-        `interrupt_before` / `interrupt_after` が workflow YAML に定義されている場合、
-        HITL（Human-in-the-Loop）機能を有効にするために `checkpointer` を指定する必要がある。
-        `checkpointer` が None の場合は interrupt 設定が無視される。
+        If `interrupt_before` / `interrupt_after` are defined in the workflow YAML,
+        a `checkpointer` must be specified to enable HITL (Human-in-the-Loop) functionality.
+        If `checkpointer` is None, the interrupt configuration is ignored.
 
         Args:
             workflow_path: Path to the entry `workflow.yaml`.
             registry: Registry implementation resolving handler names to callables, or handler mapping.
             bundle_root: Base directory for resolving split references. Defaults to workflow parent directory if not specified.
             state_schema: LangGraph state schema. Defaults to `dict`.
-            checkpointer: LangGraph checkpointer。`interrupt_before` / `interrupt_after` を使用する場合は必須。
+            checkpointer: LangGraph checkpointer. Required when using `interrupt_before` / `interrupt_after`.
 
         Returns:
             `Yagra` instance containing the compiled graph.
@@ -94,15 +94,15 @@ class Yagra:
     ) -> dict[str, Any]:
         """Executes the graph with an initial state.
 
-        HITL（Human-in-the-Loop）を使用する場合は `thread_id` を指定する。
-        `interrupt_before` / `interrupt_after` で中断された場合、戻り値は中断直前の状態となる。
-        再開するには `resume()` を呼び出す。
+        When using HITL (Human-in-the-Loop), specify `thread_id`.
+        If interrupted by `interrupt_before` / `interrupt_after`, the return value is the state just before interruption.
+        Call `resume()` to resume.
 
         Args:
             state: State dictionary at execution start.
-            thread_id: チェックポイント管理に使用するスレッド ID。
-                HITL を使用する場合は一意な文字列を指定する。
-                None の場合は checkpointer が設定されていても状態保存は行われない。
+            thread_id: Thread ID used for checkpoint management.
+                Specify a unique string when using HITL.
+                If None, state is not saved even if a checkpointer is configured.
 
         Returns:
             State dictionary after execution (or at interruption point).
@@ -125,12 +125,12 @@ class Yagra:
     ) -> dict[str, Any]:
         """Resumes a graph that was interrupted.
 
-        `invoke()` で中断されたワークフローを再開する。
-        `update` で状態を修正してから再開できる（例: 人間のレビュー結果を注入）。
+        Resumes a workflow that was interrupted by `invoke()`.
+        You can modify the state with `update` before resuming (e.g., injecting human review results).
 
         Args:
-            update: 再開前に状態へマージする更新辞書。None の場合は状態を変更せずに再開する。
-            thread_id: `invoke()` 時に指定したスレッド ID。
+            update: Update dict to merge into state before resuming. If None, resumes without modifying state.
+            thread_id: Thread ID specified at `invoke()` time.
 
         Returns:
             State dictionary after resuming execution.
@@ -210,14 +210,14 @@ def _run_init_command(args: argparse.Namespace) -> int:
     Returns:
         Exit code. 0 on success.
     """
-    # テンプレート一覧表示
+    # Show template list
     if args.list:
         names = list_templates()
         if not names:
-            print("利用可能なテンプレートがありません。")
+            print("No templates available.")
             return 1
         infos = {info.name: info for info in list_templates_with_info()}
-        print("利用可能なテンプレート:")
+        print("Available templates:")
         for name in names:
             info = infos.get(name)
             if info and info.use_case:
@@ -228,10 +228,10 @@ def _run_init_command(args: argparse.Namespace) -> int:
                 print(f"      {info.description}")
         return 0
 
-    # テンプレート名が指定されていない場合はエラー
+    # Error if no template name is specified
     if args.template is None:
         print(
-            "エラー: --template または --list のいずれかを指定してください。",
+            "Error: specify either --template or --list.",
             file=sys.stderr,
         )
         return 2
@@ -251,20 +251,20 @@ def _run_init_command(args: argparse.Namespace) -> int:
         print(str(e), file=sys.stderr)
         return 1
 
-    print(f"テンプレート '{args.template}' から初期化しました: {output_dir}")
+    print(f"Initialized from template '{args.template}': {output_dir}")
 
-    # 生成されたワークフローを検証
+    # Validate the generated workflow
     workflow_path = output_dir / "workflow.yaml"
     if workflow_path.exists():
-        print(f"\nワークフローを検証しています: {workflow_path}")
+        print(f"\nValidating workflow: {workflow_path}")
         report = validate_workflow_for_ui(
             workflow_path=str(workflow_path),
             bundle_root=None,
         )
         if report.is_valid:
-            print("✓ ワークフローは valid です。")
+            print("✓ workflow is valid.")
         else:
-            print("✗ ワークフローに問題があります:", file=sys.stderr)
+            print("✗ workflow has issues:", file=sys.stderr)
             print(format_validation_report(report), file=sys.stderr)
             return 1
 
@@ -282,167 +282,167 @@ def _build_cli_parser() -> argparse.ArgumentParser:
 
     init = subparsers.add_parser(
         "init",
-        help="テンプレートからワークフローを初期化する",
+        help="Initialize a workflow from a template",
     )
     init.add_argument(
         "--template",
         default=None,
-        help="使用するテンプレート名（例: branch, loop, rag）",
+        help="Template name to use (e.g. branch, loop, rag)",
     )
     init.add_argument(
         "--list",
         action="store_true",
-        help="利用可能なテンプレート一覧を表示する",
+        help="List available templates",
     )
     init.add_argument(
         "--force",
         action="store_true",
-        help="既存ファイルを上書きする",
+        help="Overwrite existing files",
     )
     init.add_argument(
         "--output",
         default=".",
-        help="出力先ディレクトリ（デフォルト: カレントディレクトリ）",
+        help="Output directory (default: current directory)",
     )
 
     schema = subparsers.add_parser(
         "schema",
-        help="workflow YAML の JSON Schema を出力する",
+        help="Output the JSON Schema for workflow YAML",
     )
     schema.add_argument(
         "--output",
         default=None,
-        help="出力ファイルパス（未指定時は標準出力）",
+        help="Output file path (stdout if not specified)",
     )
 
     validate = subparsers.add_parser(
         "validate",
-        help="workflow YAML を検証する",
+        help="Validate workflow YAML",
     )
     validate.add_argument(
         "--workflow",
         required=True,
-        help="検証対象 workflow YAML のパス",
+        help="Path to the workflow YAML to validate",
     )
     validate.add_argument(
         "--bundle-root",
         default=None,
-        help="分割参照解決の基準ディレクトリ",
+        help="Base directory for resolving split references",
     )
     validate.add_argument(
         "--format",
         choices=["text", "json"],
         default="text",
-        help="出力フォーマット (デフォルト: text)",
+        help="Output format (default: text)",
     )
 
     visualize = subparsers.add_parser(
         "visualize",
-        help="workflow を Read Only HTML として可視化する",
+        help="Visualize a workflow as read-only HTML",
     )
     visualize.add_argument(
         "--workflow",
         required=True,
-        help="可視化対象 workflow YAML のパス",
+        help="Path to the workflow YAML to visualize",
     )
     visualize.add_argument(
         "--bundle-root",
         default=None,
-        help="分割参照解決の基準ディレクトリ",
+        help="Base directory for resolving split references",
     )
     visualize.add_argument(
         "--output",
         default="workflow-visualization.html",
-        help="生成する HTML ファイルパス",
+        help="Path for the generated HTML file",
     )
     visualize.add_argument(
         "--title",
         default=None,
-        help="可視化ページのタイトル",
+        help="Title for the visualization page",
     )
 
     studio = subparsers.add_parser(
         "studio",
-        help="workflow 編集用のローカル WebUI/API を起動する",
+        help="Start the local WebUI/API for workflow editing",
     )
     studio.add_argument(
         "--workflow",
         default=None,
-        help="編集対象 workflow YAML のパス（未指定時は起動後にUIで選択/作成）",
+        help="Path to the workflow YAML to edit (select/create in UI if not specified)",
     )
     studio.add_argument(
         "--bundle-root",
         default=None,
-        help="分割参照解決の基準ディレクトリ",
+        help="Base directory for resolving split references",
     )
     studio.add_argument(
         "--ui-state",
         default=None,
-        help="UI サイドカー JSON のパス（未指定時は <workflow>.workflow-ui.json）",
+        help="Path to the UI sidecar JSON (defaults to <workflow>.workflow-ui.json)",
     )
     studio.add_argument(
         "--workspace-root",
         default=None,
         help=(
-            "Studio が workflow を探索/作成するワークスペースルート"
-            "（未指定時は workflow がカレント配下ならカレント、"
-            "それ以外は workflow 親、workflow 未指定時はカレント）"
+            "Workspace root for Studio to search/create workflows. "
+            "Defaults to current dir if workflow is under it, "
+            "otherwise workflow parent dir, or current dir if no workflow specified."
         ),
     )
     studio.add_argument(
         "--backup-dir",
         default=".yagra/backups",
-        help="バックアップ格納ディレクトリ",
+        help="Directory for storing backups",
     )
     studio.add_argument(
         "--host",
         default="127.0.0.1",
-        help="バインドホスト",
+        help="Bind host",
     )
     studio.add_argument(
         "--port",
         type=int,
         default=8787,
-        help="バインドポート",
+        help="Bind port",
     )
 
     handlers = subparsers.add_parser(
         "handlers",
-        help="組み込みハンドラーの params スキーマを表示する",
+        help="Display the params schema for built-in handlers",
     )
     handlers.add_argument(
         "--format",
         choices=["text", "json"],
         default="text",
-        help="出力フォーマット (デフォルト: text)",
+        help="Output format (default: text)",
     )
 
     explain = subparsers.add_parser(
         "explain",
-        help="ワークフロー YAML を静的解析して実行情報を出力する",
+        help="Statically analyze workflow YAML and output execution information",
     )
     explain.add_argument(
         "--workflow",
         required=True,
-        help="解析対象 workflow YAML のパス",
+        help="Path to the workflow YAML to analyze",
     )
     explain.add_argument(
         "--bundle-root",
         default=None,
-        help="分割参照解決の基準ディレクトリ",
+        help="Base directory for resolving split references",
     )
     explain.add_argument(
         "--format",
         choices=["text", "json"],
         default="json",
-        help="出力フォーマット (デフォルト: json)",
+        help="Output format (default: json)",
     )
 
     mcp_parser = subparsers.add_parser(
         "mcp",
-        help="MCP サーバーを stdio モードで起動する（yagra[mcp] が必要）",
+        help="Start the MCP server in stdio mode (requires yagra[mcp])",
     )
-    # mcp サブコマンドは引数なし
+    # mcp subcommand takes no arguments
     _ = mcp_parser
 
     return parser
@@ -495,7 +495,7 @@ def _run_validate_command(args: argparse.Namespace) -> int:
         except yaml.YAMLError as exc:
             issue = WorkflowValidationIssue(
                 code="schema_error",
-                message=f"YAML パースエラー: {exc}",
+                message=f"YAML parse error: {exc}",
                 location=(),
             )
             report = WorkflowValidationReport(issues=[issue])
@@ -575,7 +575,7 @@ def _run_studio_command(args: argparse.Namespace) -> int:
     """
     if args.workflow is None and args.ui_state is not None:
         print(
-            "--ui-state は --workflow 指定時のみ利用できます。",
+            "--ui-state is only available when --workflow is specified.",
             file=sys.stderr,
         )
         return 2
@@ -619,17 +619,17 @@ def _run_handlers_command(args: argparse.Namespace) -> int:
     handlers_info = [
         {
             "name": "llm",
-            "description": "LLM テキスト出力ハンドラー。create_llm_handler() で生成する",
+            "description": "LLM text output handler. Generated by create_llm_handler()",
             "params_schema": LLM_HANDLER_PARAMS_SCHEMA,
         },
         {
             "name": "structured_llm",
-            "description": "Pydantic 構造化出力ハンドラー。create_structured_llm_handler() で生成する",
+            "description": "Pydantic structured output handler. Generated by create_structured_llm_handler()",
             "params_schema": STRUCTURED_LLM_HANDLER_PARAMS_SCHEMA,
         },
         {
             "name": "streaming_llm",
-            "description": "ストリーミング出力ハンドラー。create_streaming_llm_handler() で生成する",
+            "description": "Streaming output handler. Generated by create_streaming_llm_handler()",
             "params_schema": STREAMING_LLM_HANDLER_PARAMS_SCHEMA,
         },
     ]

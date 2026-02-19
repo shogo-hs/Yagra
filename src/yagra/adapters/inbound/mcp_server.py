@@ -1,4 +1,4 @@
-"""Yagra MCP サーバー。validate / explain / list_templates / list_handlers を MCP ツールとして提供する。"""
+"""Yagra MCP server. Provides validate / explain / list_templates / list_handlers as MCP tools."""
 
 from __future__ import annotations
 
@@ -8,15 +8,15 @@ from typing import Any
 
 
 def create_mcp_server() -> Any:
-    """Yagra MCP サーバーを生成して返す。
+    """Creates and returns the Yagra MCP server.
 
-    mcp ライブラリが未インストールの場合は ImportError を送出する。
+    Raises ImportError if the mcp library is not installed.
 
     Returns:
-        設定済みの mcp.server.Server インスタンス。
+        A configured mcp.server.Server instance.
 
     Raises:
-        ImportError: mcp ライブラリがインストールされていない場合。
+        ImportError: If the mcp library is not installed.
     """
     try:
         import mcp.server.stdio  # noqa: F401
@@ -24,28 +24,28 @@ def create_mcp_server() -> Any:
         from mcp.types import TextContent, Tool
     except ImportError as exc:
         raise ImportError(
-            "MCP サーバーを使用するには mcp パッケージが必要です。\n"
-            "'uv add yagra[mcp]' または 'pip install yagra[mcp]' でインストールしてください。"
+            "The mcp package is required to use the MCP server.\n"
+            "Install it with 'uv add yagra[mcp]' or 'pip install yagra[mcp]'."
         ) from exc
 
     server = Server("yagra")
 
     @server.list_tools()
     async def list_tools() -> list[Tool]:
-        """利用可能な MCP ツールのリストを返す。"""
+        """Returns the list of available MCP tools."""
         return [
             Tool(
                 name="validate_workflow",
                 description=(
-                    "Yagra ワークフロー YAML を検証し、バリデーション結果を JSON で返す。"
-                    "is_valid が false の場合、issues に修正提案（context.suggestion）が含まれる。"
+                    "Validates a Yagra workflow YAML and returns the validation result as JSON. "
+                    "When is_valid is false, issues contain fix suggestions (context.suggestion)."
                 ),
                 inputSchema={
                     "type": "object",
                     "properties": {
                         "yaml_content": {
                             "type": "string",
-                            "description": "検証する Yagra ワークフロー YAML の文字列",
+                            "description": "The Yagra workflow YAML string to validate",
                         },
                     },
                     "required": ["yaml_content"],
@@ -54,15 +54,16 @@ def create_mcp_server() -> Any:
             Tool(
                 name="explain_workflow",
                 description=(
-                    "Yagra ワークフロー YAML を静的解析し、実行パス・必要ハンドラー・変数フローを JSON で返す。"
-                    "ワークフローを実行する前に構造を把握するために使用する。"
+                    "Statically analyzes a Yagra workflow YAML and returns execution paths, "
+                    "required handlers, and variable flow as JSON. "
+                    "Use this to understand the workflow structure before running it."
                 ),
                 inputSchema={
                     "type": "object",
                     "properties": {
                         "yaml_content": {
                             "type": "string",
-                            "description": "解析する Yagra ワークフロー YAML の文字列",
+                            "description": "The Yagra workflow YAML string to analyze",
                         },
                     },
                     "required": ["yaml_content"],
@@ -70,7 +71,7 @@ def create_mcp_server() -> Any:
             ),
             Tool(
                 name="list_templates",
-                description="利用可能な Yagra ワークフローテンプレートの名前リストを返す。",
+                description="Returns the list of available Yagra workflow template names.",
                 inputSchema={
                     "type": "object",
                     "properties": {},
@@ -79,8 +80,8 @@ def create_mcp_server() -> Any:
             Tool(
                 name="list_handlers",
                 description=(
-                    "Yagra 組み込みハンドラーの一覧と params スキーマを返す。"
-                    "ワークフロー YAML の params フィールドに指定できるキーを確認するために使用する。"
+                    "Returns the list of Yagra built-in handlers and their params schemas. "
+                    "Use this to check which keys can be specified in the params field of workflow YAML."
                 ),
                 inputSchema={
                     "type": "object",
@@ -91,14 +92,14 @@ def create_mcp_server() -> Any:
 
     @server.call_tool()
     async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
-        """MCP ツールを実行する。
+        """Executes an MCP tool.
 
         Args:
-            name: 実行するツール名。
-            arguments: ツールの引数辞書。
+            name: Name of the tool to execute.
+            arguments: Argument dictionary for the tool.
 
         Returns:
-            ツール実行結果を含む TextContent のリスト。
+            List of TextContent containing the tool execution result.
         """
         if name == "validate_workflow":
             result = _tool_validate_workflow(arguments.get("yaml_content", ""))
@@ -117,13 +118,13 @@ def create_mcp_server() -> Any:
 
 
 def _tool_validate_workflow(yaml_content: str) -> dict[str, Any]:
-    """validate_workflow ツールの実装。
+    """Implementation of the validate_workflow tool.
 
     Args:
-        yaml_content: 検証する Yagra ワークフロー YAML の文字列。
+        yaml_content: The Yagra workflow YAML string to validate.
 
     Returns:
-        バリデーション結果を含む辞書（is_valid, issues）。
+        Dictionary containing the validation result (is_valid, issues).
     """
     import yaml as yaml_lib
 
@@ -138,7 +139,7 @@ def _tool_validate_workflow(yaml_content: str) -> dict[str, Any]:
     except yaml_lib.YAMLError as exc:
         issue = WorkflowValidationIssue(
             code="schema_error",
-            message=f"YAML パースエラー: {exc}",
+            message=f"YAML parse error: {exc}",
             location=(),
         )
         report = WorkflowValidationReport(issues=[issue])
@@ -162,14 +163,14 @@ def _tool_validate_workflow(yaml_content: str) -> dict[str, Any]:
 
 
 def _tool_explain_workflow(yaml_content: str) -> dict[str, Any]:
-    """explain_workflow ツールの実装。
+    """Implementation of the explain_workflow tool.
 
     Args:
-        yaml_content: 解析する Yagra ワークフロー YAML の文字列。
+        yaml_content: The Yagra workflow YAML string to analyze.
 
     Returns:
-        実行パス・必要ハンドラー・変数フローを含む辞書。
-        検証エラー時は error キーを含む辞書。
+        Dictionary containing execution paths, required handlers, and variable flow.
+        Returns a dictionary with an error key on validation failure.
     """
     import yaml as yaml_lib
 
@@ -186,7 +187,7 @@ def _tool_explain_workflow(yaml_content: str) -> dict[str, Any]:
     try:
         payload = yaml_lib.safe_load(yaml_content)
     except yaml_lib.YAMLError as exc:
-        return {"error": f"YAML パースエラー: {exc}"}
+        return {"error": f"YAML parse error: {exc}"}
 
     if not isinstance(payload, dict):
         return {"error": "workflow must be a mapping"}
@@ -198,7 +199,7 @@ def _tool_explain_workflow(yaml_content: str) -> dict[str, Any]:
     )
     if not report.is_valid:
         return {
-            "error": "ワークフローの検証に失敗しました",
+            "error": "workflow validation failed",
             "issues": report.to_dict()["issues"],
         }
 
@@ -207,10 +208,10 @@ def _tool_explain_workflow(yaml_content: str) -> dict[str, Any]:
 
 
 def _tool_list_templates() -> dict[str, Any]:
-    """list_templates ツールの実装。
+    """Implementation of the list_templates tool.
 
     Returns:
-        利用可能なテンプレート名リストを含む辞書。
+        Dictionary containing the list of available template names.
     """
     from yagra.application.services.template_initializer import list_templates
 
@@ -218,10 +219,10 @@ def _tool_list_templates() -> dict[str, Any]:
 
 
 def _tool_list_handlers() -> dict[str, Any]:
-    """list_handlers ツールの実装。
+    """Implementation of the list_handlers tool.
 
     Returns:
-        組み込みハンドラーの一覧と params スキーマを含む辞書。
+        Dictionary containing the list of built-in handlers and their params schemas.
     """
     from yagra.handlers.llm_handler import LLM_HANDLER_PARAMS_SCHEMA
     from yagra.handlers.streaming_llm_handler import STREAMING_LLM_HANDLER_PARAMS_SCHEMA
@@ -231,17 +232,17 @@ def _tool_list_handlers() -> dict[str, Any]:
         "handlers": [
             {
                 "name": "llm",
-                "description": "LLM テキスト出力ハンドラー。create_llm_handler() で生成する",
+                "description": "LLM text output handler. Generated by create_llm_handler()",
                 "params_schema": LLM_HANDLER_PARAMS_SCHEMA,
             },
             {
                 "name": "structured_llm",
-                "description": "Pydantic 構造化出力ハンドラー。create_structured_llm_handler() で生成する",
+                "description": "Pydantic structured output handler. Generated by create_structured_llm_handler()",
                 "params_schema": STRUCTURED_LLM_HANDLER_PARAMS_SCHEMA,
             },
             {
                 "name": "streaming_llm",
-                "description": "ストリーミング出力ハンドラー。create_streaming_llm_handler() で生成する",
+                "description": "Streaming output handler. Generated by create_streaming_llm_handler()",
                 "params_schema": STREAMING_LLM_HANDLER_PARAMS_SCHEMA,
             },
         ]
@@ -249,10 +250,10 @@ def _tool_list_handlers() -> dict[str, Any]:
 
 
 async def run_mcp_server() -> None:
-    """MCP サーバーを stdio モードで起動する。
+    """Starts the MCP server in stdio mode.
 
     Raises:
-        ImportError: mcp ライブラリがインストールされていない場合。
+        ImportError: If the mcp library is not installed.
     """
     import mcp.server.stdio
     from mcp.server.lowlevel.server import NotificationOptions

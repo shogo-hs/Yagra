@@ -40,14 +40,14 @@ def _write_workflow(path: Path, payload: dict[str, Any]) -> Path:
 
 
 class TestSchemaCommand:
-    """yagra schema サブコマンドのテスト。"""
+    """Tests for the yagra schema subcommand."""
 
     def test_schema_outputs_valid_json_to_stdout(
         self,
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """Schema コマンドが GraphSpec の JSON Schema を標準出力すること。"""
+        """The schema command should output the GraphSpec JSON Schema to stdout."""
         monkeypatch.setattr(sys, "argv", ["yagra", "schema"])
 
         with pytest.raises(SystemExit) as exc:
@@ -67,7 +67,7 @@ class TestSchemaCommand:
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """Schema コマンドが --output 指定時にファイルへ書き出すこと。"""
+        """The schema command should write to a file when --output is specified."""
         output_path = tmp_path / "schema.json"
         monkeypatch.setattr(
             sys,
@@ -89,14 +89,14 @@ class TestSchemaCommand:
 
 
 class TestValidateCommand:
-    """yagra validate サブコマンドのテスト。"""
+    """Tests for the yagra validate subcommand."""
 
     def test_validate_valid_workflow_text(
         self,
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """有効なワークフローで終了コード 0 と passed メッセージを返すこと。"""
+        """Should return exit code 0 and a passed message for a valid workflow."""
         monkeypatch.setattr(
             sys,
             "argv",
@@ -122,7 +122,7 @@ class TestValidateCommand:
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """無効なワークフローで終了コード 1 とエラーメッセージを返すこと。"""
+        """Should return exit code 1 and an error message for an invalid workflow."""
         payload = _base_payload()
         del payload["edges"]
         invalid_path = _write_workflow(tmp_path / "invalid.yaml", payload)
@@ -146,7 +146,7 @@ class TestValidateCommand:
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """有効なワークフローの JSON 出力で is_valid が true であること。"""
+        """The JSON output for a valid workflow should have is_valid set to true."""
         monkeypatch.setattr(
             sys,
             "argv",
@@ -176,7 +176,7 @@ class TestValidateCommand:
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """無効なワークフローの JSON 出力で is_valid が false かつ issues が存在すること。"""
+        """The JSON output for an invalid workflow should have is_valid set to false and issues present."""
         payload = _base_payload()
         del payload["edges"]
         invalid_path = _write_workflow(tmp_path / "invalid.yaml", payload)
@@ -369,11 +369,11 @@ def test_main_studio_rejects_ui_state_without_workflow(
     assert exc.value.code == 2
     assert called is False
     captured = capsys.readouterr()
-    assert "--ui-state は --workflow 指定時のみ利用できます。" in captured.err
+    assert "--ui-state is only available when --workflow is specified." in captured.err
 
 
 class TestValidateCommandStdin:
-    """yagra validate --workflow - (stdin) のテスト。"""
+    """Tests for yagra validate --workflow - (stdin)."""
 
     def _valid_yaml(self) -> str:
         return yaml.safe_dump(_base_payload(), sort_keys=False, allow_unicode=True)
@@ -383,7 +383,7 @@ class TestValidateCommandStdin:
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """Stdin に有効な YAML を渡すと終了コード 0 と passed メッセージを返すこと。"""
+        """Should return exit code 0 and a passed message when valid YAML is passed to stdin."""
         import io
 
         monkeypatch.setattr(sys, "stdin", io.StringIO(self._valid_yaml()))
@@ -401,7 +401,7 @@ class TestValidateCommandStdin:
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """Stdin に有効な YAML を渡して --format json を指定すると is_valid が true であること。"""
+        """Should have is_valid set to true when valid YAML is passed to stdin with --format json."""
         import io
 
         monkeypatch.setattr(sys, "stdin", io.StringIO(self._valid_yaml()))
@@ -423,7 +423,7 @@ class TestValidateCommandStdin:
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """Stdin に YAML パースエラーがある文字列を渡すと終了コード 1 を返すこと。"""
+        """Should return exit code 1 when a string with a YAML parse error is passed to stdin."""
         import io
 
         broken_yaml = "key: [unclosed bracket"
@@ -442,7 +442,7 @@ class TestValidateCommandStdin:
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """Stdin に YAML パースエラーがある文字列を --format json で渡すと is_valid が false かつ issues が存在すること。"""
+        """Should have is_valid set to false and issues present when a YAML parse error string is passed to stdin with --format json."""
         import io
 
         broken_yaml = "key: [unclosed bracket"
@@ -466,7 +466,7 @@ class TestValidateCommandStdin:
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """Stdin にマッピングでない YAML (リスト等) を渡すと終了コード 1 を返すこと。"""
+        """Should return exit code 1 when non-mapping YAML (such as a list) is passed to stdin."""
         import io
 
         list_yaml = "- item1\n- item2\n"
@@ -485,7 +485,7 @@ class TestValidateCommandStdin:
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """Stdin にスキーマ不正な YAML (edges 欠損) を渡すと終了コード 1 を返すこと。"""
+        """Should return exit code 1 when schema-invalid YAML (missing edges) is passed to stdin."""
         import io
 
         payload = _base_payload()
@@ -508,10 +508,10 @@ class TestValidateCommandStdin:
 
 
 class TestYagraInvoke:
-    """Yagra.invoke の TypeError ブランチのテスト。"""
+    """Tests for the TypeError branch of Yagra.invoke."""
 
     def test_invoke_raises_type_error_when_graph_returns_non_mapping(self) -> None:
-        """compiled_graph が非 Mapping を返した場合に TypeError を送出すること。"""
+        """Should raise TypeError when compiled_graph returns a non-Mapping value."""
         fake_graph = MagicMock()
         fake_graph.invoke.return_value = "not-a-mapping"
 
@@ -527,39 +527,39 @@ class TestYagraInvoke:
 
 
 class TestNormalizeRegistry:
-    """_normalize_registry の TypeError ブランチのテスト。"""
+    """Tests for the TypeError branch of _normalize_registry."""
 
     def test_raises_type_error_for_invalid_registry_type(self) -> None:
-        """NodeRegistryPort でも Mapping でもない型を渡すと TypeError を送出すること。"""
+        """Should raise TypeError when a type that is neither NodeRegistryPort nor Mapping is passed."""
         with pytest.raises(TypeError, match="registry must be NodeRegistryPort or mapping"):
             _normalize_registry(42)  # type: ignore[arg-type]
 
     def test_returns_registry_port_unchanged(self) -> None:
-        """NodeRegistryPort を渡すとそのまま返すこと。"""
+        """Should return the NodeRegistryPort unchanged when one is passed."""
         registry = InMemoryNodeRegistry({})
         result = _normalize_registry(registry)
         assert result is registry
 
     def test_wraps_plain_mapping(self) -> None:
-        """Dict を渡すと InMemoryNodeRegistry でラップして返すこと。"""
+        """Should wrap a dict in InMemoryNodeRegistry and return it."""
         result = _normalize_registry({})
         assert isinstance(result, InMemoryNodeRegistry)
 
 
 # ---------------------------------------------------------------------------
-# init コマンド
+# init command
 # ---------------------------------------------------------------------------
 
 
 class TestInitCommand:
-    """yagra init サブコマンドのテスト。"""
+    """Tests for the yagra init subcommand."""
 
     def test_list_with_templates_returns_zero(
         self,
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """--list でテンプレートが存在する場合に終了コード 0 を返すこと。"""
+        """Should return exit code 0 when templates exist with --list."""
         monkeypatch.setattr(sys, "argv", ["yagra", "init", "--list"])
         monkeypatch.setattr(yagra, "list_templates", lambda: ["branch", "loop"])
 
@@ -576,7 +576,7 @@ class TestInitCommand:
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """--list でテンプレートが 0 件の場合に終了コード 1 を返すこと。"""
+        """Should return exit code 1 when no templates exist with --list."""
         monkeypatch.setattr(sys, "argv", ["yagra", "init", "--list"])
         monkeypatch.setattr(yagra, "list_templates", lambda: [])
 
@@ -585,14 +585,14 @@ class TestInitCommand:
 
         assert exc.value.code == 1
         captured = capsys.readouterr()
-        assert "利用可能なテンプレートがありません" in captured.out
+        assert "No templates available." in captured.out
 
     def test_no_template_arg_returns_two(
         self,
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """--template も --list も指定しない場合に終了コード 2 を返すこと。"""
+        """Should return exit code 2 when neither --template nor --list is specified."""
         monkeypatch.setattr(sys, "argv", ["yagra", "init"])
 
         with pytest.raises(SystemExit) as exc:
@@ -600,7 +600,7 @@ class TestInitCommand:
 
         assert exc.value.code == 2
         captured = capsys.readouterr()
-        assert "--template または --list" in captured.err
+        assert "--template or --list" in captured.err
 
     def test_unknown_template_returns_one(
         self,
@@ -608,7 +608,7 @@ class TestInitCommand:
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """存在しないテンプレート名を指定すると終了コード 1 を返すこと。"""
+        """Should return exit code 1 when a nonexistent template name is specified."""
         monkeypatch.setattr(
             sys,
             "argv",
@@ -635,7 +635,7 @@ class TestInitCommand:
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """出力先に既存ファイルがあり --force なし の場合に終了コード 1 を返すこと。"""
+        """Should return exit code 1 when existing files are present at the output destination and --force is not specified."""
         from yagra.application.services.template_initializer import FileAlreadyExistsError
 
         monkeypatch.setattr(
@@ -665,7 +665,7 @@ class TestInitCommand:
 
 
 # ---------------------------------------------------------------------------
-# studio コマンド：KeyboardInterrupt ブランチ
+# studio command: KeyboardInterrupt branch
 # ---------------------------------------------------------------------------
 
 
@@ -673,7 +673,7 @@ def test_main_studio_keyboard_interrupt_exits_zero(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """serve_forever が KeyboardInterrupt を発生させた場合でも終了コード 0 を返すこと。"""
+    """Should return exit code 0 even when serve_forever raises KeyboardInterrupt."""
     fake_server = MagicMock()
     fake_server.serve_forever.side_effect = KeyboardInterrupt
     fake_server.server_close.return_value = None
@@ -701,19 +701,19 @@ def test_main_studio_keyboard_interrupt_exits_zero(
 
 
 # ---------------------------------------------------------------------------
-# explain コマンド
+# explain command
 # ---------------------------------------------------------------------------
 
 
 class TestExplainCommand:
-    """yagra explain サブコマンドのテスト。"""
+    """Tests for the yagra explain subcommand."""
 
     def test_explain_valid_workflow_json_format(
         self,
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """有効なワークフローで --format json のとき終了コード 0 と JSON を返すこと。"""
+        """Should return exit code 0 and JSON for a valid workflow with --format json."""
         monkeypatch.setattr(
             sys,
             "argv",
@@ -743,7 +743,7 @@ class TestExplainCommand:
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """有効なワークフローで --format text のとき終了コード 0 とテキストを返すこと。"""
+        """Should return exit code 0 and text output for a valid workflow with --format text."""
         monkeypatch.setattr(
             sys,
             "argv",
@@ -771,7 +771,7 @@ class TestExplainCommand:
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """無効なワークフローで終了コード 1 とエラーメッセージを返すこと。"""
+        """Should return exit code 1 and an error message for an invalid workflow."""
         payload = _base_payload()
         del payload["edges"]
         invalid_path = _write_workflow(tmp_path / "invalid.yaml", payload)
@@ -796,19 +796,19 @@ class TestExplainCommand:
 
 
 # ---------------------------------------------------------------------------
-# mcp コマンド
+# mcp command
 # ---------------------------------------------------------------------------
 
 
 class TestMcpCommand:
-    """yagra mcp サブコマンドのテスト。"""
+    """Tests for the yagra mcp subcommand."""
 
     def test_mcp_not_installed_returns_one(
         self,
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """Mcp パッケージが未インストールのとき終了コード 1 を返すこと。"""
+        """Should return exit code 1 when the mcp package is not installed."""
         monkeypatch.setattr(sys, "argv", ["yagra", "mcp"])
 
         import builtins
@@ -833,7 +833,7 @@ class TestMcpCommand:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Mcp パッケージがインストール済みのとき asyncio.run が呼び出されること。"""
+        """Should call asyncio.run when the mcp package is installed."""
         monkeypatch.setattr(sys, "argv", ["yagra", "mcp"])
 
         called: list[Any] = []

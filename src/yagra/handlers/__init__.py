@@ -1,10 +1,10 @@
 """LLM handler utilities for Yagra workflows.
 
-このモジュールは、LLMノードのボイラープレートコードを削減するための
-ユーティリティ関数を提供します。
+This module provides utility functions for reducing boilerplate code
+in LLM nodes.
 
 Examples:
-    基本的なLLMハンドラーの作成と登録:
+    Creating and registering a basic LLM handler:
 
     >>> from yagra import Yagra
     >>> from yagra.handlers import create_llm_handler
@@ -15,7 +15,7 @@ Examples:
     >>> yagra = Yagra.from_workflow("workflow.yaml", registry)
     >>> result = yagra.invoke({"query": "Hello"})
 
-    構造化出力ハンドラーの作成と登録:
+    Creating and registering a structured output handler:
 
     >>> from pydantic import BaseModel
     >>> from yagra.handlers import create_structured_llm_handler
@@ -27,7 +27,7 @@ Examples:
     >>> handler = create_structured_llm_handler(schema=UserInfo)
     >>> registry = {"structured_llm": handler}
 
-    ストリーミングハンドラーの作成と登録:
+    Creating and registering a streaming handler:
 
     >>> from yagra.handlers import create_streaming_llm_handler
     >>>

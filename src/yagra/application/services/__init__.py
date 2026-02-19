@@ -1,4 +1,4 @@
-"""Yagra アプリケーションサービスを提供するパッケージ。"""
+"""Package providing Yagra application services."""
 
 from yagra.application.services.edge_rule_validator import (
     EdgeRuleIssue,

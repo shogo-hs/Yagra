@@ -1,6 +1,6 @@
 """Integration tests for streaming LLM handler with workflow execution.
 
-ストリーミング LLM ハンドラーが YAML ワークフローと統合して正しく動作することを検証します。
+Validates that the streaming LLM handler works correctly when integrated with a YAML workflow.
 """
 
 import tempfile
@@ -16,10 +16,10 @@ def _make_chunk(content: str | None) -> MagicMock:
 
 
 class TestStreamingLLMHandlerIntegration:
-    """ストリーミング LLM ハンドラーの結合テスト."""
+    """Integration tests for the streaming LLM handler."""
 
     def test_streaming_handler_with_prompt_ref(self) -> None:
-        """prompt_ref を使ったストリーミング出力が正しく動作すること."""
+        """Streaming output using prompt_ref should work correctly."""
         prompts_yaml = """\
 chat:
   system: "You are a helpful assistant."
@@ -71,7 +71,7 @@ params:
             assert full_text == "Hello world!"
 
     def test_streaming_handler_chunks_joined(self) -> None:
-        """チャンクを結合した文字列が期待値と一致すること."""
+        """The string formed by joining chunks should match the expected value."""
         prompts_yaml = """\
 summarize:
   system: "Summarize the following."
@@ -129,7 +129,7 @@ params:
             assert full_text == "This is a summary."
 
     def test_streaming_handler_with_model_kwargs(self) -> None:
-        """model.kwargs が正しく LLM に渡されること."""
+        """model.kwargs should be passed correctly to the LLM."""
         prompts_yaml = """\
 test:
   system: "System prompt."

@@ -85,20 +85,20 @@ def test_tool_list_handlers():
 
 
 def test_create_mcp_server_requires_mcp_package():
-    """Mcp パッケージが未インストールの場合 ImportError が発生することを確認する。"""
-    # このテストは mcp がインストールされていれば server オブジェクトが返ることを確認
-    # mcp がなければ ImportError が出る（それも正しい動作）
+    """Confirms that an ImportError is raised when the mcp package is not installed."""
+    # This test confirms that a server object is returned if mcp is installed.
+    # If mcp is not installed, an ImportError is raised (which is also correct behavior).
     try:
         from yagra.adapters.inbound.mcp_server import create_mcp_server
 
         server = create_mcp_server()
         assert server is not None
     except ImportError:
-        # mcp 未インストールは正常ケース
+        # mcp not installed is a normal case
         pass
 
 
-# --- _tool_validate_workflow の payload が dict でない場合 (line 148-154) ---
+# --- _tool_validate_workflow: payload is not a dict (line 148-154) ---
 
 
 def test_tool_validate_workflow_non_mapping_payload():
@@ -118,7 +118,7 @@ def test_tool_validate_workflow_null_payload():
     assert result["is_valid"] is False
 
 
-# --- _tool_explain_workflow の ImportError ケース (line 183-184) ---
+# --- _tool_explain_workflow: ImportError case (line 183-184) ---
 
 
 def test_tool_explain_workflow_import_error(monkeypatch):
@@ -153,7 +153,7 @@ edges: []
     importlib.reload(mcp_module)
 
 
-# --- _tool_explain_workflow の YAML parse エラー (line 188-189) ---
+# --- _tool_explain_workflow: YAML parse error (line 188-189) ---
 
 
 def test_tool_explain_workflow_yaml_error():
@@ -164,7 +164,7 @@ def test_tool_explain_workflow_yaml_error():
     assert "YAML" in result["error"]
 
 
-# --- _tool_explain_workflow の payload が dict でない場合 (line 192) ---
+# --- _tool_explain_workflow: payload is not a dict (line 192) ---
 
 
 def test_tool_explain_workflow_non_mapping_payload():
@@ -181,7 +181,7 @@ def test_tool_explain_workflow_null_payload():
     assert result == {"error": "workflow must be a mapping"}
 
 
-# --- _tool_explain_workflow の validation 失敗 (line 200) ---
+# --- _tool_explain_workflow: validation failure (line 200) ---
 
 
 def test_tool_explain_workflow_validation_failure():
@@ -199,10 +199,10 @@ edges: []
 """
     result = _tool_explain_workflow(yaml_content)
     assert "error" in result
-    assert "検証" in result["error"] or "issues" in result
+    assert "validation" in result["error"] or "issues" in result
 
 
-# --- create_mcp_server の call_tool (mcp インストール済みの場合のみ) ---
+# --- create_mcp_server call_tool (only if mcp is installed) ---
 
 
 def test_create_mcp_server_call_tool_if_mcp_installed():

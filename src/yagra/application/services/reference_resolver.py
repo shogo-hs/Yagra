@@ -1,4 +1,4 @@
-"""workflow の `prompt_ref` 参照を解決する。"""
+"""Resolves `prompt_ref` references in a workflow."""
 
 from __future__ import annotations
 
@@ -13,14 +13,14 @@ type Location = tuple[str | int, ...]
 
 
 class WorkflowReferenceError(ValueError):
-    """workflow 内の分割参照解決に失敗した場合の例外。"""
+    """Exception raised when split reference resolution in a workflow fails."""
 
     def __init__(self, message: str, location: Sequence[str | int] | None = None) -> None:
         """Initializes with exception message and issue location.
 
         Args:
-            message: 失敗理由を表すメッセージ。
-            location: 問題が発生した workflow 内のパス。
+            message: Message describing the reason for the failure.
+            location: Path within the workflow where the problem occurred.
         """
         super().__init__(message)
         self.location: Location = tuple(location or ())
@@ -31,18 +31,18 @@ def resolve_workflow_references(
     workflow_path: Path,
     bundle_root: Path | None = None,
 ) -> dict[str, Any]:
-    """Workflow の `prompt_ref` を解決する。
+    """Resolves `prompt_ref` references in a workflow.
 
     Args:
-        payload: `workflow.yaml` を辞書化したデータ。
-        workflow_path: 入口 workflow ファイルの絶対パス。
-        bundle_root: 分割参照時の基準ディレクトリ。未指定時は workflow 親を使う。
+        payload: Data from `workflow.yaml` converted to a dictionary.
+        workflow_path: Absolute path to the entry workflow file.
+        bundle_root: Base directory for split references. Defaults to the workflow parent if not specified.
 
     Returns:
-        参照解決後の workflow データ。
+        Workflow data with references resolved.
 
     Raises:
-        WorkflowReferenceError: 参照形式不正、参照先未存在、キー未定義の場合。
+        WorkflowReferenceError: If the reference format is invalid, the reference target does not exist, or a key is undefined.
     """
     resolved = deepcopy(payload)
     params = resolved.get("params", {})
@@ -112,17 +112,17 @@ def _resolve_reference(
     """Loads and resolves a single reference.
 
     Args:
-        reference: 解決対象の参照文字列。
-        workflow_path: 入口 workflow の絶対パス。
-        bundle_root: 参照解決基準ディレクトリ。
-        ref_label: エラー文言向けの参照ラベル。
-        location: 問題発生箇所の workflow パス。
+        reference: The reference string to resolve.
+        workflow_path: Absolute path to the entry workflow.
+        bundle_root: Base directory for reference resolution.
+        ref_label: Reference label for error messages.
+        location: Workflow path where the problem occurred.
 
     Returns:
-        参照解決済みの値。
+        The resolved value.
 
     Raises:
-        WorkflowReferenceError: 参照文字列や参照先が不正な場合。
+        WorkflowReferenceError: If the reference string or reference target is invalid.
     """
     raw_path, _, raw_key = reference.partition("#")
     catalog_path = raw_path.strip()
@@ -181,22 +181,22 @@ def _resolve_catalog_path(catalog_path: str, workflow_path: Path, bundle_root: P
 
 
 def _has_explicit_relative_prefix(path: Path) -> bool:
-    """`./` や `../` を含む明示相対パスかどうかを返す。"""
+    """Returns whether the path is an explicit relative path containing `./` or `../`."""
     return any(part in {".", ".."} for part in path.parts)
 
 
 def _load_yaml_file(path: Path, location: Location = ()) -> Any:
-    """YAML ファイルを読み込む。
+    """Loads a YAML file.
 
     Args:
-        path: 読み込む YAML ファイルパス。
-        location: 問題発生箇所の workflow パス。
+        path: Path to the YAML file to load.
+        location: Workflow path where the problem occurred.
 
     Returns:
-        YAML をパースしたオブジェクト。
+        The parsed YAML object.
 
     Raises:
-        WorkflowReferenceError: 参照ファイルが存在しない場合。
+        WorkflowReferenceError: If the referenced file does not exist.
     """
     if not path.exists():
         raise WorkflowReferenceError(f"reference file not found: {path}", location=location)
@@ -211,20 +211,20 @@ def _lookup_key_path(
     target_path: Path,
     location: Location = (),
 ) -> Any:
-    """`a.b.c` 形式のキーで YAML データを走査する。
+    """Traverses YAML data using a key in `a.b.c` format.
 
     Args:
-        data: 走査対象の YAML データ。
-        key_path: ドット区切りのキー。
-        ref_label: エラー文言向けの参照ラベル。
-        target_path: 参照先カタログのパス。
-        location: 問題発生箇所の workflow パス。
+        data: The YAML data to traverse.
+        key_path: Dot-separated key.
+        ref_label: Reference label for error messages.
+        target_path: Path to the referenced catalog.
+        location: Workflow path where the problem occurred.
 
     Returns:
-        参照解決済みの値。
+        The resolved value.
 
     Raises:
-        WorkflowReferenceError: キーが見つからない場合。
+        WorkflowReferenceError: If the key is not found.
     """
     current = data
     for segment in key_path.split("."):
@@ -241,14 +241,14 @@ def _as_optional_string(value: Any, location: Location = ()) -> str | None:
     """Normalizes the value as an arbitrary string.
 
     Args:
-        value: 変換対象の値。
-        location: 問題発生箇所の workflow パス。
+        value: The value to convert.
+        location: Workflow path where the problem occurred.
 
     Returns:
-        正規化済み文字列。空白文字列は `None`。
+        Normalized string. Whitespace-only strings become `None`.
 
     Raises:
-        WorkflowReferenceError: 文字列以外の値が与えられた場合。
+        WorkflowReferenceError: If a non-string value is given.
     """
     if value is None:
         return None

@@ -1,6 +1,6 @@
 """Integration tests for structured LLM handler with workflow execution.
 
-構造化出力 LLM ハンドラーが YAML ワークフローと統合して正しく動作することを検証します。
+Validates that the structured output LLM handler works correctly when integrated with a YAML workflow.
 """
 
 import json
@@ -26,18 +26,18 @@ class ExtractedEntities(BaseModel):
 
 
 class TestStructuredLLMHandlerIntegration:
-    """structured LLM handler の結合テスト."""
+    """Integration tests for the structured LLM handler."""
 
     @pytest.fixture(autouse=True)
     def _reset_litellm_global(self) -> Generator[None, None, None]:
-        """各テスト前後に structured_llm_handler のグローバル litellm をリセットする."""
+        """Resets the global litellm variable in structured_llm_handler before and after each test."""
         original = slm_module.litellm
         slm_module.litellm = None
         yield
         slm_module.litellm = original
 
     def test_structured_handler_with_prompt_ref(self) -> None:
-        """prompt_ref を使った構造化出力が正しく動作すること."""
+        """Structured output using prompt_ref should work correctly."""
         prompts_yaml = """\
 extract:
   system: "Extract person info as JSON"
@@ -93,7 +93,7 @@ params:
             assert result["person"].age == 30
 
     def test_structured_handler_with_multiple_prompt_variables(self) -> None:
-        """複数のプロンプト変数が自動検出されて正しく処理されること."""
+        """Multiple prompt variables should be auto-detected and processed correctly."""
         prompts_yaml = """\
 extract_entities:
   system: "Extract entities as JSON"
@@ -155,14 +155,14 @@ params:
             assert "Alice" in result["entities"].names
             assert "Tokyo" in result["entities"].locations
 
-            # プロンプトに両方の入力値が埋め込まれていること
+            # Verify that both input values are embedded in the prompt
             call_messages = mock_litellm.completion.call_args.kwargs["messages"]
             user_content = call_messages[1]["content"]
             assert "Alice and Bob visited Tokyo." in user_content
             assert "travel" in user_content
 
     def test_structured_handler_with_model_kwargs(self) -> None:
-        """model.kwargs が正しく LLM に渡されること."""
+        """model.kwargs should be passed correctly to the LLM."""
         prompts_yaml = """\
 test:
   system: "Extract"

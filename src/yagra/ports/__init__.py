@@ -1,1 +1,1 @@
-"""Yagra のポート層を提供するパッケージ。"""
+"""Package providing the port layer for Yagra."""

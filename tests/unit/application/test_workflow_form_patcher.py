@@ -146,7 +146,7 @@ def test_apply_form_edits_rejects_duplicate_create_and_invalid_rewire() -> None:
         )
 
 
-# --- workflow.nodes / workflow.edges がリストでない場合 (line 40, 42) ---
+# --- Cases where workflow.nodes / workflow.edges are not lists (line 40, 42) ---
 
 
 def test_apply_form_edits_rejects_nodes_not_list() -> None:
@@ -163,7 +163,7 @@ def test_apply_form_edits_rejects_edges_not_list() -> None:
         apply_form_edits(workflow=workflow)
 
 
-# --- node create のバリデーション (line 68, 70, 80) ---
+# --- node create validation (line 68, 70, 80) ---
 
 
 def test_apply_form_edits_node_create_empty_node_id() -> None:
@@ -216,7 +216,7 @@ def test_apply_form_edits_node_create_without_params() -> None:
     assert "params" not in new_node
 
 
-# --- node edit のバリデーション (line 102, 108, 114) ---
+# --- node edit validation (line 102, 108, 114) ---
 
 
 def test_apply_form_edits_node_edit_empty_node_id() -> None:
@@ -282,7 +282,7 @@ def test_apply_form_edits_node_edit_creates_params_when_missing() -> None:
     assert router_node["params"]["prompt_ref"] == "router_prompt"
 
 
-# --- edge edit のバリデーション (line 134, 140, 143) ---
+# --- edge edit validation (line 134, 140, 143) ---
 
 
 def test_apply_form_edits_edge_edit_index_not_int() -> None:
@@ -312,7 +312,7 @@ def test_apply_form_edits_edge_edit_without_condition_key() -> None:
     assert patched["edges"][0].get("condition") == "needs_plan"
 
 
-# --- edge create の condition あり/なし (line 185-190) ---
+# --- edge create with/without condition (line 185-190) ---
 
 
 def test_apply_form_edits_edge_create_with_condition() -> None:
@@ -344,7 +344,7 @@ def test_apply_form_edits_edge_create_with_null_condition() -> None:
     assert "condition" not in created
 
 
-# --- edge rewire のバリデーション (line 214, 216, 220) ---
+# --- edge rewire validation (line 214, 216, 220) ---
 
 
 def test_apply_form_edits_edge_rewire_index_not_int() -> None:
@@ -373,7 +373,7 @@ def test_apply_form_edits_edge_rewire_payload_not_mapping() -> None:
         )
 
 
-# --- edge rewire の condition 更新 (line 237-244) ---
+# --- edge rewire condition update (line 237-244) ---
 
 
 def test_apply_form_edits_edge_rewire_sets_condition() -> None:
@@ -400,7 +400,7 @@ def test_apply_form_edits_edge_rewire_clears_condition_with_empty_str() -> None:
     assert "condition" not in patched["edges"][0]
 
 
-# --- _apply_optional_string_field の各ブランチ (line 263, 266-267, 269) ---
+# --- Each branch of _apply_optional_string_field (line 263, 266-267, 269) ---
 
 
 def test_apply_form_edits_optional_string_field_not_in_edit() -> None:
@@ -436,7 +436,7 @@ def test_apply_form_edits_optional_string_field_empty_removes_key() -> None:
     assert "prompt_ref" not in patched["nodes"][1]["params"]
 
 
-# --- _apply_optional_mapping_field の各ブランチ (line 293, 299) ---
+# --- Each branch of _apply_optional_mapping_field (line 293, 299) ---
 
 
 def test_apply_form_edits_optional_mapping_field_not_in_edit() -> None:
@@ -463,7 +463,7 @@ def test_apply_form_edits_optional_mapping_field_not_mapping_raises() -> None:
         )
 
 
-# --- _build_node_index のバリデーション (line 318, 322, 324) ---
+# --- _build_node_index validation (line 318, 322, 324) ---
 
 
 def test_apply_form_edits_node_index_node_not_mapping() -> None:
@@ -494,7 +494,7 @@ def test_apply_form_edits_node_index_duplicate_node_id() -> None:
         apply_form_edits(workflow=workflow)
 
 
-# --- _required_node_reference のバリデーション (line 348) ---
+# --- _required_node_reference validation (line 348) ---
 
 
 def test_apply_form_edits_edge_create_source_not_str() -> None:
@@ -521,7 +521,7 @@ def test_apply_form_edits_edge_create_target_not_str() -> None:
         )
 
 
-# --- _normalize_optional_condition のバリデーション (line 369, 371) ---
+# --- _normalize_optional_condition validation (line 369, 371) ---
 
 
 def test_apply_form_edits_condition_not_str_raises() -> None:
@@ -540,7 +540,7 @@ def test_apply_form_edits_condition_not_str_in_rewire_raises() -> None:
         )
 
 
-# --- _ensure_mapping のバリデーション (line 390) ---
+# --- _ensure_mapping validation (line 390) ---
 
 
 def test_apply_form_edits_workflow_not_mapping_raises() -> None:

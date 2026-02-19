@@ -1,4 +1,4 @@
-"""Yagra 初期化のスモークテスト。"""
+"""Smoke test for Yagra initialization."""
 
 from __future__ import annotations
 
@@ -13,11 +13,11 @@ def test_main_requires_subcommand(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """CLI がサブコマンド必須であることを確認する。
+    """Confirms that the CLI requires a subcommand.
 
     Args:
-        monkeypatch: `sys.argv` を差し替える pytest fixture。
-        capsys: 標準出力・標準エラーのキャプチャを提供する pytest fixture。
+        monkeypatch: pytest fixture that replaces `sys.argv`.
+        capsys: pytest fixture that captures stdout and stderr.
     """
     monkeypatch.setattr(sys, "argv", ["yagra"])
 

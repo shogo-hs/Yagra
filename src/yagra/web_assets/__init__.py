@@ -1,1 +1,1 @@
-"""Web UI 用の同梱静的アセットを提供する。"""
+"""Provides bundled static assets for the Web UI."""

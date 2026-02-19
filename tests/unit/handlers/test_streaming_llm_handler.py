@@ -23,7 +23,7 @@ def _make_mock_litellm(chunks: list[MagicMock]) -> MagicMock:
     return mock
 
 
-# --- テスト用パラメータ ---
+# --- Parameters for testing ---
 _BASE_PARAMS = {
     "prompt": {"system": "You are a helpful assistant.", "user": "Hello"},
     "model": {"provider": "openai", "name": "gpt-4o"},
