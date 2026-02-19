@@ -1328,9 +1328,13 @@ def _studio_html() -> str:
                 <input id="nodeHandlerInput" v-model="nodeEditor.handler" type="text"
                   placeholder="my_custom_handler" />
               </div>
+              <div v-if="nodeEditor.handlerType === 'custom'" class="field inline-checkbox">
+                <input id="nodeCustomUsePromptCheck" type="checkbox" v-model="nodeEditor.customUsePrompt" />
+                <label for="nodeCustomUsePromptCheck">use prompt (optional)</label>
+              </div>
 
-              <div v-if="isLlmHandler" class="subsection-label">Prompt Settings</div>
-              <div v-if="isLlmHandler" class="field">
+              <div v-if="showPromptFields" class="subsection-label">Prompt Settings</div>
+              <div v-if="showPromptFields" class="field">
                 <label for="nodePromptFileSelect">prompt yaml</label>
                 <select
                   id="nodePromptFileSelect"
@@ -1343,7 +1347,7 @@ def _studio_html() -> str:
                   </option>
                 </select>
               </div>
-              <div v-if="isLlmHandler" class="field">
+              <div v-if="showPromptFields" class="field">
                 <label for="nodePromptKeyInput">prompt key (optional)</label>
                 <input
                   id="nodePromptKeyInput"
@@ -1354,16 +1358,16 @@ def _studio_html() -> str:
                   @change="onNodePromptKeyChange"
                 />
               </div>
-              <div v-if="isLlmHandler" class="field">
+              <div v-if="showPromptFields" class="field">
                 <label>prompt reference</label>
                 <div class="mono hint" style="padding: 4px 0; min-height: 1.4em; word-break: break-all;">
                   {{ nodeEditor.promptRef || "(auto create on Apply)" }}
                 </div>
               </div>
-              <div v-if="isLlmHandler && nodeEditor.promptFileParseError" class="hint danger">
+              <div v-if="showPromptFields && nodeEditor.promptFileParseError" class="hint danger">
                 {{ nodeEditor.promptFileParseError }}
               </div>
-              <div v-if="isLlmHandler" class="field">
+              <div v-if="showPromptFields" class="field">
                 <label for="nodePromptSystemInput">system prompt</label>
                 <textarea
                   id="nodePromptSystemInput"
@@ -1371,7 +1375,7 @@ def _studio_html() -> str:
                   placeholder="You are a helpful assistant..."
                 ></textarea>
               </div>
-              <div v-if="isLlmHandler" class="field">
+              <div v-if="showPromptFields" class="field">
                 <label for="nodePromptUserInput">user prompt</label>
                 <textarea
                   id="nodePromptUserInput"
@@ -2319,6 +2323,7 @@ def _studio_html() -> str:
           id: "",
           handlerType: "llm",
           handler: "",
+          customUsePrompt: false,
           promptFilePath: "",
           promptFileParseError: "",
           promptKey: "default",
@@ -2381,6 +2386,7 @@ def _studio_html() -> str:
         const isLlmHandler = computed(() => LLM_HANDLERS.includes(nodeEditor.handlerType));
         const isStructuredLlm = computed(() => nodeEditor.handlerType === "structured_llm");
         const isStreamingLlm = computed(() => nodeEditor.handlerType === "streaming_llm");
+        const showPromptFields = computed(() => isLlmHandler.value || (nodeEditor.handlerType === "custom" && nodeEditor.customUsePrompt));
 
         // Toggle display of data flow variable badges
         const showInputVars = ref(true);
@@ -2393,6 +2399,7 @@ def _studio_html() -> str:
               nodeEditor.id = "";
               nodeEditor.handlerType = "llm";
               nodeEditor.handler = "";
+              nodeEditor.customUsePrompt = false;
               nodeEditor.promptFilePath = "";
               nodeEditor.promptFileParseError = "";
               nodeEditor.promptKey = "default";
@@ -2429,6 +2436,8 @@ def _studio_html() -> str:
             nodeEditor.handler = handlerVal;
             nodeEditor.handlerType = LLM_HANDLERS.includes(handlerVal) ? handlerVal : "custom";
             nodeEditor.promptRef = normalizeText(data.promptRef);
+            // Restore customUsePrompt: true when a custom handler has a prompt configured
+            nodeEditor.customUsePrompt = nodeEditor.handlerType === "custom" && !!(nodeEditor.promptRef || prompt?.system || prompt?.user);
             nodeEditor.promptKeyOptions = [];
             nodeEditor.promptSystem = typeof prompt?.system === "string"
               ? prompt.system
@@ -2801,6 +2810,7 @@ def _studio_html() -> str:
           workflowMeta.interruptAfter = [];
           nodeEditor.id = "";
           nodeEditor.handler = "";
+          nodeEditor.customUsePrompt = false;
           nodeEditor.promptFilePath = "";
           nodeEditor.promptFileParseError = "";
           nodeEditor.promptKey = "default";
@@ -3336,29 +3346,36 @@ def _studio_html() -> str:
             nodeEditor.promptKey = promptKey;
             let promptFilePath = normalizePosixPath(nodeEditor.promptFilePath);
             let promptRef = normalizeText(nodeEditor.promptRef);
-            if (!promptFilePath) {
-              const createdPath = await createPromptFileForNode(
-                nextNodeId,
-                promptSystem,
-                promptUser,
-                promptKey,
-              );
-              promptFilePath = normalizePosixPath(createdPath);
-              nodeEditor.promptFilePath = createdPath;
-              nodeEditor.promptFileParseError = "";
-              const promptRefPath = workspacePathToPromptRefPath(promptFilePath) || promptFilePath;
-              promptRef = buildPromptReference(promptRefPath, promptKey);
-              nodeEditor.promptRef = promptRef;
+            if (showPromptFields.value) {
+              if (!promptFilePath) {
+                const createdPath = await createPromptFileForNode(
+                  nextNodeId,
+                  promptSystem,
+                  promptUser,
+                  promptKey,
+                );
+                promptFilePath = normalizePosixPath(createdPath);
+                nodeEditor.promptFilePath = createdPath;
+                nodeEditor.promptFileParseError = "";
+                const promptRefPath = workspacePathToPromptRefPath(promptFilePath) || promptFilePath;
+                promptRef = buildPromptReference(promptRefPath, promptKey);
+                nodeEditor.promptRef = promptRef;
+              } else {
+                await savePromptToExistingFile(
+                  promptFilePath,
+                  promptSystem,
+                  promptUser,
+                  promptKey,
+                );
+                const promptRefPath = workspacePathToPromptRefPath(promptFilePath) || promptFilePath;
+                promptRef = buildPromptReference(promptRefPath, promptKey);
+                nodeEditor.promptRef = promptRef;
+              }
             } else {
-              await savePromptToExistingFile(
-                promptFilePath,
-                promptSystem,
-                promptUser,
-                promptKey,
-              );
-              const promptRefPath = workspacePathToPromptRefPath(promptFilePath) || promptFilePath;
-              promptRef = buildPromptReference(promptRefPath, promptKey);
-              nodeEditor.promptRef = promptRef;
+              // prompt disabled: clear prompt_ref
+              promptRef = "";
+              nodeEditor.promptRef = "";
+              nodeEditor.promptFilePath = "";
             }
 
             const modelObj = isRecord(selectedData.model)
@@ -3439,7 +3456,7 @@ def _studio_html() -> str:
               if (promptRef) {
                 nextRawParams.prompt_ref = promptRef;
               }
-              const nodeHasPrompt = hasPrompt(nextRawParams) || (normalizeText(nodeEditor.promptUser));
+              const nodeHasPrompt = showPromptFields.value && (hasPrompt(nextRawParams) || !!(normalizeText(nodeEditor.promptSystem) || normalizeText(nodeEditor.promptUser)));
               // Determine conditional edge sources
               const condSources = new Set(
                 edges.value
