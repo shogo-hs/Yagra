@@ -3040,16 +3040,24 @@ def _studio_html() -> str:
           if (explicitKeys !== undefined && explicitKeys !== null) {
             return Array.isArray(explicitKeys) ? explicitKeys.map(String) : [];
           }
-          // Prefer inline prompt.user; fall back to formItem.prompt_user (resolved prompt_ref text) if absent
+          // Extract {variable} patterns from both system and user prompts (mirrors backend logic)
           const prompt = params.prompt;
+          const systemTemplate = (prompt && typeof prompt === "object" && typeof prompt.system === "string")
+            ? prompt.system : "";
+          // Prefer inline prompt.user; fall back to formItem.prompt_user (resolved prompt_ref text) if absent
           const userTemplate = (prompt && typeof prompt === "object" && typeof prompt.user === "string")
             ? prompt.user
-            : (typeof promptUserFallback === "string" ? promptUserFallback : null);
-          if (typeof userTemplate !== "string") return [];
+            : (typeof promptUserFallback === "string" ? promptUserFallback : "");
+          const seen = new Set();
           const matches = [];
-          const re = /\\{(\\w+)\\}/g;
+          const re = /\{(\w+)\}/g;
           let m;
-          while ((m = re.exec(userTemplate)) !== null) matches.push(m[1]);
+          for (const tmpl of [systemTemplate, userTemplate]) {
+            re.lastIndex = 0;
+            while ((m = re.exec(tmpl)) !== null) {
+              if (!seen.has(m[1])) { seen.add(m[1]); matches.push(m[1]); }
+            }
+          }
           return matches;
         }
 
