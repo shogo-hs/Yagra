@@ -182,6 +182,125 @@ yagra init --template human-review --output my-human-review-workflow
 3. Use `interrupt_before` in `workflow.yaml` to specify which node triggers the human pause
 4. Call `app.resume(state)` in your application code to continue after human approval
 
+---
+
+### `parallel`: Parallel Fan-Out / Fan-In (Map-Reduce)
+
+**Pattern**: Prepare → [Fan-Out] → Process Each Item → Aggregate
+
+**Use Case**: Process multiple items in parallel and aggregate results (map-reduce pattern)
+
+**Structure**:
+- Prepare node sets a list of items in state
+- `fan_out` edge dispatches each item as a separate parallel execution via LangGraph's Send API
+- Process node runs concurrently for each item
+- Aggregate node collects all results (using `reducer: add`)
+
+**Initialize**:
+
+```bash
+yagra init --template parallel --output my-parallel-workflow
+```
+
+**Generated Files**:
+- `workflow.yaml`: prepare → process_item (fan-out) → aggregate
+
+**Key YAML Features**:
+
+```yaml
+state_schema:
+  items:
+    type: list
+  results:
+    type: list
+    reducer: add    # Merges outputs from parallel nodes (fan-in)
+
+edges:
+  - source: "prepare"
+    target: "process_item"
+    fan_out:
+      items_key: items    # State key containing the list to fan out
+      item_key: item      # Key passed to each parallel invocation
+```
+
+**Customize**:
+1. Implement `prepare_handler` to populate `state["items"]` with your data
+2. Implement `process_handler` to process each `state["item"]` and return `{"results": [result]}`
+3. Implement `aggregate_handler` to combine all `state["results"]`
+
+---
+
+### `subgraph`: Nested Sub-Workflow
+
+**Pattern**: Main Step → Sub-Workflow → Finalize
+
+**Use Case**: Compose complex multi-agent systems by nesting YAML workflows as subgraphs
+
+**Structure**:
+- Parent workflow delegates a step to a separate workflow YAML
+- The subgraph runs as a standalone LangGraph node within the parent
+- State flows between parent and subgraph via shared keys
+
+**Initialize**:
+
+```bash
+yagra init --template subgraph --output my-subgraph-workflow
+```
+
+**Generated Files**:
+- `workflow.yaml`: main_step → sub_agent (subgraph) → finalize
+- `sub_workflow.yaml`: The nested sub-workflow
+
+**Key YAML Features**:
+
+```yaml
+nodes:
+  - id: "sub_agent"
+    handler: "subgraph"          # Built-in handler name
+    params:
+      workflow_ref: ./sub_workflow.yaml   # Relative path to sub-workflow
+```
+
+**Customize**:
+1. Register all handlers from both `workflow.yaml` and `sub_workflow.yaml` in the same registry
+2. Define shared state keys that the parent and subgraph both read/write
+3. Nest multiple levels by referencing another `workflow_ref` inside `sub_workflow.yaml`
+
+---
+
+### `chat`: Chat History with MessagesState
+
+**Pattern**: Single-node chat loop using `type: messages`
+
+**Use Case**: Conversational AI with persistent chat history via LangGraph's `add_messages` reducer
+
+**Structure**:
+- Single chatbot node processes messages and appends AI responses
+- `type: messages` in `state_schema` enables automatic message accumulation
+- Works with LangGraph checkpointer for per-thread session persistence
+
+**Initialize**:
+
+```bash
+yagra init --template chat --output my-chat-workflow
+```
+
+**Generated Files**:
+- `workflow.yaml`: chatbot (single-node loop)
+
+**Key YAML Features**:
+
+```yaml
+state_schema:
+  messages:
+    type: messages    # Activates add_messages reducer (append mode)
+```
+
+**Customize**:
+1. Implement `chat_handler` to call an LLM with `state["messages"]` and return `{"messages": [AIMessage(...)]}`
+2. Pass a checkpointer to `Yagra.from_workflow` to persist conversation history
+3. Invoke with `thread_id` to maintain separate sessions per user
+
 ## Using Templates
 
 ### List Available Templates
@@ -195,10 +314,13 @@ Output:
 ```
 Available templates:
   - branch
+  - chat
   - human-review
   - loop
   - multi-agent
+  - parallel
   - rag
+  - subgraph
   - tool-use
 ```
 

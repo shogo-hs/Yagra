@@ -33,7 +33,7 @@ yagra init --list
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--template` | Template name to use (`branch`, `loop`, `rag`, `tool-use`, `multi-agent`, `human-review`) | Required (unless `--list`) |
+| `--template` | Template name to use (`branch`, `chat`, `human-review`, `loop`, `multi-agent`, `parallel`, `rag`, `subgraph`, `tool-use`) | Required (unless `--list`) |
 | `--output` | Output directory | Current directory (`.`) |
 | `--force` | Overwrite existing files | `False` |
 | `--list` | List available templates | N/A |
@@ -50,10 +50,13 @@ Output:
 ```
 Available templates:
   - branch
+  - chat
   - human-review
   - loop
   - multi-agent
+  - parallel
   - rag
+  - subgraph
   - tool-use
 ```
 
@@ -72,7 +75,7 @@ yagra init --template loop --output existing-dir --force
 ### Behavior
 
 1. Copies template files to output directory
-2. Creates `workflow.yaml` and `prompts/<template>_prompts.yaml`
+2. Creates `workflow.yaml` (and `prompts/<template>_prompts.yaml` if the template uses prompts)
 3. Validates the generated workflow
 4. Reports success or validation errors
 

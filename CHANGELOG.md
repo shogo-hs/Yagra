@@ -4,6 +4,22 @@
 
 ## [Unreleased]
 
+### Added
+- ✨ **State Reducer / MessagesState サポート**: `state_schema` フィールドに `reducer: add` および `type: messages` を追加
+  - `state_schema` の各フィールドに `reducer: "add"` を指定すると `Annotated[list, operator.add]` 型として解決され、並列ノードの出力を自動集約（fan-in）できる
+  - `type: messages` を指定すると LangGraph の `add_messages` reducer が有効化され、チャット履歴が追記モードで管理される
+  - 新テンプレート `chat` 追加（MessagesState を使ったシンプルなチャットボット）
+- ✨ **Send API / 並列ファンアウト サポート**: `fan_out` エッジによる map-reduce パターンを YAML で宣言的に定義可能に
+  - エッジに `fan_out: {items_key, item_key}` を指定すると LangGraph の Send API で並列ディスパッチされる
+  - `fan_out` は `condition` と同時指定不可（Pydantic バリデーションで防御）
+  - 新テンプレート `parallel` 追加（prepare → 並列 process → aggregate の map-reduce パターン）
+- ✨ **SubGraph サポート**: `handler: "subgraph"` ノードで別の workflow YAML をサブグラフとしてネスト可能に
+  - `params.workflow_ref` に相対パスを指定すると `build_state_graph` が再帰的にサブワークフローをビルド
+  - 親グラフと registry・checkpointer を共有
+  - 新テンプレート `subgraph` 追加（main_step → sub_agent → finalize パターン）
+- ✨ **edge_rule_validator の fan_out 対応**: `fan_out` エッジを独立したカテゴリとして扱い、通常/conditional エッジとの混在を YAML 検証時点で正しく検出
+- 📝 **ドキュメント更新**: `workflow_yaml.md` に `state_schema`・`fan_out`・subgraph ノードの説明を追加。`templates.md` に `parallel`, `subgraph`, `chat` テンプレートを追加
+
 ## [0.6.2] - 2026-02-19
 
 ### Changed

@@ -1,0 +1,3 @@
+name: parallel
+use_case: 並列ファンアウト（Send API）
+description: 複数アイテムを並列処理し結果を集約するmap-reduceパターン（Send API / fan_out使用）

@@ -19,6 +19,9 @@ start_at: "node_id"      # Required: Entry node ID
 end_at:                  # Required: List of exit node IDs
   - "finish"
   - "error_handler"
+state_schema:            # Optional: Typed state field definitions
+  field_name:
+    type: str            # str | int | float | bool | list | dict | messages
 nodes:                   # Required: List of node definitions
   - id: "node_1"
     handler: "handler_name"
@@ -28,7 +31,54 @@ edges:                   # Required: List of edge definitions
     target: "node_2"
     condition: null      # Optional: Conditional branching
 params: {}               # Optional: Global parameters
+interrupt_before:        # Optional: Pause before these nodes (HITL)
+  - "review_node"
+interrupt_after:         # Optional: Pause after these nodes (HITL)
+  - "generate_node"
 ```
+
+## State Schema
+
+The optional `state_schema` section defines typed fields for the workflow's state. Yagra uses these definitions to build a typed `TypedDict` and configure LangGraph reducers.
+
+### Basic Field
+
+```yaml
+state_schema:
+  query:
+    type: str
+  count:
+    type: int
+  active:
+    type: bool
+  tags:
+    type: list
+```
+
+Supported types: `str`, `int`, `float`, `bool`, `list`, `dict`, `messages`
+
+### Fan-In with Reducer
+
+Use `reducer: add` on list fields to enable parallel fan-in (combines outputs from multiple concurrent nodes):
+
+```yaml
+state_schema:
+  results:
+    type: list
+    reducer: add    # operator.add: merges lists from parallel nodes
+```
+
+### Chat History (MessagesState)
+
+Use `type: messages` to enable LangGraph's `add_messages` reducer for conversational state:
+
+```yaml
+state_schema:
+  messages:
+    type: messages    # Activates add_messages: new messages are appended, not overwritten
+```
+
+Handlers should return `{"messages": [new_message]}` to append to the conversation history.
 
 ## Node Specification
 
@@ -65,6 +115,20 @@ nodes:
   - `prompt_ref`: External prompt reference (see [Prompt & Model](prompt_model.md))
   - `model`: Model configuration (inline definition)
   - Custom parameters: Any additional data your handler needs
+
+### Subgraph Node
+
+Use `handler: "subgraph"` with `params.workflow_ref` to embed another workflow YAML as a nested subgraph:
+
+```yaml
+nodes:
+  - id: "sub_agent"
+    handler: "subgraph"
+    params:
+      workflow_ref: ./sub_workflow.yaml   # Relative path from this workflow file
+```
+
+The subgraph shares the parent's registry and checkpointer. All handlers referenced in both YAMLs must be registered in the same registry when building the graph.
 
 ### Node Handler Signature
 
@@ -119,6 +183,52 @@ def classifier(state: AgentState, params: dict) -> dict:
     return {"intent": intent, "__next__": intent}
 ```
 
+### Fan-Out Edge (Parallel Dispatch)
+
+Use `fan_out` to dispatch items from a list in parallel using LangGraph's Send API:
+
+```yaml
+edges:
+  - source: "prepare"
+    target: "process_item"
+    fan_out:
+      items_key: items    # State key containing the list (e.g., state["items"])
+      item_key: item      # Key passed to each parallel invocation (e.g., state["item"])
+```
+
+- `fan_out` is mutually exclusive with `condition`
+- The target node receives `{item_key: single_item}` for each element in `state[items_key]`
+- Use `reducer: add` on the output state field to merge results from all parallel executions
+
+**Example: Map-Reduce**
+
+```yaml
+state_schema:
+  items:
+    type: list
+  results:
+    type: list
+    reducer: add
+
+edges:
+  - source: "prepare"
+    target: "process_item"
+    fan_out:
+      items_key: items
+      item_key: item
+  - source: "process_item"
+    target: "aggregate"
+```
+
+Handler for `process_item`:
+
+```python
+def process_handler(state: dict) -> dict:
+    item = state["item"]   # Single item from the fan-out
+    result = do_work(item)
+    return {"results": [result]}   # Appended to state["results"] via reducer: add
+```
+
 ## Start and End Points
 
 ### `start_at`
@@ -159,6 +269,48 @@ nodes:
       temperature: 0.9  # Overrides default
 ```
 
+## HITL / Interrupt
+
+Use `interrupt_before` and `interrupt_after` to pause execution at specific nodes for Human-in-the-Loop (HITL) review. Yagra passes these lists directly to LangGraph's `compile(interrupt_before=..., interrupt_after=...)`.
+
+### `interrupt_before`
+
+Pause execution **before** the listed nodes run. Use this to require human approval before a critical action.
+
+```yaml
+interrupt_before:
+  - "send_email"
+  - "deploy"
+```
+
+When the graph reaches `send_email`, execution suspends. The human can inspect state and then call `Yagra.resume()` to continue.
+
+### `interrupt_after`
+
+Pause execution **after** the listed nodes run. Use this to allow humans to review or modify the node's output before the workflow continues.
+
+```yaml
+interrupt_after:
+  - "generate_draft"
+```
+
+### Resume after Interrupt
+
+```python
+from yagra import Yagra
+
+app = Yagra(registry=registry, checkpointer=checkpointer)
+app.run(workflow_path="workflow.yaml", state={"query": "hello"}, config={"configurable": {"thread_id": "1"}})
+
+# --- human reviews state here ---
+
+app.resume(config={"configurable": {"thread_id": "1"}})
+```
+
+A `checkpointer` is required for interrupt/resume to work. Yagra passes it to `StateGraph.compile()`.
+
+**Note**: `interrupt_before` and `interrupt_after` node IDs must exist in the `nodes` list.
+
 ## Validation Rules
 
 Yagra validates workflows before building the graph:
@@ -168,6 +320,8 @@ Yagra validates workflows before building the graph:
 3. **Edge references**: All `source`/`target` must reference existing nodes
 4. **Start/End validity**: `start_at` and `end_at` nodes must exist
 5. **Prompt references**: `prompt_ref` paths must resolve to valid files
+6. **Edge rules**: Mixed conditional and unconditional edges from the same source are not allowed; `fan_out` edges cannot be combined with other edge types from the same source
+7. **State schema**: `reducer: add` requires `type: list` or `type: messages`
 
 Use `yagra validate` to check compliance:
 

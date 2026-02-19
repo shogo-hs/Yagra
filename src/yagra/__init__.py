@@ -53,7 +53,7 @@ class Yagra:
         workflow_path: str | PathLike[str],
         registry: NodeRegistryPort | Mapping[str, NodeHandler],
         bundle_root: str | PathLike[str] | None = None,
-        state_schema: Any = dict,
+        state_schema: Any = None,
         checkpointer: BaseCheckpointSaver | None = None,
     ) -> Yagra:
         """Creates a `Yagra` instance from a workflow file.
@@ -66,7 +66,8 @@ class Yagra:
             workflow_path: Path to the entry `workflow.yaml`.
             registry: Registry implementation resolving handler names to callables, or handler mapping.
             bundle_root: Base directory for resolving split references. Defaults to workflow parent directory if not specified.
-            state_schema: LangGraph state schema. Defaults to `dict`.
+            state_schema: LangGraph state schema. If None, automatically resolved
+                from the workflow's state_schema definition or defaults to dict.
             checkpointer: LangGraph checkpointer. Required when using `interrupt_before` / `interrupt_after`.
 
         Returns:

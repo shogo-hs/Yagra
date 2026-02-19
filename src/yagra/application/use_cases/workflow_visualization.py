@@ -40,6 +40,7 @@ class WorkflowEdgeView:
     source: str
     target: str
     condition: str | None
+    is_fan_out: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -168,7 +169,12 @@ def build_workflow_visualization_view(
 
     nodes = tuple(_build_node_view(node, cond_sources, spec) for node in spec.nodes)
     edges = tuple(
-        WorkflowEdgeView(source=edge.source, target=edge.target, condition=edge.condition)
+        WorkflowEdgeView(
+            source=edge.source,
+            target=edge.target,
+            condition=edge.condition,
+            is_fan_out=edge.fan_out is not None,
+        )
         for edge in spec.edges
     )
 
@@ -305,7 +311,9 @@ def _build_mermaid_graph(view: WorkflowVisualizationView) -> str:
     for edge in view.edges:
         source = _safe_mermaid_id(edge.source)
         target = _safe_mermaid_id(edge.target)
-        if edge.condition is None:
+        if edge.is_fan_out:
+            lines.append(f'  {source} -- "fan-out" --> {target}')
+        elif edge.condition is None:
             lines.append(f"  {source} --> {target}")
         else:
             condition = edge.condition.replace('"', '\\"')
@@ -355,8 +363,15 @@ def _render_node_card(node: WorkflowNodeView) -> str:
 
 def _render_edge_row(edge: WorkflowEdgeView) -> str:
     """Converts edge rows to HTML."""
-    condition = "-" if edge.condition is None else html.escape(edge.condition)
-    cond_class = "" if edge.condition is None else ' class="cond"'
+    if edge.is_fan_out:
+        condition = "fan-out"
+        cond_class = ' class="cond"'
+    elif edge.condition is None:
+        condition = "-"
+        cond_class = ""
+    else:
+        condition = html.escape(edge.condition)
+        cond_class = ' class="cond"'
     return (
         "<tr>"
         f"<td>{html.escape(edge.source)}</td>"

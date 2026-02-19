@@ -34,6 +34,9 @@ def test_yagra_init_list_command() -> None:
     assert "branch" in result.stdout
     assert "loop" in result.stdout
     assert "rag" in result.stdout
+    assert "parallel" in result.stdout
+    assert "subgraph" in result.stdout
+    assert "chat" in result.stdout
 
 
 def test_yagra_init_creates_workflow(test_dir: Path) -> None:
@@ -120,6 +123,22 @@ def test_yagra_init_prevents_overwrite_without_force(test_dir: Path) -> None:
     assert result.returncode == 1
     assert "Files already exist" in result.stderr
     assert "--force" in result.stderr
+
+
+@pytest.mark.parametrize("template", ["parallel", "subgraph", "chat"])
+def test_yagra_init_creates_new_template(test_dir: Path, template: str) -> None:
+    """Confirms that new templates (parallel, subgraph, chat) can be initialized and validated."""
+    result = subprocess.run(
+        ["uv", "run", "yagra", "init", "--template", template, "--output", str(test_dir)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, f"init failed for template '{template}': {result.stderr}"
+    assert "Initialized from template" in result.stdout
+    assert "workflow is valid." in result.stdout
+    assert (test_dir / "workflow.yaml").exists()
 
 
 def test_yagra_init_overwrites_with_force(test_dir: Path) -> None:

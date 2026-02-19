@@ -1,0 +1,45 @@
+version: "1.0"
+
+# subgraph テンプレート
+# ユースケース: 別ワークフローYAMLをサブグラフとしてネストするパターン
+#
+# フロー:
+#   main_step → sub_agent (sub_workflow.yaml を呼び出し) → finalize
+#
+# subgraph ノードの動作:
+#   - handler: "subgraph" は Yagra のビルトインハンドラー
+#   - params.workflow_ref で参照するYAMLファイルパスを指定
+#   - サブグラフは親グラフと同じ registry / checkpointer を共有
+#   - 親グラフのステートキーと同名のキーを通じて状態を受け渡し
+#
+# 使い方:
+#   1. main_handler と finalize_handler を registry に登録してください
+#   2. sub_workflow.yaml の handlers (sub_handler_a, sub_handler_b) も登録してください
+#   3. yagra validate --workflow workflow.yaml で検証してください
+#   4. subgraph を使う場合は build_from_workflow_path または Yagra.from_workflow を使用
+
+start_at: "main_step"
+end_at:
+  - "finalize"
+
+nodes:
+  - id: "main_step"
+    handler: "main_handler"
+    # 前処理: サブグラフに渡す状態を準備
+    # 例: return {"input_data": "processed input"}
+
+  - id: "sub_agent"
+    handler: "subgraph"
+    params:
+      workflow_ref: ./sub_workflow.yaml   # 相対パスでサブワークフローを参照
+
+  - id: "finalize"
+    handler: "finalize_handler"
+    # サブグラフの出力を受け取って後処理
+    # サブグラフがステートに書き込んだキーは親グラフで参照可能
+
+edges:
+  - source: "main_step"
+    target: "sub_agent"
+  - source: "sub_agent"
+    target: "finalize"

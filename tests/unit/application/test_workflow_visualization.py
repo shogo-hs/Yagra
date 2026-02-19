@@ -75,3 +75,69 @@ def test_render_workflow_visualization_html_raises_on_invalid_workflow(tmp_path:
 
     with pytest.raises(ValueError, match="workflow validation failed"):
         render_workflow_visualization_html(workflow_path)
+
+
+def test_build_workflow_visualization_view_fan_out_edge_is_marked(tmp_path: Path) -> None:
+    payload: dict[str, Any] = {
+        "version": "1.0",
+        "start_at": "prepare",
+        "end_at": ["aggregate"],
+        "state_schema": {
+            "items": {"type": "list"},
+            "results": {"type": "list", "reducer": "add"},
+        },
+        "nodes": [
+            {"id": "prepare", "handler": "prepare_handler"},
+            {"id": "process_item", "handler": "process_handler"},
+            {"id": "aggregate", "handler": "aggregate_handler"},
+        ],
+        "edges": [
+            {
+                "source": "prepare",
+                "target": "process_item",
+                "fan_out": {"items_key": "items", "item_key": "item"},
+            },
+            {"source": "process_item", "target": "aggregate"},
+        ],
+    }
+    workflow_path = _write_workflow(tmp_path / "fan-out.yaml", payload)
+
+    view = build_workflow_visualization_view(workflow_path)
+
+    fan_out_edge = next(e for e in view.edges if e.source == "prepare")
+    normal_edge = next(e for e in view.edges if e.source == "process_item")
+    assert fan_out_edge.is_fan_out is True
+    assert fan_out_edge.condition is None
+    assert normal_edge.is_fan_out is False
+
+
+def test_render_workflow_visualization_html_fan_out_label_shown(tmp_path: Path) -> None:
+    payload: dict[str, Any] = {
+        "version": "1.0",
+        "start_at": "prepare",
+        "end_at": ["aggregate"],
+        "state_schema": {
+            "items": {"type": "list"},
+            "results": {"type": "list", "reducer": "add"},
+        },
+        "nodes": [
+            {"id": "prepare", "handler": "prepare_handler"},
+            {"id": "process_item", "handler": "process_handler"},
+            {"id": "aggregate", "handler": "aggregate_handler"},
+        ],
+        "edges": [
+            {
+                "source": "prepare",
+                "target": "process_item",
+                "fan_out": {"items_key": "items", "item_key": "item"},
+            },
+            {"source": "process_item", "target": "aggregate"},
+        ],
+    }
+    workflow_path = _write_workflow(tmp_path / "fan-out.yaml", payload)
+
+    html_text = render_workflow_visualization_html(workflow_path)
+
+    # Mermaid graph is HTML-escaped when embedded (both quotes and arrows are escaped)
+    assert "prepare -- &quot;fan-out&quot; --&gt; process_item" in html_text
+    assert ">fan-out<" in html_text

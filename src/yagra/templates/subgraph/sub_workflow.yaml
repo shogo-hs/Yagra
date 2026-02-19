@@ -1,0 +1,29 @@
+version: "1.0"
+
+# サブワークフロー（sub_workflow.yaml）
+# このワークフローは親ワークフローの "subgraph" ノードから呼び出されます
+#
+# フロー:
+#   sub_step_a → sub_step_b
+#
+# 使い方:
+#   1. 親ワークフローは `handler: subgraph` ノードで workflow_ref: ./sub_workflow.yaml を指定
+#   2. このワークフローの handlers を registry に登録してください
+#   3. 親ワークフローとステートキーを共有することで状態を受け渡し可能
+
+start_at: "sub_step_a"
+end_at:
+  - "sub_step_b"
+
+nodes:
+  - id: "sub_step_a"
+    handler: "sub_handler_a"
+    # サブワークフロー内の最初のステップ
+
+  - id: "sub_step_b"
+    handler: "sub_handler_b"
+    # サブワークフロー内の最後のステップ
+
+edges:
+  - source: "sub_step_a"
+    target: "sub_step_b"

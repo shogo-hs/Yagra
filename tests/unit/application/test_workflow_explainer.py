@@ -377,3 +377,72 @@ def test_extract_input_variables_prompt_unsupported_type_returns_empty() -> None
     node = _make_node({"model": "gpt-4o-mini", "prompt": 42})
     result = _extract_input_variables(node)
     assert result == []
+
+
+# ---------------------------------------------------------------------------
+# fan_out edge: variable_flow should reflect items_key / item_key
+# ---------------------------------------------------------------------------
+
+
+def test_explain_variable_flow_fan_out_source_has_items_key_in_outputs() -> None:
+    spec = GraphSpec.model_validate(
+        {
+            "version": "1",
+            "start_at": "prepare",
+            "end_at": ["aggregate"],
+            "state_schema": {
+                "items": {"type": "list"},
+                "results": {"type": "list", "reducer": "add"},
+            },
+            "nodes": [
+                {"id": "prepare", "handler": "prepare_handler", "params": {}},
+                {"id": "process_item", "handler": "process_handler", "params": {}},
+                {"id": "aggregate", "handler": "aggregate_handler", "params": {}},
+            ],
+            "edges": [
+                {
+                    "source": "prepare",
+                    "target": "process_item",
+                    "fan_out": {"items_key": "items", "item_key": "item"},
+                },
+                {"source": "process_item", "target": "aggregate"},
+            ],
+        }
+    )
+    result = explain_workflow(spec)
+
+    # prepare node should show "items" in outputs (it populates state["items"])
+    assert "items" in result["variable_flow"]["prepare"]["outputs"]
+    # process_item node should show "item" in inputs (injected per fan-out)
+    assert "item" in result["variable_flow"]["process_item"]["inputs"]
+
+
+def test_explain_execution_paths_fan_out_includes_target() -> None:
+    spec = GraphSpec.model_validate(
+        {
+            "version": "1",
+            "start_at": "prepare",
+            "end_at": ["aggregate"],
+            "state_schema": {
+                "items": {"type": "list"},
+                "results": {"type": "list", "reducer": "add"},
+            },
+            "nodes": [
+                {"id": "prepare", "handler": "prepare_handler", "params": {}},
+                {"id": "process_item", "handler": "process_handler", "params": {}},
+                {"id": "aggregate", "handler": "aggregate_handler", "params": {}},
+            ],
+            "edges": [
+                {
+                    "source": "prepare",
+                    "target": "process_item",
+                    "fan_out": {"items_key": "items", "item_key": "item"},
+                },
+                {"source": "process_item", "target": "aggregate"},
+            ],
+        }
+    )
+    result = explain_workflow(spec)
+
+    # fan_out edge is traversed normally in path enumeration
+    assert result["execution_paths"] == [["prepare", "process_item", "aggregate"]]

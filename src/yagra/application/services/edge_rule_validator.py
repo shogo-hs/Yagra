@@ -30,8 +30,13 @@ def collect_edge_rule_issues(spec: GraphSpec) -> list[EdgeRuleIssue]:
     conditional_labels_by_source: dict[str, dict[str, int]] = {}
     conditional_edge_indexes: dict[str, list[int]] = {}
     normal_edge_indexes: dict[str, list[int]] = {}
+    fanout_edge_indexes: dict[str, list[int]] = {}
 
     for index, edge in enumerate(spec.edges):
+        if edge.fan_out is not None:
+            fanout_edge_indexes.setdefault(edge.source, []).append(index)
+            continue
+
         if edge.condition is None:
             normal_edge_indexes.setdefault(edge.source, []).append(index)
             continue
@@ -57,6 +62,18 @@ def collect_edge_rule_issues(spec: GraphSpec) -> list[EdgeRuleIssue]:
         for index in conditional_edge_indexes[source]:
             issues.append(EdgeRuleIssue(message=message, location=("edges", index, "condition")))
         for index in normal_edge_indexes[source]:
+            issues.append(EdgeRuleIssue(message=message, location=("edges", index)))
+
+    fanout_conflict_sources = sorted(
+        set(fanout_edge_indexes) & (set(conditional_edge_indexes) | set(normal_edge_indexes))
+    )
+    for source in fanout_conflict_sources:
+        message = f"fan_out edge cannot be combined with other edge types: {source}"
+        for index in fanout_edge_indexes[source]:
+            issues.append(EdgeRuleIssue(message=message, location=("edges", index, "fan_out")))
+        for index in conditional_edge_indexes.get(source, []):
+            issues.append(EdgeRuleIssue(message=message, location=("edges", index, "condition")))
+        for index in normal_edge_indexes.get(source, []):
             issues.append(EdgeRuleIssue(message=message, location=("edges", index)))
 
     return issues

@@ -1,0 +1,3 @@
+name: chat
+use_case: チャット（MessagesState）
+description: チャット履歴を自動管理するシンプルなチャットボットパターン（state_schema / add_messages使用）

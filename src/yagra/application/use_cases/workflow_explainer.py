@@ -104,6 +104,8 @@ def _build_variable_flow(
     Input variables are extracted from {variable} patterns in prompt templates.
     Output variables are obtained from the output_key parameter, defaulting to 'output'.
     Conditional branch nodes (sources of conditional edges) have '__next__' added to their outputs.
+    Fan-out source nodes have the items_key added to their outputs, and fan-out target nodes
+    have the item_key added to their inputs.
 
     Args:
         spec: GraphSpec to analyze.
@@ -115,10 +117,31 @@ def _build_variable_flow(
     # Identify source nodes of conditional edges
     conditional_sources = {edge.source for edge in spec.edges if edge.condition is not None}
 
+    # Collect fan_out edge info: source → items_key, target → item_key
+    fanout_source_keys: dict[str, str] = {}
+    fanout_target_keys: dict[str, str] = {}
+    for edge in spec.edges:
+        if edge.fan_out is not None:
+            fanout_source_keys[edge.source] = edge.fan_out.items_key
+            fanout_target_keys[edge.target] = edge.fan_out.item_key
+
     flow: dict[str, dict[str, list[str]]] = {}
     for node in spec.nodes:
         inputs = _extract_input_variables(node)
         outputs = _extract_output_variables(node, conditional_sources)
+
+        # fan_out source: the node populates state[items_key]
+        if node.id in fanout_source_keys:
+            items_key = fanout_source_keys[node.id]
+            if items_key not in outputs:
+                outputs = [*outputs, items_key]
+
+        # fan_out target: the node receives state[item_key] injected per item
+        if node.id in fanout_target_keys:
+            item_key = fanout_target_keys[node.id]
+            if item_key not in inputs:
+                inputs = [*inputs, item_key]
+
         flow[node.id] = {"inputs": inputs, "outputs": outputs}
     return flow
 

@@ -39,6 +39,34 @@ class NodeSpec(BaseModel):
     )
 
 
+class FanOutSpec(BaseModel):
+    """Configuration for Send API fan-out pattern.
+
+    When specified on an edge, the source node's output state is used to
+    dispatch multiple parallel executions of the target node via LangGraph's
+    Send API. Each item in the list at ``items_key`` gets its own Send instance.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    items_key: str = Field(
+        min_length=1,
+        description=(
+            "Key in the state that holds the list of items to fan out over. "
+            "Each element in state[items_key] will be dispatched as a separate Send."
+        ),
+        examples=["topics", "tasks", "items"],
+    )
+    item_key: str = Field(
+        min_length=1,
+        description=(
+            "Key name used when passing each item to the target node via Send. "
+            "The target node will receive {'item_key': item} in its state."
+        ),
+        examples=["topic", "task", "item"],
+    )
+
+
 class EdgeSpec(BaseModel):
     """Represents an edge definition for transitions between nodes."""
 
@@ -59,6 +87,116 @@ class EdgeSpec(BaseModel):
         description="Condition for conditional branching. A string compared against state['__next__'], or a condition function name. Omit for unconditional transitions.",
         examples=["approve", "reject", None],
     )
+    fan_out: FanOutSpec | None = Field(
+        default=None,
+        description=(
+            "Fan-out configuration for Send API parallel dispatch. "
+            "When specified, the edge becomes a fan-out edge that dispatches "
+            "each item in state[fan_out.items_key] to the target node as a separate "
+            "parallel execution. Requires the target's output key to use 'reducer: add' "
+            "in state_schema to collect results. "
+            "Cannot be combined with 'condition'."
+        ),
+        examples=[
+            None,
+            {"items_key": "topics", "item_key": "topic"},
+        ],
+    )
+
+    def model_post_init(self, __context: Any) -> None:
+        """Validates edge consistency after model initialization.
+
+        Args:
+            __context: Pydantic context (unused).
+
+        Raises:
+            ValueError: If condition and fan_out are both specified.
+        """
+        if self.condition is not None and self.fan_out is not None:
+            raise ValueError(
+                "EdgeSpec: 'condition' and 'fan_out' cannot both be specified on the same edge"
+            )
+
+
+# Supported state field types
+STATE_FIELD_TYPES = frozenset({"str", "int", "float", "bool", "list", "dict", "messages"})
+
+# Supported reducer types for state fields
+REDUCER_TYPES = frozenset({"add"})
+
+
+class StateFieldSpec(BaseModel):
+    """Represents a single field definition in state_schema.
+
+    Each field specifies the type and optional reducer of the state key.
+    Use 'messages' to enable LangGraph's add_messages reducer for chat history.
+    Use 'reducer: add' with list fields to enable operator.add reducer for fan-in
+    from parallel nodes (Send API / fan-out patterns).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    type: str = Field(
+        description=(
+            "Type of the state field. "
+            "Supported values: str, int, float, bool, list, dict, messages. "
+            "'messages' enables LangGraph's add_messages reducer for chat history."
+        ),
+        examples=["str", "int", "messages"],
+    )
+    reducer: str | None = Field(
+        default=None,
+        description=(
+            "Reducer function for merging parallel state updates. "
+            "Supported values: 'add' (operator.add, appends list results from parallel nodes). "
+            "Only valid with type 'list'. "
+            "Required when multiple parallel nodes write to the same list key (fan-in pattern). "
+            "If omitted, the last writer wins (standard behavior)."
+        ),
+        examples=["add", None],
+    )
+
+    @classmethod
+    def validate_type(cls, value: str) -> str:
+        """Validates that the type is a supported state field type.
+
+        Args:
+            value: Type string to validate.
+
+        Returns:
+            The validated type string.
+
+        Raises:
+            ValueError: If the type is not supported.
+        """
+        if value not in STATE_FIELD_TYPES:
+            supported = ", ".join(sorted(STATE_FIELD_TYPES))
+            raise ValueError(
+                f"unsupported state field type: '{value}'. Supported types: {supported}"
+            )
+        return value
+
+    def model_post_init(self, __context: Any) -> None:
+        """Validates field consistency after model initialization.
+
+        Args:
+            __context: Pydantic context (unused).
+
+        Raises:
+            ValueError: If type or reducer is invalid, or combination is inconsistent.
+        """
+        self.validate_type(self.type)
+        if self.reducer is not None:
+            if self.reducer not in REDUCER_TYPES:
+                supported = ", ".join(sorted(REDUCER_TYPES))
+                raise ValueError(
+                    f"unsupported reducer: '{self.reducer}'. Supported reducers: {supported}"
+                )
+            if self.reducer == "add" and self.type not in ("list", "messages"):
+                raise ValueError(
+                    f"reducer 'add' is only valid with type 'list' or 'messages', "
+                    f"but got type '{self.type}'"
+                )
 
 
 class GraphSpec(BaseModel):
@@ -102,6 +240,22 @@ class GraphSpec(BaseModel):
                 {"source": "classify", "target": "approve", "condition": "approved"},
                 {"source": "classify", "target": "reject", "condition": "rejected"},
             ]
+        ],
+    )
+    state_schema: dict[str, StateFieldSpec] = Field(
+        default_factory=dict,
+        description=(
+            "State schema definition. Specifies the type and reducer for each state key. "
+            "If omitted, defaults to dict (plain key-value state). "
+            "Use 'type: messages' to enable LangGraph MessagesState with add_messages reducer for chat history. "
+            "Supported types: str, int, float, bool, list, dict, messages."
+        ),
+        examples=[
+            {},
+            {
+                "messages": {"type": "messages"},
+                "result": {"type": "str"},
+            },
         ],
     )
     params: dict[str, Any] = Field(

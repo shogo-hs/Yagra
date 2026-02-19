@@ -1,0 +1,58 @@
+version: "1.0"
+
+# parallel テンプレート
+# ユースケース: 複数アイテムを並列処理し結果を集約するmap-reduceパターン
+#
+# フロー:
+#   prepare → [fan_out] → process_item (各アイテムを並列実行) → aggregate
+#
+# Send API の動作:
+#   - fan_out エッジが state["items"] の各要素を個別の Send として process_item に送信
+#   - process_item が並列実行され、各結果が state["results"] に追加 (reducer: add)
+#   - 全並列実行完了後、aggregate が集約を実行
+#
+# state_schema の設定:
+#   - items: 処理対象アイテムのリスト（fan_out の items_key）
+#   - results: 並列処理結果のリスト（reducer: add で各ノードの出力を集約）
+#
+# 使い方:
+#   1. prepare_handler: state["items"] に処理対象リストをセットする
+#   2. process_handler: state["item"] (各アイテム) を処理して results に追加
+#   3. aggregate_handler: state["results"] を集約して最終出力を生成
+#   4. yagra validate --workflow workflow.yaml で検証してください
+
+start_at: "prepare"
+end_at:
+  - "aggregate"
+
+state_schema:
+  items:
+    type: list
+  results:
+    type: list
+    reducer: add    # operator.add: 並列ノードの出力リストを結合 (fan-in)
+
+nodes:
+  - id: "prepare"
+    handler: "prepare_handler"
+    # state["items"] に処理対象リストをセットする
+    # 例: return {"items": ["topic1", "topic2", "topic3"]}
+
+  - id: "process_item"
+    handler: "process_handler"
+    # state["item"] (各アイテム) を受け取り、results に結果を追加
+    # 例: return {"results": [f"processed: {state['item']}"]}
+
+  - id: "aggregate"
+    handler: "aggregate_handler"
+    # state["results"] (全並列処理結果) を集約
+    # 例: return {"final_output": "\n".join(state["results"])}
+
+edges:
+  - source: "prepare"
+    target: "process_item"
+    fan_out:
+      items_key: items    # state["items"] の各要素を展開
+      item_key: item      # process_item には state["item"] として渡す
+  - source: "process_item"
+    target: "aggregate"

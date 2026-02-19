@@ -1,0 +1,45 @@
+version: "1.0"
+
+# chat テンプレート
+# ユースケース: LangGraph MessagesState を使ったチャット履歴管理
+#
+# フロー:
+#   chatbot (単一ノードのシンプルなチャット)
+#
+# state_schema の設定:
+#   - messages: type "messages" を使うと LangGraph の add_messages reducer が有効化
+#     - 新しいメッセージを {"messages": [new_msg]} で返すと、チャット履歴に自動追加
+#     - 上書き（overwrite）ではなく追記（append）になるため、過去のやり取りが保持される
+#
+# 使い方:
+#   1. chat_handler: state["messages"] を参照してLLMに渡し、AI応答を {"messages": [ai_msg]} で返す
+#   2. checkpointer を使うとスレッドIDごとに会話履歴を永続化できる
+#   3. yagra validate --workflow workflow.yaml で検証してください
+#
+# 実行例:
+#   from langchain_core.messages import HumanMessage
+#   result = yagra_instance.invoke(
+#       {"messages": [HumanMessage(content="こんにちは！")]},
+#       thread_id="session-001",
+#   )
+
+start_at: "chatbot"
+end_at:
+  - "chatbot"
+
+state_schema:
+  messages:
+    type: messages    # add_messages reducer: 追記モードでチャット履歴を管理
+
+nodes:
+  - id: "chatbot"
+    handler: "chat_handler"
+    # state["messages"] を受け取り、AI応答を messages に追加
+    # 例:
+    #   from langchain_core.messages import AIMessage
+    #   def chat_handler(state, params):
+    #       messages = state["messages"]
+    #       response = llm.invoke(messages)  # チャット履歴全体をLLMに渡す
+    #       return {"messages": [AIMessage(content=response.content)]}
+
+edges: []

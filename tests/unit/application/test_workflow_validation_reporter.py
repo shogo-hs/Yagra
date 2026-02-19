@@ -309,6 +309,72 @@ def test_workflow_validation_issue_to_dict_includes_context_when_set() -> None:
     assert d["context"] == ctx
 
 
+def test_validate_workflow_for_ui_accepts_fan_out_edge(tmp_path: Path) -> None:
+    payload: dict[str, Any] = {
+        "version": "1.0",
+        "start_at": "prepare",
+        "end_at": ["aggregate"],
+        "state_schema": {
+            "items": {"type": "list"},
+            "results": {"type": "list", "reducer": "add"},
+        },
+        "nodes": [
+            {"id": "prepare", "handler": "prepare_handler"},
+            {"id": "process_item", "handler": "process_handler"},
+            {"id": "aggregate", "handler": "aggregate_handler"},
+        ],
+        "edges": [
+            {
+                "source": "prepare",
+                "target": "process_item",
+                "fan_out": {"items_key": "items", "item_key": "item"},
+            },
+            {"source": "process_item", "target": "aggregate"},
+        ],
+    }
+    workflow_path = _write_workflow(tmp_path / "fan-out.yaml", payload)
+
+    report = validate_workflow_for_ui(workflow_path)
+
+    assert report.is_valid is True
+    assert report.issues == []
+
+
+def test_validate_workflow_for_ui_reports_fan_out_conflict_with_normal_edge(tmp_path: Path) -> None:
+    payload: dict[str, Any] = {
+        "version": "1.0",
+        "start_at": "router",
+        "end_at": ["finish"],
+        "state_schema": {
+            "items": {"type": "list"},
+            "results": {"type": "list", "reducer": "add"},
+        },
+        "nodes": [
+            {"id": "router", "handler": "router_handler"},
+            {"id": "process_item", "handler": "process_handler"},
+            {"id": "finish", "handler": "finish_handler"},
+        ],
+        "edges": [
+            {"source": "router", "target": "finish"},  # normal edge
+            {
+                "source": "router",
+                "target": "process_item",
+                "fan_out": {"items_key": "items", "item_key": "item"},
+            },  # fan_out edge: conflict
+        ],
+    }
+    workflow_path = _write_workflow(tmp_path / "fan-out-conflict.yaml", payload)
+
+    report = validate_workflow_for_ui(workflow_path)
+
+    assert report.is_valid is False
+    edge_rule_issues = [issue for issue in report.issues if issue.code == "edge_rule_error"]
+    assert len(edge_rule_issues) == 2
+    locations = {issue.location for issue in edge_rule_issues}
+    assert ("edges", 0) in locations
+    assert ("edges", 1, "fan_out") in locations
+
+
 def test_validate_workflow_structure_error_context_has_suggestion(tmp_path: Path) -> None:
     """Should return a suggestion in context.suggestion when the node ID has one character changed."""
     payload: dict[str, Any] = {
