@@ -395,3 +395,145 @@ def test_validate_workflow_structure_error_context_has_suggestion(tmp_path: Path
     assert issue.location == ("start_at",)
     assert issue.context is not None
     assert issue.context["suggestion"] == "translate"
+
+
+# ---------------------------------------------------------------------------
+# handler_compatibility_error: structured_llm / streaming_llm as branch source
+# ---------------------------------------------------------------------------
+
+
+def test_validate_workflow_reports_structured_llm_as_branch_source(tmp_path: Path) -> None:
+    """structured_llm node used as conditional branch source should produce an error."""
+    payload: dict[str, Any] = {
+        "version": "1.0",
+        "start_at": "extractor",
+        "end_at": ["yes_path", "no_path"],
+        "nodes": [
+            {"id": "extractor", "handler": "structured_llm", "params": {}},
+            {"id": "yes_path", "handler": "yes_handler"},
+            {"id": "no_path", "handler": "no_handler"},
+        ],
+        "edges": [
+            {"source": "extractor", "target": "yes_path", "condition": "yes"},
+            {"source": "extractor", "target": "no_path", "condition": "no"},
+        ],
+    }
+    workflow_path = _write_workflow(tmp_path / "structured-branch.yaml", payload)
+
+    report = validate_workflow_for_ui(workflow_path)
+
+    assert report.is_valid is False
+    compat_issues = [i for i in report.issues if i.code == "handler_compatibility_error"]
+    assert len(compat_issues) == 1
+    issue = compat_issues[0]
+    assert issue.location == ("nodes", 0, "handler")
+    assert "extractor" in issue.message
+    assert "structured_llm" in issue.message
+    assert "__next__" in issue.message
+    assert issue.context is not None
+    assert issue.context["node_id"] == "extractor"
+    assert issue.context["handler"] == "structured_llm"
+    assert "suggestion" in issue.context
+
+
+def test_validate_workflow_reports_streaming_llm_as_branch_source(tmp_path: Path) -> None:
+    """streaming_llm node used as conditional branch source should produce an error."""
+    payload: dict[str, Any] = {
+        "version": "1.0",
+        "start_at": "streamer",
+        "end_at": ["done"],
+        "nodes": [
+            {
+                "id": "streamer",
+                "handler": "streaming_llm",
+                "params": {"output_key": "chunks"},
+            },
+            {"id": "done", "handler": "finish_handler"},
+        ],
+        "edges": [
+            {"source": "streamer", "target": "done", "condition": "ok"},
+        ],
+    }
+    workflow_path = _write_workflow(tmp_path / "streaming-branch.yaml", payload)
+
+    report = validate_workflow_for_ui(workflow_path)
+
+    assert report.is_valid is False
+    compat_issues = [i for i in report.issues if i.code == "handler_compatibility_error"]
+    assert len(compat_issues) == 1
+    issue = compat_issues[0]
+    assert issue.context is not None
+    assert issue.context["output_key"] == "chunks"
+
+
+def test_validate_workflow_llm_handler_as_branch_source_is_valid(tmp_path: Path) -> None:
+    """The llm (basic text handler) as conditional branch source should NOT raise an error."""
+    payload: dict[str, Any] = {
+        "version": "1.0",
+        "start_at": "classifier",
+        "end_at": ["path_a", "path_b"],
+        "nodes": [
+            {"id": "classifier", "handler": "llm", "params": {}},
+            {"id": "path_a", "handler": "handler_a"},
+            {"id": "path_b", "handler": "handler_b"},
+        ],
+        "edges": [
+            {"source": "classifier", "target": "path_a", "condition": "a"},
+            {"source": "classifier", "target": "path_b", "condition": "b"},
+        ],
+    }
+    workflow_path = _write_workflow(tmp_path / "llm-branch.yaml", payload)
+
+    report = validate_workflow_for_ui(workflow_path)
+
+    compat_issues = [i for i in report.issues if i.code == "handler_compatibility_error"]
+    assert len(compat_issues) == 0
+
+
+def test_validate_workflow_custom_handler_as_branch_source_is_valid(tmp_path: Path) -> None:
+    """Custom handler as conditional branch source should not raise an error."""
+    payload: dict[str, Any] = {
+        "version": "1.0",
+        "start_at": "router",
+        "end_at": ["finish"],
+        "nodes": [
+            {"id": "router", "handler": "my_router"},
+            {"id": "path_a", "handler": "handler_a"},
+            {"id": "path_b", "handler": "handler_b"},
+            {"id": "finish", "handler": "finish_handler"},
+        ],
+        "edges": [
+            {"source": "router", "target": "path_a", "condition": "a"},
+            {"source": "router", "target": "path_b", "condition": "b"},
+            {"source": "path_a", "target": "finish"},
+            {"source": "path_b", "target": "finish"},
+        ],
+    }
+    workflow_path = _write_workflow(tmp_path / "custom-branch.yaml", payload)
+
+    report = validate_workflow_for_ui(workflow_path)
+
+    compat_issues = [i for i in report.issues if i.code == "handler_compatibility_error"]
+    assert len(compat_issues) == 0
+
+
+def test_validate_workflow_structured_llm_without_branch_is_valid(tmp_path: Path) -> None:
+    """structured_llm with only normal (non-conditional) edges should not raise an error."""
+    payload: dict[str, Any] = {
+        "version": "1.0",
+        "start_at": "extractor",
+        "end_at": ["finish"],
+        "nodes": [
+            {"id": "extractor", "handler": "structured_llm", "params": {}},
+            {"id": "finish", "handler": "finish_handler"},
+        ],
+        "edges": [
+            {"source": "extractor", "target": "finish"},
+        ],
+    }
+    workflow_path = _write_workflow(tmp_path / "structured-no-branch.yaml", payload)
+
+    report = validate_workflow_for_ui(workflow_path)
+
+    compat_issues = [i for i in report.issues if i.code == "handler_compatibility_error"]
+    assert len(compat_issues) == 0

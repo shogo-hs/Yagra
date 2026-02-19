@@ -213,6 +213,21 @@ def validate_workflow_payload_for_ui(
             )
         )
 
+    from yagra.application.services.handler_compatibility_validator import (
+        collect_handler_compatibility_issues,
+    )
+
+    for compat_issue in collect_handler_compatibility_issues(spec):
+        report.issues.append(
+            WorkflowValidationIssue(
+                code="handler_compatibility_error",
+                message=compat_issue.message,
+                location=compat_issue.location,
+                severity="error",
+                context=compat_issue.context,
+            )
+        )
+
     return report
 
 
