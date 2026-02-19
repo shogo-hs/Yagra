@@ -33,7 +33,7 @@
 - G-07 は M-17（WebUI ハンドラータイプ別フォーム）の完了をもって Done。M-27 で WebUI の `schema_yaml` から動的 Pydantic モデル生成を追加し、Python コードなしで構造化出力が完結するようになった。G-01〜G-07 すべて Done。
 - G-08 は handler データフロー改善ゴール。handler タイプ別の責務整理を前提に、`input_keys` の自動検出と `output_key` の WebUI 設定を実現する。3 段階で実装: M-18（handler type セレクト — v0.4.1）、M-19（input_keys 自動検出 — v0.4.2）、M-20（output_key の WebUI 設定）。G-01〜G-08 すべて Done。
 - G-09 は M-21（GraphSpec HITL フィールド追加）・M-22（StateGraph checkpointer 統合）・M-23（Yagra API resume() 追加）の3段階で実装完了。`interrupt_before` / `interrupt_after` バリデーション、MemorySaver 対応の動作確認済み。G-01〜G-09, G-10, G-11 すべて Done。
-- G-10 は M-24（バッジ表示）、M-25（ON/OFF トグル）の完了をもって Done（v0.5.0）。Studio WebUI および Read-Only 可視化 HTML の両方で IN/OUT バッジが表示され、ツールバーのチェックボックスで独立したトグルが可能になった。G-01〜G-08, G-10 すべて Done。
+- G-10 は M-24（バッジ表示）、M-25（ON/OFF トグル）、M-26（UX 洗練）の完了をもって Done（v0.5.0）。Studio WebUI および Read-Only 可視化 HTML の両方で IN/OUT バッジが表示され、ツールバーのチェックボックスで独立したトグルが可能になった。バッジは色分け・max-width による省略・title tooltip により視認性を確保。G-01〜G-08, G-10 すべて Done。
 - G-11 は G-06（AI-Native 基盤）を深化させるゴール。M-28（スキーマ意味情報付与）・M-29（バリデーション修正提案）・M-30（explain コマンド）・M-31（stdin 対応）・M-32（handlers コマンド）・M-33（エージェント統合ガイド）・M-34（MCP サーバー）の 7 マイルストーンで実装完了。G-01〜G-11 すべて Done。
 - G-12 は M-35（GitHub Actions 統合）で実装完了。`.github/workflows/validate-example.yml`、PR コメントスクリプト、CI 統合ガイドを提供し、LangFlow・Flowise 等が不得意とする CI/CD 統合領域で競合優位を確立した。
 - G-13 は M-36（テンプレート拡充）で実装完了。multi-agent・tool-use・human-review の 3 テンプレートを追加（合計 6 テンプレート）。各テンプレートに `template.yaml`（メタ情報）・動作サンプル・README を付属。`yagra init --list` にユースケース説明を表示する機能も追加。

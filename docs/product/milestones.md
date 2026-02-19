@@ -45,7 +45,7 @@
 | M-23 | G-09 | Yagra API に HITL 実行サイクルを追加する | `from_workflow(checkpointer=)` / `invoke(thread_id=)` / `resume()` で中断・再開のサイクルが動作する | Done |
 | M-24 | G-10 | ノードの入力変数・出力変数をグラフ上にバッジ表示する | 各ノードのプロンプト変数（入力）と `output_key`（出力）がノード上にバッジとして表示され、データフローが視覚的に把握できる | Done |
 | M-25 | G-10 | データフローバッジの ON/OFF トグルを実装する | ツールバーのトグルスイッチで入力バッジ・出力バッジの表示/非表示を独立に切り替えられ、グラフの視認性を制御できる | Done |
-| M-26 | G-10 | 入出力バッジの UX を洗練する | バッジの色分け・ツールチップ・レイアウト崩れ防止など、ノード数が多い実用ワークフローでも視認性を維持できる | Open |
+| M-26 | G-10 | 入出力バッジの UX を洗練する | バッジの色分け・ツールチップ・レイアウト崩れ防止など、ノード数が多い実用ワークフローでも視認性を維持できる | Done |
 | M-27 | G-07 | WebUI の schema_yaml から動的に Pydantic モデルを生成する | `schema_yaml`（フラットな `key: type` 形式）を WebUI で入力し、Python コードなしで構造化出力が動作する | Done |
 | M-28 | G-11 | JSON Schema に意味情報を付与する | `GraphSpec` / `NodeSpec` / `EdgeSpec` の各フィールドに `description` / `examples` を追加し、`params` のハンドラー別構造をドキュメント化する。`yagra schema` 出力だけでエージェントが有効な YAML を書ける | Done |
 | M-29 | G-11 | バリデーション結果に修正提案を追加する | `WorkflowValidationIssue` に `severity` / `context`（`actual_value` / `available_values` / `suggestion`）を追加し、ノード ID のファジーマッチによる「もしかして」候補を返す | Done |
