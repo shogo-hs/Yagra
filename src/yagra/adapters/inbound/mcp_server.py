@@ -47,6 +47,14 @@ def create_mcp_server() -> Any:
                             "type": "string",
                             "description": "The Yagra workflow YAML string to validate",
                         },
+                        "base_dir": {
+                            "type": "string",
+                            "description": (
+                                "Base directory for resolving relative paths in prompt_ref "
+                                "and other file references. Use the directory containing "
+                                "your workflow YAML file."
+                            ),
+                        },
                     },
                     "required": ["yaml_content"],
                 },
@@ -65,8 +73,53 @@ def create_mcp_server() -> Any:
                             "type": "string",
                             "description": "The Yagra workflow YAML string to analyze",
                         },
+                        "base_dir": {
+                            "type": "string",
+                            "description": (
+                                "Base directory for resolving relative paths in prompt_ref "
+                                "and other file references. Use the directory containing "
+                                "your workflow YAML file."
+                            ),
+                        },
                     },
                     "required": ["yaml_content"],
+                },
+            ),
+            Tool(
+                name="validate_workflow_file",
+                description=(
+                    "Validates a Yagra workflow YAML file by path. "
+                    "More convenient than yaml_content when the file is accessible. "
+                    "Automatically resolves prompt_ref relative paths using the file's directory."
+                ),
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "workflow_path": {
+                            "type": "string",
+                            "description": "Absolute or CWD-relative path to the workflow YAML file.",
+                        },
+                    },
+                    "required": ["workflow_path"],
+                },
+            ),
+            Tool(
+                name="explain_workflow_file",
+                description=(
+                    "Statically analyzes a Yagra workflow YAML file by path and returns "
+                    "execution paths, required handlers, and variable flow as JSON. "
+                    "More convenient than yaml_content when the file is accessible. "
+                    "Automatically resolves prompt_ref relative paths using the file's directory."
+                ),
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "workflow_path": {
+                            "type": "string",
+                            "description": "Absolute or CWD-relative path to the workflow YAML file.",
+                        },
+                    },
+                    "required": ["workflow_path"],
                 },
             ),
             Tool(
@@ -102,9 +155,19 @@ def create_mcp_server() -> Any:
             List of TextContent containing the tool execution result.
         """
         if name == "validate_workflow":
-            result = _tool_validate_workflow(arguments.get("yaml_content", ""))
+            result = _tool_validate_workflow(
+                yaml_content=arguments.get("yaml_content", ""),
+                base_dir=arguments.get("base_dir"),
+            )
         elif name == "explain_workflow":
-            result = _tool_explain_workflow(arguments.get("yaml_content", ""))
+            result = _tool_explain_workflow(
+                yaml_content=arguments.get("yaml_content", ""),
+                base_dir=arguments.get("base_dir"),
+            )
+        elif name == "validate_workflow_file":
+            result = _tool_validate_workflow_file(arguments.get("workflow_path", ""))
+        elif name == "explain_workflow_file":
+            result = _tool_explain_workflow_file(arguments.get("workflow_path", ""))
         elif name == "list_templates":
             result = _tool_list_templates()
         elif name == "list_handlers":
@@ -117,11 +180,33 @@ def create_mcp_server() -> Any:
     return server
 
 
-def _tool_validate_workflow(yaml_content: str) -> dict[str, Any]:
+def _resolve_mcp_workflow_path(base_dir: str | None) -> Path:
+    """Resolves the workflow path for MCP tool invocations.
+
+    When base_dir is provided, returns ``Path(base_dir) / "_mcp_workflow.yaml"``
+    so that ``workflow_path.parent`` equals *base_dir*, enabling correct
+    relative-path resolution for ``prompt_ref`` and other file references.
+
+    When base_dir is None, returns the legacy sentinel ``Path("<mcp>")``.
+
+    Args:
+        base_dir: Base directory string from the MCP tool argument, or None.
+
+    Returns:
+        Path to use as workflow_path in validate_workflow_payload_for_ui.
+    """
+    if base_dir is None:
+        return Path("<mcp>")
+    return Path(base_dir) / "_mcp_workflow.yaml"
+
+
+def _tool_validate_workflow(yaml_content: str, base_dir: str | None = None) -> dict[str, Any]:
     """Implementation of the validate_workflow tool.
 
     Args:
         yaml_content: The Yagra workflow YAML string to validate.
+        base_dir: Base directory for resolving relative paths in prompt_ref
+            and other file references. If None, uses ``Path("<mcp>")`` (legacy behavior).
 
     Returns:
         Dictionary containing the validation result (is_valid, issues).
@@ -156,17 +241,19 @@ def _tool_validate_workflow(yaml_content: str) -> dict[str, Any]:
 
     report = validate_workflow_payload_for_ui(
         payload=payload,
-        workflow_path=Path("<mcp>"),
+        workflow_path=_resolve_mcp_workflow_path(base_dir),
         bundle_root=None,
     )
     return report.to_dict()
 
 
-def _tool_explain_workflow(yaml_content: str) -> dict[str, Any]:
+def _tool_explain_workflow(yaml_content: str, base_dir: str | None = None) -> dict[str, Any]:
     """Implementation of the explain_workflow tool.
 
     Args:
         yaml_content: The Yagra workflow YAML string to analyze.
+        base_dir: Base directory for resolving relative paths in prompt_ref
+            and other file references. If None, uses ``Path("<mcp>")`` (legacy behavior).
 
     Returns:
         Dictionary containing execution paths, required handlers, and variable flow.
@@ -194,7 +281,7 @@ def _tool_explain_workflow(yaml_content: str) -> dict[str, Any]:
 
     report = validate_workflow_payload_for_ui(
         payload=payload,
-        workflow_path=Path("<mcp>"),
+        workflow_path=_resolve_mcp_workflow_path(base_dir),
         bundle_root=None,
     )
     if not report.is_valid:
@@ -205,6 +292,72 @@ def _tool_explain_workflow(yaml_content: str) -> dict[str, Any]:
 
     spec = GraphSpec.model_validate(payload)
     return explain_workflow(spec)
+
+
+def _tool_validate_workflow_file(workflow_path: str) -> dict[str, Any]:
+    """Implementation of the validate_workflow_file tool.
+
+    Reads the workflow YAML from the given file path and validates it.
+    Automatically uses the file's directory as base_dir for relative-path
+    resolution (e.g., prompt_ref).
+
+    Args:
+        workflow_path: Absolute or CWD-relative path to the workflow YAML file.
+
+    Returns:
+        Dictionary containing the validation result (is_valid, issues).
+        Returns a report with schema_error if the file cannot be read.
+    """
+    from yagra.application.use_cases.workflow_validation_reporter import (
+        WorkflowValidationIssue,
+        WorkflowValidationReport,
+    )
+
+    try:
+        resolved = Path(workflow_path).resolve()
+        yaml_content = resolved.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        issue = WorkflowValidationIssue(
+            code="schema_error",
+            message=f"workflow file not found: {workflow_path}",
+            location=(),
+        )
+        return WorkflowValidationReport(issues=[issue]).to_dict()
+    except OSError as exc:
+        issue = WorkflowValidationIssue(
+            code="schema_error",
+            message=f"failed to read workflow file: {exc}",
+            location=(),
+        )
+        return WorkflowValidationReport(issues=[issue]).to_dict()
+
+    return _tool_validate_workflow(yaml_content=yaml_content, base_dir=str(resolved.parent))
+
+
+def _tool_explain_workflow_file(workflow_path: str) -> dict[str, Any]:
+    """Implementation of the explain_workflow_file tool.
+
+    Reads the workflow YAML from the given file path and statically analyzes it.
+    Automatically uses the file's directory as base_dir for relative-path
+    resolution (e.g., prompt_ref).
+
+    Args:
+        workflow_path: Absolute or CWD-relative path to the workflow YAML file.
+
+    Returns:
+        Dictionary containing execution paths, required handlers, and variable flow.
+        Returns a dictionary with an error key if the file cannot be read or
+        validation fails.
+    """
+    try:
+        resolved = Path(workflow_path).resolve()
+        yaml_content = resolved.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return {"error": f"workflow file not found: {workflow_path}"}
+    except OSError as exc:
+        return {"error": f"failed to read workflow file: {exc}"}
+
+    return _tool_explain_workflow(yaml_content=yaml_content, base_dir=str(resolved.parent))
 
 
 def _tool_list_templates() -> dict[str, Any]:
