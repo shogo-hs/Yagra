@@ -1,0 +1,10 @@
+coverage:
+  paths:
+    - coverage.xml
+codeToTestRatio:
+  code:
+    - "src/**/*.py"
+  test:
+    - "tests/**/test_*.py"
+comment:
+  if: is_pull_request

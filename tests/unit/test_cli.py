@@ -4,13 +4,14 @@ import json
 import sys
 from pathlib import Path
 from typing import Any
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 import yaml
 
 import yagra
-from yagra import main
+from yagra import _normalize_registry, main
+from yagra.adapters.outbound import InMemoryNodeRegistry
 
 FIXTURES_ROOT = Path(__file__).resolve().parents[1] / "fixtures"
 WORKFLOW_ROOT = FIXTURES_ROOT / "workflows"
@@ -499,3 +500,353 @@ class TestValidateCommandStdin:
         assert exc.value.code == 1
         captured = capsys.readouterr()
         assert "workflow validation failed" in captured.err
+
+
+# ---------------------------------------------------------------------------
+# Yagra.invoke
+# ---------------------------------------------------------------------------
+
+
+class TestYagraInvoke:
+    """Yagra.invoke の TypeError ブランチのテスト。"""
+
+    def test_invoke_raises_type_error_when_graph_returns_non_mapping(self) -> None:
+        """compiled_graph が非 Mapping を返した場合に TypeError を送出すること。"""
+        fake_graph = MagicMock()
+        fake_graph.invoke.return_value = "not-a-mapping"
+
+        instance = yagra.Yagra(compiled_graph=fake_graph)
+
+        with pytest.raises(TypeError, match="compiled graph returned non-mapping result"):
+            instance.invoke({"key": "value"})
+
+
+# ---------------------------------------------------------------------------
+# _normalize_registry
+# ---------------------------------------------------------------------------
+
+
+class TestNormalizeRegistry:
+    """_normalize_registry の TypeError ブランチのテスト。"""
+
+    def test_raises_type_error_for_invalid_registry_type(self) -> None:
+        """NodeRegistryPort でも Mapping でもない型を渡すと TypeError を送出すること。"""
+        with pytest.raises(TypeError, match="registry must be NodeRegistryPort or mapping"):
+            _normalize_registry(42)  # type: ignore[arg-type]
+
+    def test_returns_registry_port_unchanged(self) -> None:
+        """NodeRegistryPort を渡すとそのまま返すこと。"""
+        registry = InMemoryNodeRegistry({})
+        result = _normalize_registry(registry)
+        assert result is registry
+
+    def test_wraps_plain_mapping(self) -> None:
+        """Dict を渡すと InMemoryNodeRegistry でラップして返すこと。"""
+        result = _normalize_registry({})
+        assert isinstance(result, InMemoryNodeRegistry)
+
+
+# ---------------------------------------------------------------------------
+# init コマンド
+# ---------------------------------------------------------------------------
+
+
+class TestInitCommand:
+    """yagra init サブコマンドのテスト。"""
+
+    def test_list_with_templates_returns_zero(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """--list でテンプレートが存在する場合に終了コード 0 を返すこと。"""
+        monkeypatch.setattr(sys, "argv", ["yagra", "init", "--list"])
+        monkeypatch.setattr(yagra, "list_templates", lambda: ["branch", "loop"])
+
+        with pytest.raises(SystemExit) as exc:
+            main()
+
+        assert exc.value.code == 0
+        captured = capsys.readouterr()
+        assert "branch" in captured.out
+        assert "loop" in captured.out
+
+    def test_list_with_no_templates_returns_one(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """--list でテンプレートが 0 件の場合に終了コード 1 を返すこと。"""
+        monkeypatch.setattr(sys, "argv", ["yagra", "init", "--list"])
+        monkeypatch.setattr(yagra, "list_templates", lambda: [])
+
+        with pytest.raises(SystemExit) as exc:
+            main()
+
+        assert exc.value.code == 1
+        captured = capsys.readouterr()
+        assert "利用可能なテンプレートがありません" in captured.out
+
+    def test_no_template_arg_returns_two(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """--template も --list も指定しない場合に終了コード 2 を返すこと。"""
+        monkeypatch.setattr(sys, "argv", ["yagra", "init"])
+
+        with pytest.raises(SystemExit) as exc:
+            main()
+
+        assert exc.value.code == 2
+        captured = capsys.readouterr()
+        assert "--template または --list" in captured.err
+
+    def test_unknown_template_returns_one(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """存在しないテンプレート名を指定すると終了コード 1 を返すこと。"""
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "yagra",
+                "init",
+                "--template",
+                "nonexistent-template",
+                "--output",
+                str(tmp_path),
+            ],
+        )
+
+        with pytest.raises(SystemExit) as exc:
+            main()
+
+        assert exc.value.code == 1
+        captured = capsys.readouterr()
+        assert "nonexistent-template" in captured.err
+
+    def test_file_already_exists_without_force_returns_one(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """出力先に既存ファイルがあり --force なし の場合に終了コード 1 を返すこと。"""
+        from yagra.application.services.template_initializer import FileAlreadyExistsError
+
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "yagra",
+                "init",
+                "--template",
+                "branch",
+                "--output",
+                str(tmp_path),
+            ],
+        )
+
+        def _raise_file_exists(**_: Any) -> None:
+            raise FileAlreadyExistsError([tmp_path / "workflow.yaml"])
+
+        monkeypatch.setattr(yagra, "initialize_from_template", _raise_file_exists)
+
+        with pytest.raises(SystemExit) as exc:
+            main()
+
+        assert exc.value.code == 1
+        captured = capsys.readouterr()
+        assert captured.err != ""
+
+
+# ---------------------------------------------------------------------------
+# studio コマンド：KeyboardInterrupt ブランチ
+# ---------------------------------------------------------------------------
+
+
+def test_main_studio_keyboard_interrupt_exits_zero(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """serve_forever が KeyboardInterrupt を発生させた場合でも終了コード 0 を返すこと。"""
+    fake_server = MagicMock()
+    fake_server.serve_forever.side_effect = KeyboardInterrupt
+    fake_server.server_close.return_value = None
+
+    monkeypatch.setattr(yagra, "create_workflow_studio_server", lambda **_: fake_server)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "yagra",
+            "studio",
+            "--workflow",
+            str(WORKFLOW_ROOT / "branch-inline.yaml"),
+            "--port",
+            "8899",
+        ],
+    )
+
+    with pytest.raises(SystemExit) as exc:
+        main()
+
+    assert exc.value.code == 0
+    fake_server.serve_forever.assert_called_once()
+    fake_server.server_close.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# explain コマンド
+# ---------------------------------------------------------------------------
+
+
+class TestExplainCommand:
+    """yagra explain サブコマンドのテスト。"""
+
+    def test_explain_valid_workflow_json_format(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """有効なワークフローで --format json のとき終了コード 0 と JSON を返すこと。"""
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "yagra",
+                "explain",
+                "--workflow",
+                str(WORKFLOW_ROOT / "branch-inline.yaml"),
+                "--format",
+                "json",
+            ],
+        )
+
+        with pytest.raises(SystemExit) as exc:
+            main()
+
+        assert exc.value.code == 0
+        captured = capsys.readouterr()
+        result = json.loads(captured.out)
+        assert "entry_point" in result
+        assert "exit_points" in result
+        assert "required_handlers" in result
+        assert "execution_paths" in result
+
+    def test_explain_valid_workflow_text_format(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """有効なワークフローで --format text のとき終了コード 0 とテキストを返すこと。"""
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "yagra",
+                "explain",
+                "--workflow",
+                str(WORKFLOW_ROOT / "branch-inline.yaml"),
+                "--format",
+                "text",
+            ],
+        )
+
+        with pytest.raises(SystemExit) as exc:
+            main()
+
+        assert exc.value.code == 0
+        captured = capsys.readouterr()
+        assert "entry_point:" in captured.out
+        assert "exit_points:" in captured.out
+
+    def test_explain_invalid_workflow_returns_one(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """無効なワークフローで終了コード 1 とエラーメッセージを返すこと。"""
+        payload = _base_payload()
+        del payload["edges"]
+        invalid_path = _write_workflow(tmp_path / "invalid.yaml", payload)
+
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "yagra",
+                "explain",
+                "--workflow",
+                str(invalid_path),
+            ],
+        )
+
+        with pytest.raises(SystemExit) as exc:
+            main()
+
+        assert exc.value.code == 1
+        captured = capsys.readouterr()
+        assert "workflow validation failed" in captured.err
+
+
+# ---------------------------------------------------------------------------
+# mcp コマンド
+# ---------------------------------------------------------------------------
+
+
+class TestMcpCommand:
+    """yagra mcp サブコマンドのテスト。"""
+
+    def test_mcp_not_installed_returns_one(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Mcp パッケージが未インストールのとき終了コード 1 を返すこと。"""
+        monkeypatch.setattr(sys, "argv", ["yagra", "mcp"])
+
+        import builtins
+
+        original_import = builtins.__import__
+
+        def _raise_import_error(name: str, *args: Any, **kwargs: Any) -> Any:
+            if "mcp_server" in name:
+                raise ImportError("No module named 'mcp'")
+            return original_import(name, *args, **kwargs)
+
+        monkeypatch.setattr(builtins, "__import__", _raise_import_error)
+
+        with pytest.raises(SystemExit) as exc:
+            main()
+
+        assert exc.value.code == 1
+        captured = capsys.readouterr()
+        assert captured.err != ""
+
+    def test_mcp_installed_runs_asyncio(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Mcp パッケージがインストール済みのとき asyncio.run が呼び出されること。"""
+        monkeypatch.setattr(sys, "argv", ["yagra", "mcp"])
+
+        called: list[Any] = []
+
+        async def _fake_run_mcp_server() -> None:
+            called.append(True)
+
+        with patch.dict(
+            "sys.modules",
+            {"yagra.adapters.inbound.mcp_server": MagicMock(run_mcp_server=_fake_run_mcp_server)},
+        ):
+            with pytest.raises(SystemExit) as exc:
+                main()
+
+        assert exc.value.code == 0
+        assert called

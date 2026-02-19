@@ -403,3 +403,186 @@ class TestLLMHandlerAutoDetect:
             messages = call_args.kwargs["messages"]
             assert messages[1]["content"] == ""  # 空文字に置換
             assert result == {"output": "Empty key response"}
+
+
+class TestLLMHandlerValidationErrors:
+    """パラメータバリデーションエラーのテスト（patch コンテキストで動作確認）."""
+
+    def test_handler_prompt_not_dict_raises_config_error(self, mock_litellm_import: None) -> None:
+        """Prompt が dict でない場合に LLMHandlerConfigError が発生すること."""
+        with patch("yagra.handlers.llm_handler.litellm") as _mock_litellm:
+            handler = create_llm_handler(retry=1, timeout=10)
+
+            state: dict[str, Any] = {}
+            params = {
+                "prompt": "not a dict",
+                "model": {"provider": "openai", "name": "gpt-4"},
+            }
+
+            with pytest.raises(LLMHandlerConfigError, match="'prompt' must be a dict"):
+                handler(state, params)
+
+    def test_handler_model_not_dict_raises_config_error(self, mock_litellm_import: None) -> None:
+        """Model が dict でない場合に LLMHandlerConfigError が発生すること."""
+        with patch("yagra.handlers.llm_handler.litellm") as _mock_litellm:
+            handler = create_llm_handler(retry=1, timeout=10)
+
+            state: dict[str, Any] = {}
+            params = {
+                "prompt": {"system": "Test", "user": "Test"},
+                "model": "gpt-4",
+            }
+
+            with pytest.raises(LLMHandlerConfigError, match="'model' must be a dict"):
+                handler(state, params)
+
+    def test_handler_model_missing_provider_raises_config_error(
+        self, mock_litellm_import: None
+    ) -> None:
+        """Model に provider が欠損している場合に LLMHandlerConfigError が発生すること."""
+        with patch("yagra.handlers.llm_handler.litellm") as _mock_litellm:
+            handler = create_llm_handler(retry=1, timeout=10)
+
+            state: dict[str, Any] = {}
+            params = {
+                "prompt": {"system": "Test", "user": "Test"},
+                "model": {"name": "gpt-4"},  # provider なし
+            }
+
+            with pytest.raises(
+                LLMHandlerConfigError,
+                match="'model' must have 'provider' and 'name' keys",
+            ):
+                handler(state, params)
+
+    def test_handler_model_missing_name_raises_config_error(
+        self, mock_litellm_import: None
+    ) -> None:
+        """Model に name が欠損している場合に LLMHandlerConfigError が発生すること."""
+        with patch("yagra.handlers.llm_handler.litellm") as _mock_litellm:
+            handler = create_llm_handler(retry=1, timeout=10)
+
+            state: dict[str, Any] = {}
+            params = {
+                "prompt": {"system": "Test", "user": "Test"},
+                "model": {"provider": "openai"},  # name なし
+            }
+
+            with pytest.raises(
+                LLMHandlerConfigError,
+                match="'model' must have 'provider' and 'name' keys",
+            ):
+                handler(state, params)
+
+    def test_handler_prompt_interpolation_key_error_raises_config_error(
+        self, mock_litellm_import: None
+    ) -> None:
+        """Input_keys に存在するキーが user テンプレートに含まれない変数を参照する場合に LLMHandlerConfigError が発生すること.
+
+        詳細:
+
+        input_keys=["a"] で user="{b}" のとき、
+        input_values = {"a": state.get("a", "")} となり、
+        "{b}".format(a="") で KeyError: 'b' が発生する。
+        """
+        with patch("yagra.handlers.llm_handler.litellm") as _mock_litellm:
+            handler = create_llm_handler(retry=1, timeout=10)
+
+            state: dict[str, Any] = {"a": "value_a"}
+            params = {
+                "prompt": {"system": "Test", "user": "Hello {b}"},
+                "model": {"provider": "openai", "name": "gpt-4"},
+                "input_keys": ["a"],  # "b" を含まない keys で format するため KeyError
+            }
+
+            with pytest.raises(
+                LLMHandlerConfigError,
+                match="Missing key in state for prompt interpolation",
+            ):
+                handler(state, params)
+
+
+class TestLLMHandlerCallErrors:
+    """LLM 呼び出しエラーのテスト（patch コンテキストで動作確認）."""
+
+    def test_handler_empty_choices_raises_call_error(self, mock_litellm_import: None) -> None:
+        """LLM が空の choices を返した場合に LLMHandlerCallError が発生すること."""
+        with patch("yagra.handlers.llm_handler.litellm") as mock_litellm:
+            handler = create_llm_handler(retry=1, timeout=10)
+
+            mock_response = MagicMock()
+            mock_response.choices = []
+            mock_litellm.completion.return_value = mock_response
+
+            state = {"query": "test"}
+            params = {
+                "prompt": {"system": "Test", "user": "{query}"},
+                "model": {"provider": "openai", "name": "gpt-4"},
+            }
+
+            with pytest.raises(LLMHandlerCallError, match="LLM returned empty response"):
+                handler(state, params)
+
+    def test_handler_none_content_raises_call_error(self, mock_litellm_import: None) -> None:
+        """LLM が None コンテンツを返した場合に LLMHandlerCallError が発生すること."""
+        with patch("yagra.handlers.llm_handler.litellm") as mock_litellm:
+            handler = create_llm_handler(retry=1, timeout=10)
+
+            mock_response = MagicMock()
+            mock_response.choices = [MagicMock(message=MagicMock(content=None))]
+            mock_litellm.completion.return_value = mock_response
+
+            state = {"query": "test"}
+            params = {
+                "prompt": {"system": "Test", "user": "{query}"},
+                "model": {"provider": "openai", "name": "gpt-4"},
+            }
+
+            with pytest.raises(LLMHandlerCallError, match="LLM returned None content"):
+                handler(state, params)
+
+    def test_handler_call_error_not_retried(self, mock_litellm_import: None) -> None:
+        """LLMHandlerCallError はリトライせずに即座に送出されること.
+
+        retry=3 を指定しても、empty choices の場合は completion が1回しか
+        呼ばれないことを確認する（line 187 の ``raise`` ブランチ）。
+        """
+        with patch("yagra.handlers.llm_handler.litellm") as mock_litellm:
+            handler = create_llm_handler(retry=3, timeout=10)
+
+            mock_response = MagicMock()
+            mock_response.choices = []  # LLMHandlerCallError をトリガー
+            mock_litellm.completion.return_value = mock_response
+
+            state = {"query": "test"}
+            params = {
+                "prompt": {"system": "Test", "user": "{query}"},
+                "model": {"provider": "openai", "name": "gpt-4"},
+            }
+
+            with pytest.raises(LLMHandlerCallError):
+                handler(state, params)
+
+            # リトライされず1回だけ呼ばれること
+            assert mock_litellm.completion.call_count == 1
+
+    def test_handler_api_error_retried_and_finally_fails(self, mock_litellm_import: None) -> None:
+        """API 呼び出し失敗がリトライされ、最終的に LLMHandlerCallError が発生すること."""
+        with patch("yagra.handlers.llm_handler.litellm") as mock_litellm:
+            with patch("yagra.handlers.llm_handler.time.sleep"):
+                handler = create_llm_handler(retry=2, timeout=10)
+
+                mock_litellm.completion.side_effect = RuntimeError("api error")
+
+                state = {"query": "test"}
+                params = {
+                    "prompt": {"system": "Test", "user": "{query}"},
+                    "model": {"provider": "openai", "name": "gpt-4"},
+                    "output_key": "output",
+                }
+
+                with pytest.raises(LLMHandlerCallError, match="LLM call failed after 2 attempts"):
+                    handler(state, params)
+
+                # retry=2 なので completion が2回呼ばれること
+                assert mock_litellm.completion.call_count == 2

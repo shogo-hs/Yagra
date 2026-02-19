@@ -5,6 +5,10 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   quality:
     runs-on: ubuntu-latest
@@ -35,4 +39,7 @@ jobs:
         run: uv run mypy .
 
       - name: Pytest
-        run: uv run pytest -q
+        run: uv run pytest -q --cov=src/yagra --cov-report=xml
+
+      - name: Run octocov
+        uses: k1LoW/octocov-action@v1

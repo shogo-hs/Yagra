@@ -144,3 +144,405 @@ def test_apply_form_edits_rejects_duplicate_create_and_invalid_rewire() -> None:
             workflow=workflow,
             edge_rewires=[{"edge_index": 0}],
         )
+
+
+# --- workflow.nodes / workflow.edges がリストでない場合 (line 40, 42) ---
+
+
+def test_apply_form_edits_rejects_nodes_not_list() -> None:
+    workflow = _base_payload()
+    workflow["nodes"] = "not a list"
+    with pytest.raises(ValueError, match="workflow.nodes must be a list"):
+        apply_form_edits(workflow=workflow)
+
+
+def test_apply_form_edits_rejects_edges_not_list() -> None:
+    workflow = _base_payload()
+    workflow["edges"] = {"bad": "value"}
+    with pytest.raises(ValueError, match="workflow.edges must be a list"):
+        apply_form_edits(workflow=workflow)
+
+
+# --- node create のバリデーション (line 68, 70, 80) ---
+
+
+def test_apply_form_edits_node_create_empty_node_id() -> None:
+    with pytest.raises(ValueError, match="node create requires non-empty 'node_id'"):
+        apply_form_edits(
+            workflow=_base_payload(),
+            node_creates=[{"node_id": "   ", "handler": "h"}],
+        )
+
+
+def test_apply_form_edits_node_create_node_id_not_str() -> None:
+    with pytest.raises(ValueError, match="node create requires non-empty 'node_id'"):
+        apply_form_edits(
+            workflow=_base_payload(),
+            node_creates=[{"node_id": 123, "handler": "h"}],
+        )
+
+
+def test_apply_form_edits_node_create_empty_handler() -> None:
+    with pytest.raises(ValueError, match="node create requires non-empty 'handler'"):
+        apply_form_edits(
+            workflow=_base_payload(),
+            node_creates=[{"node_id": "new_node", "handler": ""}],
+        )
+
+
+def test_apply_form_edits_node_create_handler_not_str() -> None:
+    with pytest.raises(ValueError, match="node create requires non-empty 'handler'"):
+        apply_form_edits(
+            workflow=_base_payload(),
+            node_creates=[{"node_id": "new_node", "handler": None}],
+        )
+
+
+def test_apply_form_edits_node_create_params_not_mapping() -> None:
+    with pytest.raises(ValueError, match="node params must be a mapping"):
+        apply_form_edits(
+            workflow=_base_payload(),
+            node_creates=[{"node_id": "new_node", "handler": "h", "params": "bad"}],
+        )
+
+
+def test_apply_form_edits_node_create_without_params() -> None:
+    patched = apply_form_edits(
+        workflow=_base_payload(),
+        node_creates=[{"node_id": "new_node", "handler": "h"}],
+    )
+    new_node = next(n for n in patched["nodes"] if n["id"] == "new_node")
+    assert new_node["handler"] == "h"
+    assert "params" not in new_node
+
+
+# --- node edit のバリデーション (line 102, 108, 114) ---
+
+
+def test_apply_form_edits_node_edit_empty_node_id() -> None:
+    with pytest.raises(ValueError, match="node edit requires non-empty 'node_id'"):
+        apply_form_edits(
+            workflow=_base_payload(),
+            node_edits=[{"node_id": "", "prompt_ref": "x"}],
+        )
+
+
+def test_apply_form_edits_node_edit_node_id_not_str() -> None:
+    with pytest.raises(ValueError, match="node edit requires non-empty 'node_id'"):
+        apply_form_edits(
+            workflow=_base_payload(),
+            node_edits=[{"node_id": 0, "prompt_ref": "x"}],
+        )
+
+
+def test_apply_form_edits_node_edit_node_payload_not_mapping() -> None:
+    from collections.abc import Mapping as AbcMapping
+
+    class _NonDictNode(AbcMapping):
+        def __init__(self, id_: str) -> None:
+            self._id = id_
+
+        def __getitem__(self, key: str) -> object:
+            if key == "id":
+                return self._id
+            raise KeyError(key)
+
+        def __iter__(self):
+            yield "id"
+
+        def __len__(self) -> int:
+            return 1
+
+    workflow = _base_payload()
+    workflow["nodes"][0] = _NonDictNode("router")
+    with pytest.raises(ValueError, match="node payload must be a mapping"):
+        apply_form_edits(
+            workflow=workflow,
+            node_edits=[{"node_id": "router", "prompt_ref": "x"}],
+        )
+
+
+def test_apply_form_edits_node_edit_params_not_dict() -> None:
+    workflow = _base_payload()
+    workflow["nodes"][0]["params"] = "bad_params"
+    with pytest.raises(ValueError, match="node params must be a mapping"):
+        apply_form_edits(
+            workflow=workflow,
+            node_edits=[{"node_id": "router", "prompt_ref": "x"}],
+        )
+
+
+def test_apply_form_edits_node_edit_creates_params_when_missing() -> None:
+    patched = apply_form_edits(
+        workflow=_base_payload(),
+        node_edits=[{"node_id": "router", "prompt_ref": "router_prompt"}],
+    )
+    router_node = next(n for n in patched["nodes"] if n["id"] == "router")
+    assert "params" in router_node
+    assert router_node["params"]["prompt_ref"] == "router_prompt"
+
+
+# --- edge edit のバリデーション (line 134, 140, 143) ---
+
+
+def test_apply_form_edits_edge_edit_index_not_int() -> None:
+    with pytest.raises(ValueError, match="edge edit requires integer 'edge_index'"):
+        apply_form_edits(
+            workflow=_base_payload(),
+            edge_edits=[{"edge_index": "0", "condition": "x"}],
+        )
+
+
+def test_apply_form_edits_edge_edit_payload_not_mapping() -> None:
+    workflow = _base_payload()
+    workflow["edges"][0] = "corrupted"
+    with pytest.raises(ValueError, match="edge payload must be a mapping"):
+        apply_form_edits(
+            workflow=workflow,
+            edge_edits=[{"edge_index": 0, "condition": "x"}],
+        )
+
+
+def test_apply_form_edits_edge_edit_without_condition_key() -> None:
+    workflow = _base_payload()
+    patched = apply_form_edits(
+        workflow=workflow,
+        edge_edits=[{"edge_index": 0}],
+    )
+    assert patched["edges"][0].get("condition") == "needs_plan"
+
+
+# --- edge create の condition あり/なし (line 185-190) ---
+
+
+def test_apply_form_edits_edge_create_with_condition() -> None:
+    patched = apply_form_edits(
+        workflow=_base_payload(),
+        edge_creates=[{"source": "planner", "target": "finish", "condition": "done"}],
+    )
+    created = patched["edges"][-1]
+    assert created["source"] == "planner"
+    assert created["target"] == "finish"
+    assert created["condition"] == "done"
+
+
+def test_apply_form_edits_edge_create_with_empty_condition() -> None:
+    patched = apply_form_edits(
+        workflow=_base_payload(),
+        edge_creates=[{"source": "planner", "target": "finish", "condition": ""}],
+    )
+    created = patched["edges"][-1]
+    assert "condition" not in created
+
+
+def test_apply_form_edits_edge_create_with_null_condition() -> None:
+    patched = apply_form_edits(
+        workflow=_base_payload(),
+        edge_creates=[{"source": "planner", "target": "finish", "condition": None}],
+    )
+    created = patched["edges"][-1]
+    assert "condition" not in created
+
+
+# --- edge rewire のバリデーション (line 214, 216, 220) ---
+
+
+def test_apply_form_edits_edge_rewire_index_not_int() -> None:
+    with pytest.raises(ValueError, match="edge rewire requires integer 'edge_index'"):
+        apply_form_edits(
+            workflow=_base_payload(),
+            edge_rewires=[{"edge_index": "0", "target": "finish"}],
+        )
+
+
+def test_apply_form_edits_edge_rewire_index_out_of_range() -> None:
+    with pytest.raises(ValueError, match="edge index out of range"):
+        apply_form_edits(
+            workflow=_base_payload(),
+            edge_rewires=[{"edge_index": 99, "target": "finish"}],
+        )
+
+
+def test_apply_form_edits_edge_rewire_payload_not_mapping() -> None:
+    workflow = _base_payload()
+    workflow["edges"][0] = "corrupted"
+    with pytest.raises(ValueError, match="edge payload must be a mapping"):
+        apply_form_edits(
+            workflow=workflow,
+            edge_rewires=[{"edge_index": 0, "target": "finish"}],
+        )
+
+
+# --- edge rewire の condition 更新 (line 237-244) ---
+
+
+def test_apply_form_edits_edge_rewire_sets_condition() -> None:
+    patched = apply_form_edits(
+        workflow=_base_payload(),
+        edge_rewires=[{"edge_index": 1, "condition": "finished"}],
+    )
+    assert patched["edges"][1]["condition"] == "finished"
+
+
+def test_apply_form_edits_edge_rewire_clears_condition_with_none() -> None:
+    patched = apply_form_edits(
+        workflow=_base_payload(),
+        edge_rewires=[{"edge_index": 0, "condition": None}],
+    )
+    assert "condition" not in patched["edges"][0]
+
+
+def test_apply_form_edits_edge_rewire_clears_condition_with_empty_str() -> None:
+    patched = apply_form_edits(
+        workflow=_base_payload(),
+        edge_rewires=[{"edge_index": 0, "condition": ""}],
+    )
+    assert "condition" not in patched["edges"][0]
+
+
+# --- _apply_optional_string_field の各ブランチ (line 263, 266-267, 269) ---
+
+
+def test_apply_form_edits_optional_string_field_not_in_edit() -> None:
+    workflow = _base_payload()
+    patched = apply_form_edits(
+        workflow=workflow,
+        node_edits=[{"node_id": "planner"}],
+    )
+    assert patched["nodes"][1]["params"]["prompt_ref"] == "planner"
+
+
+def test_apply_form_edits_optional_string_field_none_removes_key() -> None:
+    patched = apply_form_edits(
+        workflow=_base_payload(),
+        node_edits=[{"node_id": "planner", "prompt_ref": None}],
+    )
+    assert "prompt_ref" not in patched["nodes"][1]["params"]
+
+
+def test_apply_form_edits_optional_string_field_not_str_raises() -> None:
+    with pytest.raises(ValueError, match="prompt_ref must be a string or null"):
+        apply_form_edits(
+            workflow=_base_payload(),
+            node_edits=[{"node_id": "planner", "prompt_ref": 123}],
+        )
+
+
+def test_apply_form_edits_optional_string_field_empty_removes_key() -> None:
+    patched = apply_form_edits(
+        workflow=_base_payload(),
+        node_edits=[{"node_id": "planner", "prompt_ref": "   "}],
+    )
+    assert "prompt_ref" not in patched["nodes"][1]["params"]
+
+
+# --- _apply_optional_mapping_field の各ブランチ (line 293, 299) ---
+
+
+def test_apply_form_edits_optional_mapping_field_not_in_edit() -> None:
+    patched = apply_form_edits(
+        workflow=_base_payload(),
+        node_edits=[{"node_id": "planner"}],
+    )
+    assert patched["nodes"][1]["params"]["model"]["name"] == "gpt-4.1-mini"
+
+
+def test_apply_form_edits_optional_mapping_field_none_removes_key() -> None:
+    patched = apply_form_edits(
+        workflow=_base_payload(),
+        node_edits=[{"node_id": "planner", "model": None}],
+    )
+    assert "model" not in patched["nodes"][1]["params"]
+
+
+def test_apply_form_edits_optional_mapping_field_not_mapping_raises() -> None:
+    with pytest.raises(ValueError, match="model must be a mapping or null"):
+        apply_form_edits(
+            workflow=_base_payload(),
+            node_edits=[{"node_id": "planner", "model": "bad_value"}],
+        )
+
+
+# --- _build_node_index のバリデーション (line 318, 322, 324) ---
+
+
+def test_apply_form_edits_node_index_node_not_mapping() -> None:
+    workflow = _base_payload()
+    workflow["nodes"].append("not_a_mapping")
+    with pytest.raises(ValueError, match="node payload must be a mapping"):
+        apply_form_edits(workflow=workflow)
+
+
+def test_apply_form_edits_node_index_node_id_not_str() -> None:
+    workflow = _base_payload()
+    workflow["nodes"].append({"id": 999, "handler": "h"})
+    with pytest.raises(ValueError, match="node id must be a non-empty string"):
+        apply_form_edits(workflow=workflow)
+
+
+def test_apply_form_edits_node_index_node_id_empty() -> None:
+    workflow = _base_payload()
+    workflow["nodes"].append({"id": "", "handler": "h"})
+    with pytest.raises(ValueError, match="node id must be a non-empty string"):
+        apply_form_edits(workflow=workflow)
+
+
+def test_apply_form_edits_node_index_duplicate_node_id() -> None:
+    workflow = _base_payload()
+    workflow["nodes"].append({"id": "router", "handler": "h"})
+    with pytest.raises(ValueError, match="duplicated node id in workflow"):
+        apply_form_edits(workflow=workflow)
+
+
+# --- _required_node_reference のバリデーション (line 348) ---
+
+
+def test_apply_form_edits_edge_create_source_not_str() -> None:
+    with pytest.raises(ValueError, match="edge source must be a non-empty string"):
+        apply_form_edits(
+            workflow=_base_payload(),
+            edge_creates=[{"source": None, "target": "finish"}],
+        )
+
+
+def test_apply_form_edits_edge_create_source_empty_str() -> None:
+    with pytest.raises(ValueError, match="edge source must be a non-empty string"):
+        apply_form_edits(
+            workflow=_base_payload(),
+            edge_creates=[{"source": "", "target": "finish"}],
+        )
+
+
+def test_apply_form_edits_edge_create_target_not_str() -> None:
+    with pytest.raises(ValueError, match="edge target must be a non-empty string"):
+        apply_form_edits(
+            workflow=_base_payload(),
+            edge_creates=[{"source": "router", "target": 0}],
+        )
+
+
+# --- _normalize_optional_condition のバリデーション (line 369, 371) ---
+
+
+def test_apply_form_edits_condition_not_str_raises() -> None:
+    with pytest.raises(ValueError, match="edge condition must be a string or null"):
+        apply_form_edits(
+            workflow=_base_payload(),
+            edge_edits=[{"edge_index": 0, "condition": 123}],
+        )
+
+
+def test_apply_form_edits_condition_not_str_in_rewire_raises() -> None:
+    with pytest.raises(ValueError, match="edge condition must be a string or null"):
+        apply_form_edits(
+            workflow=_base_payload(),
+            edge_rewires=[{"edge_index": 0, "condition": ["bad"]}],
+        )
+
+
+# --- _ensure_mapping のバリデーション (line 390) ---
+
+
+def test_apply_form_edits_workflow_not_mapping_raises() -> None:
+    with pytest.raises(ValueError, match="workflow must be a mapping"):
+        apply_form_edits(workflow="not a mapping")  # type: ignore[arg-type]
