@@ -1328,10 +1328,6 @@ def _studio_html() -> str:
                 <input id="nodeHandlerInput" v-model="nodeEditor.handler" type="text"
                   placeholder="my_custom_handler" />
               </div>
-              <div v-if="nodeEditor.handlerType === 'custom'" class="field inline-checkbox">
-                <input id="nodeCustomUsePromptCheck" type="checkbox" v-model="nodeEditor.customUsePrompt" />
-                <label for="nodeCustomUsePromptCheck">use prompt (optional)</label>
-              </div>
 
               <div v-if="showPromptFields" class="subsection-label">Prompt Settings</div>
               <div v-if="showPromptFields" class="field">
@@ -2323,7 +2319,7 @@ def _studio_html() -> str:
           id: "",
           handlerType: "llm",
           handler: "",
-          customUsePrompt: false,
+
           promptFilePath: "",
           promptFileParseError: "",
           promptKey: "default",
@@ -2386,7 +2382,7 @@ def _studio_html() -> str:
         const isLlmHandler = computed(() => LLM_HANDLERS.includes(nodeEditor.handlerType));
         const isStructuredLlm = computed(() => nodeEditor.handlerType === "structured_llm");
         const isStreamingLlm = computed(() => nodeEditor.handlerType === "streaming_llm");
-        const showPromptFields = computed(() => isLlmHandler.value || (nodeEditor.handlerType === "custom" && nodeEditor.customUsePrompt));
+        const showPromptFields = computed(() => isLlmHandler.value || nodeEditor.handlerType === "custom");
 
         // Toggle display of data flow variable badges
         const showInputVars = ref(true);
@@ -2399,7 +2395,6 @@ def _studio_html() -> str:
               nodeEditor.id = "";
               nodeEditor.handlerType = "llm";
               nodeEditor.handler = "";
-              nodeEditor.customUsePrompt = false;
               nodeEditor.promptFilePath = "";
               nodeEditor.promptFileParseError = "";
               nodeEditor.promptKey = "default";
@@ -2436,8 +2431,6 @@ def _studio_html() -> str:
             nodeEditor.handler = handlerVal;
             nodeEditor.handlerType = LLM_HANDLERS.includes(handlerVal) ? handlerVal : "custom";
             nodeEditor.promptRef = normalizeText(data.promptRef);
-            // Restore customUsePrompt: true when a custom handler has a prompt configured
-            nodeEditor.customUsePrompt = nodeEditor.handlerType === "custom" && !!(nodeEditor.promptRef || prompt?.system || prompt?.user);
             nodeEditor.promptKeyOptions = [];
             nodeEditor.promptSystem = typeof prompt?.system === "string"
               ? prompt.system
@@ -2810,7 +2803,6 @@ def _studio_html() -> str:
           workflowMeta.interruptAfter = [];
           nodeEditor.id = "";
           nodeEditor.handler = "";
-          nodeEditor.customUsePrompt = false;
           nodeEditor.promptFilePath = "";
           nodeEditor.promptFileParseError = "";
           nodeEditor.promptKey = "default";
@@ -4316,6 +4308,7 @@ def _studio_html() -> str:
           isLlmHandler,
           isStructuredLlm,
           isStreamingLlm,
+          showPromptFields,
           showInputVars,
           showOutputVars,
           nodes,
