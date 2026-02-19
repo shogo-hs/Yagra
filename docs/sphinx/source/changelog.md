@@ -8,6 +8,16 @@ For the canonical changelog (Japanese), see [CHANGELOG.md](https://github.com/sh
 
 ## [Unreleased]
 
+## [0.6.6] - 2026-02-20
+
+### Fixed
+- 🐛 **`explain_workflow`: correctly extract variables from `prompt_ref` nodes**: After `resolve_workflow_references` runs, `prompt_ref` is replaced by a resolved dict (`{system, user}`). The dict branch in `_extract_input_variables` previously only looked at the `content` key and always returned an empty list. It now calls `_extract_vars_from_value` for full recursive traversal, so `variable_flow` in `explain_workflow` correctly reports input variables for `prompt_ref` nodes.
+
+### Added
+- ✨ **MCP: `base_dir` TIP in `validate_workflow` / `explain_workflow` descriptions**: Tool descriptions now include a hint to pass `base_dir` (the directory containing the workflow YAML) so that relative `prompt_ref` paths are resolved correctly.
+- ✨ **MCP: `list_handlers` now includes a `custom_handler_guide`**: Returns the handler signature convention, routing rules (`__next__`), and a code example — allowing agents to implement custom handlers without external documentation.
+- ✨ **Validation: condition label hint for `llm` conditional branch sources**: When an `llm` handler node is the source of conditional edges, validation now emits a `severity: info` issue listing the exact labels the LLM must output. `EdgeRuleIssue` gains a `severity` field (`error` / `warning` / `info`), which is propagated through `WorkflowValidationIssue`.
+
 ## [0.6.5] - 2026-02-19
 
 ### Fixed
