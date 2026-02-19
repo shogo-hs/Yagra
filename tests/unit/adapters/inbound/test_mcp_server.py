@@ -71,6 +71,11 @@ def test_tool_list_templates():
     result = _tool_list_templates()
     assert "templates" in result
     assert isinstance(result["templates"], list)
+    # Each template entry must contain name, description, and use_case keys
+    for tmpl in result["templates"]:
+        assert "name" in tmpl, f"missing 'name' in template entry: {tmpl}"
+        assert "description" in tmpl, f"missing 'description' in template entry: {tmpl}"
+        assert "use_case" in tmpl, f"missing 'use_case' in template entry: {tmpl}"
 
 
 def test_tool_list_handlers():

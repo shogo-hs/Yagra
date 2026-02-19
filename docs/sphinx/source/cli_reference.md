@@ -577,7 +577,7 @@ Start a Model Context Protocol (MCP) server in stdio mode, allowing AI agents an
 The MCP extra must be installed:
 
 ```bash
-pip install "yagra[mcp]"
+uv add 'yagra[mcp]'
 ```
 
 ### Usage
@@ -594,7 +594,7 @@ The server communicates over stdin/stdout using the MCP protocol. No additional 
 |------|-------------|
 | `validate_workflow` | Validate a workflow YAML and return structured issues |
 | `explain_workflow` | Statically analyze a workflow and return structure report |
-| `list_templates` | List available `yagra init` templates |
+| `list_templates` | List available `yagra init` templates with name, description, and use_case |
 | `list_handlers` | List built-in handlers with their params schema |
 
 ### Example: Claude Desktop Integration

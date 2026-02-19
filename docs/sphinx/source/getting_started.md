@@ -26,16 +26,26 @@ uv pip install yagra
 To use the built-in LLM handler utilities (`create_llm_handler`, `create_structured_llm_handler`, `create_streaming_llm_handler`), install the optional `llm` extra:
 
 ```bash
-pip install 'yagra[llm]'
-```
-
-Or with `uv`:
-
-```bash
 uv add 'yagra[llm]'
 ```
 
 This installs [litellm](https://github.com/BerriAI/litellm), which provides a unified interface to OpenAI, Anthropic, Google, and other LLM providers.
+
+### Install with MCP Support
+
+To expose Yagra as a [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server — enabling AI agents and editors (Claude Desktop, VS Code, Cursor, etc.) to call Yagra tools directly — install the optional `mcp` extra:
+
+```bash
+uv add 'yagra[mcp]'
+```
+
+Then start the server with:
+
+```bash
+yagra mcp
+```
+
+See [`yagra mcp`](cli_reference.md#yagra-mcp) in the CLI reference for integration examples.
 
 ### Verify Installation
 

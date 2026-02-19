@@ -211,11 +211,16 @@ def _tool_list_templates() -> dict[str, Any]:
     """Implementation of the list_templates tool.
 
     Returns:
-        Dictionary containing the list of available template names.
+        Dictionary containing available templates with name, description, and use_case.
     """
-    from yagra.application.services.template_initializer import list_templates
+    from yagra.application.services.template_initializer import list_templates_with_info
 
-    return {"templates": list_templates()}
+    return {
+        "templates": [
+            {"name": t.name, "description": t.description, "use_case": t.use_case}
+            for t in list_templates_with_info()
+        ]
+    }
 
 
 def _tool_list_handlers() -> dict[str, Any]:
@@ -255,9 +260,16 @@ async def run_mcp_server() -> None:
     Raises:
         ImportError: If the mcp library is not installed.
     """
+    from importlib.metadata import version as pkg_version
+
     import mcp.server.stdio
     from mcp.server.lowlevel.server import NotificationOptions
     from mcp.server.models import InitializationOptions
+
+    try:
+        _server_version = pkg_version("yagra")
+    except Exception:
+        _server_version = "0.0.0"
 
     server = create_mcp_server()
     async with mcp.server.stdio.stdio_server() as (read_stream, write_stream):
@@ -266,7 +278,7 @@ async def run_mcp_server() -> None:
             write_stream,
             InitializationOptions(
                 server_name="yagra",
-                server_version="0.1.0",
+                server_version=_server_version,
                 capabilities=server.get_capabilities(
                     notification_options=NotificationOptions(),
                     experimental_capabilities={},
