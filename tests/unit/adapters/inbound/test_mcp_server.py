@@ -127,7 +127,7 @@ def test_tool_explain_workflow_import_error(monkeypatch):
     monkeypatch.setitem(
         sys.modules,
         "yagra.application.use_cases.workflow_explainer",
-        None,  # type: ignore[arg-type]
+        None,
     )
 
     import importlib

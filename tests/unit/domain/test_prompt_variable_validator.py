@@ -43,7 +43,7 @@ def test_extract_required_vars_prompt_not_dict_returns_empty() -> None:
 
 
 def test_extract_required_vars_prompt_none_returns_empty() -> None:
-    params = {}
+    params: dict[str, object] = {}
     result = _extract_required_vars(params)
     assert result == []
 
@@ -90,7 +90,7 @@ def test_get_output_key_returns_specified_key() -> None:
 
 
 def test_get_output_key_default_when_absent() -> None:
-    params = {}
+    params: dict[str, object] = {}
     result = _get_output_key(params)
     assert result == "output"
 

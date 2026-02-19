@@ -151,14 +151,14 @@ def test_apply_form_edits_rejects_duplicate_create_and_invalid_rewire() -> None:
 
 def test_apply_form_edits_rejects_nodes_not_list() -> None:
     workflow = _base_payload()
-    workflow["nodes"] = "not a list"  # type: ignore[assignment]
+    workflow["nodes"] = "not a list"
     with pytest.raises(ValueError, match="workflow.nodes must be a list"):
         apply_form_edits(workflow=workflow)
 
 
 def test_apply_form_edits_rejects_edges_not_list() -> None:
     workflow = _base_payload()
-    workflow["edges"] = {"bad": "value"}  # type: ignore[assignment]
+    workflow["edges"] = {"bad": "value"}
     with pytest.raises(ValueError, match="workflow.edges must be a list"):
         apply_form_edits(workflow=workflow)
 
@@ -178,7 +178,7 @@ def test_apply_form_edits_node_create_node_id_not_str() -> None:
     with pytest.raises(ValueError, match="node create requires non-empty 'node_id'"):
         apply_form_edits(
             workflow=_base_payload(),
-            node_creates=[{"node_id": 123, "handler": "h"}],  # type: ignore[list-item]
+            node_creates=[{"node_id": 123, "handler": "h"}],
         )
 
 
@@ -194,7 +194,7 @@ def test_apply_form_edits_node_create_handler_not_str() -> None:
     with pytest.raises(ValueError, match="node create requires non-empty 'handler'"):
         apply_form_edits(
             workflow=_base_payload(),
-            node_creates=[{"node_id": "new_node", "handler": None}],  # type: ignore[list-item]
+            node_creates=[{"node_id": "new_node", "handler": None}],
         )
 
 
@@ -231,14 +231,14 @@ def test_apply_form_edits_node_edit_node_id_not_str() -> None:
     with pytest.raises(ValueError, match="node edit requires non-empty 'node_id'"):
         apply_form_edits(
             workflow=_base_payload(),
-            node_edits=[{"node_id": 0, "prompt_ref": "x"}],  # type: ignore[list-item]
+            node_edits=[{"node_id": 0, "prompt_ref": "x"}],
         )
 
 
 def test_apply_form_edits_node_edit_node_payload_not_mapping() -> None:
     from collections.abc import Mapping as AbcMapping
 
-    class _NonDictNode(AbcMapping):  # type: ignore[type-arg]
+    class _NonDictNode(AbcMapping):
         def __init__(self, id_: str) -> None:
             self._id = id_
 
@@ -254,7 +254,7 @@ def test_apply_form_edits_node_edit_node_payload_not_mapping() -> None:
             return 1
 
     workflow = _base_payload()
-    workflow["nodes"][0] = _NonDictNode("router")  # type: ignore[assignment]
+    workflow["nodes"][0] = _NonDictNode("router")
     with pytest.raises(ValueError, match="node payload must be a mapping"):
         apply_form_edits(
             workflow=workflow,
@@ -264,7 +264,7 @@ def test_apply_form_edits_node_edit_node_payload_not_mapping() -> None:
 
 def test_apply_form_edits_node_edit_params_not_dict() -> None:
     workflow = _base_payload()
-    workflow["nodes"][0]["params"] = "bad_params"  # type: ignore[assignment]
+    workflow["nodes"][0]["params"] = "bad_params"
     with pytest.raises(ValueError, match="node params must be a mapping"):
         apply_form_edits(
             workflow=workflow,
@@ -295,7 +295,7 @@ def test_apply_form_edits_edge_edit_index_not_int() -> None:
 
 def test_apply_form_edits_edge_edit_payload_not_mapping() -> None:
     workflow = _base_payload()
-    workflow["edges"][0] = "corrupted"  # type: ignore[assignment]
+    workflow["edges"][0] = "corrupted"
     with pytest.raises(ValueError, match="edge payload must be a mapping"):
         apply_form_edits(
             workflow=workflow,
@@ -365,7 +365,7 @@ def test_apply_form_edits_edge_rewire_index_out_of_range() -> None:
 
 def test_apply_form_edits_edge_rewire_payload_not_mapping() -> None:
     workflow = _base_payload()
-    workflow["edges"][0] = "corrupted"  # type: ignore[assignment]
+    workflow["edges"][0] = "corrupted"
     with pytest.raises(ValueError, match="edge payload must be a mapping"):
         apply_form_edits(
             workflow=workflow,
@@ -424,7 +424,7 @@ def test_apply_form_edits_optional_string_field_not_str_raises() -> None:
     with pytest.raises(ValueError, match="prompt_ref must be a string or null"):
         apply_form_edits(
             workflow=_base_payload(),
-            node_edits=[{"node_id": "planner", "prompt_ref": 123}],  # type: ignore[list-item]
+            node_edits=[{"node_id": "planner", "prompt_ref": 123}],
         )
 
 
@@ -468,28 +468,28 @@ def test_apply_form_edits_optional_mapping_field_not_mapping_raises() -> None:
 
 def test_apply_form_edits_node_index_node_not_mapping() -> None:
     workflow = _base_payload()
-    workflow["nodes"].append("not_a_mapping")  # type: ignore[arg-type]
+    workflow["nodes"].append("not_a_mapping")
     with pytest.raises(ValueError, match="node payload must be a mapping"):
         apply_form_edits(workflow=workflow)
 
 
 def test_apply_form_edits_node_index_node_id_not_str() -> None:
     workflow = _base_payload()
-    workflow["nodes"].append({"id": 999, "handler": "h"})  # type: ignore[arg-type]
+    workflow["nodes"].append({"id": 999, "handler": "h"})
     with pytest.raises(ValueError, match="node id must be a non-empty string"):
         apply_form_edits(workflow=workflow)
 
 
 def test_apply_form_edits_node_index_node_id_empty() -> None:
     workflow = _base_payload()
-    workflow["nodes"].append({"id": "", "handler": "h"})  # type: ignore[arg-type]
+    workflow["nodes"].append({"id": "", "handler": "h"})
     with pytest.raises(ValueError, match="node id must be a non-empty string"):
         apply_form_edits(workflow=workflow)
 
 
 def test_apply_form_edits_node_index_duplicate_node_id() -> None:
     workflow = _base_payload()
-    workflow["nodes"].append({"id": "router", "handler": "h"})  # type: ignore[arg-type]
+    workflow["nodes"].append({"id": "router", "handler": "h"})
     with pytest.raises(ValueError, match="duplicated node id in workflow"):
         apply_form_edits(workflow=workflow)
 
@@ -517,7 +517,7 @@ def test_apply_form_edits_edge_create_target_not_str() -> None:
     with pytest.raises(ValueError, match="edge target must be a non-empty string"):
         apply_form_edits(
             workflow=_base_payload(),
-            edge_creates=[{"source": "router", "target": 0}],  # type: ignore[list-item]
+            edge_creates=[{"source": "router", "target": 0}],
         )
 
 
