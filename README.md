@@ -180,6 +180,9 @@ Available templates:
 - **branch**: Conditional branching pattern
 - **loop**: Planner → Evaluator loop pattern
 - **rag**: Retrieve → Rerank → Generate RAG pattern
+- **tool-use**: LLM decides whether to invoke external tools and executes them to answer
+- **multi-agent**: Orchestrator, researcher, and writer agents collaborate in a multi-agent pattern
+- **human-review**: Human-in-the-loop pattern that pauses for review and approval via `interrupt_before`
 
 ### Option 2: From Scratch
 

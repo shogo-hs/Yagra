@@ -4,6 +4,15 @@
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-02-19
+
+### Changed
+- 📝 **ドキュメントと実装の整合性を修正**: 実装済み機能がドキュメントに反映されていなかった箇所を修正
+  - `README.md` のテンプレート一覧を3個から6個に更新（`tool-use`, `multi-agent`, `human-review` を追加）
+  - `docs/sphinx/source/cli_reference.md` に `explain`, `handlers`, `mcp` コマンドの説明を追加
+  - `docs/sphinx/source/user_guide/templates.md` に `tool-use`, `multi-agent`, `human-review` テンプレートの説明を追加
+  - `docs/sphinx/source/getting_started.md` の日本語出力サンプルを英語に修正
+
 ## [0.6.1] - 2026-02-18
 
 ### Fixed

@@ -87,6 +87,101 @@ yagra init --template rag --output my-rag-workflow
 2. Implement `rerank_documents` with reranking model
 3. Adjust `generate_answer` to format context and query
 
+---
+
+### `tool-use`: Planner → Tool Executor → Synthesizer
+
+**Pattern**: Plan → (Use Tool or Skip) → Synthesize
+
+**Use Case**: LLM decides whether to invoke an external tool and routes accordingly before composing the final answer
+
+**Structure**:
+- Planner node (llm handler) determines whether a tool call is needed
+- Conditional edges route to tool_executor (custom handler) when a tool is required, or directly to synthesizer when no tool is needed
+- Synthesizer node (llm handler) composes the final response from the planner output and optional tool results
+
+**Node Handlers**:
+- `planner`: llm handler
+- `tool_executor`: custom handler
+- `synthesizer`: llm handler
+
+**Initialize**:
+
+```bash
+yagra init --template tool-use --output my-tool-use-workflow
+```
+
+**Generated Files**:
+- `workflow.yaml`: planner → [use_tool] tool_executor → synthesizer → finish / [direct] synthesizer → finish
+- `prompts/tool_use_prompts.yaml`: Planner and synthesizer prompts
+
+**Customize**:
+1. Implement `tool_executor` handler with your external tool or API call
+2. Adjust planner prompt to describe available tools and decision criteria
+3. Extend `synthesizer` prompt to incorporate tool results into the final answer
+
+---
+
+### `multi-agent`: Orchestrator → Researcher ⇄ Writer
+
+**Pattern**: Orchestrate → Research → Write (with retry loop)
+
+**Use Case**: Orchestrator, researcher, and writer agents collaborate to process a task, with the researcher retrying until the writer is satisfied
+
+**Structure**:
+- Orchestrator node delegates the task to the researcher
+- Researcher node gathers information and passes results to the writer
+- Writer node evaluates the research; loops back to researcher if more information is needed, or exits to finish when done
+
+**Node Handlers**:
+- `orchestrator`: llm handler
+- `researcher`: llm handler (retry loop)
+- `writer`: llm handler
+
+**Initialize**:
+
+```bash
+yagra init --template multi-agent --output my-multi-agent-workflow
+```
+
+**Generated Files**:
+- `workflow.yaml`: orchestrator → researcher ⇄ [retry/done] writer → finish
+- `prompts/multi_agent_prompts.yaml`: Orchestrator, researcher, and writer prompts
+
+**Customize**:
+1. Implement domain-specific research logic in `researcher` handler
+2. Set acceptance criteria and `max_iterations` in `writer` params
+3. Adjust orchestrator prompt to decompose tasks appropriate for your domain
+
+---
+
+### `human-review`: Generator → Human Review → Publisher
+
+**Pattern**: Generate → Human Approval → Publish
+
+**Use Case**: HITL (Human-in-the-Loop) pattern where a human must review and approve generated content before it is published
+
+**Structure**:
+- Generator node produces content
+- Workflow interrupts before publisher node via `interrupt_before` field, pausing execution for human review
+- After human approval, execution resumes with `resume()` and the publisher node finalises the output
+
+**Initialize**:
+
+```bash
+yagra init --template human-review --output my-human-review-workflow
+```
+
+**Generated Files**:
+- `workflow.yaml`: generator → publisher (interrupt_before)
+- `prompts/human_review_prompts.yaml`: Generator prompt
+
+**Customize**:
+1. Implement `generator` handler to produce content for review
+2. Implement `publisher` handler to finalise and deliver approved content
+3. Use `interrupt_before` in `workflow.yaml` to specify which node triggers the human pause
+4. Call `app.resume(state)` in your application code to continue after human approval
+
 ## Using Templates
 
 ### List Available Templates
@@ -98,10 +193,13 @@ yagra init --list
 Output:
 
 ```
-利用可能なテンプレート:
+Available templates:
   - branch
+  - human-review
   - loop
+  - multi-agent
   - rag
+  - tool-use
 ```
 
 ### Initialize from Template
@@ -133,10 +231,10 @@ yagra init --template branch --output my-workflow
 Output:
 
 ```
-テンプレート 'branch' から初期化しました: /path/to/my-workflow
+Template 'branch' initialized at: /path/to/my-workflow
 
-ワークフローを検証しています: /path/to/my-workflow/workflow.yaml
-✓ ワークフローは valid です。
+Validating workflow: /path/to/my-workflow/workflow.yaml
+✓ workflow is valid.
 ```
 
 If validation fails, errors are displayed for you to fix.

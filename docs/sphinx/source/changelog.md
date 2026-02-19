@@ -8,6 +8,15 @@ For the canonical changelog (Japanese), see [CHANGELOG.md](https://github.com/sh
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-02-19
+
+### Changed
+- 📝 **Documentation and implementation alignment fixes**: Corrected documentation gaps where implemented features were not reflected in docs
+  - Updated `README.md` template list from 3 to 6 templates (added `tool-use`, `multi-agent`, `human-review`)
+  - Added `explain`, `handlers`, `mcp` command documentation to `docs/sphinx/source/cli_reference.md`
+  - Added `tool-use`, `multi-agent`, `human-review` template descriptions to `docs/sphinx/source/user_guide/templates.md`
+  - Fixed Japanese output samples in `docs/sphinx/source/getting_started.md` to English
+
 ## [0.6.1] - 2026-02-18
 
 ### Fixed

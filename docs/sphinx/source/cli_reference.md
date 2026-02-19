@@ -14,6 +14,9 @@ yagra <command> [options]
 - `validate`: Validate workflow YAML
 - `visualize`: Generate visualization HTML
 - `studio`: Launch visual editor WebUI
+- `handlers`: Display params schema for built-in handlers
+- `explain`: Statically analyze workflow YAML
+- `mcp`: Start MCP server in stdio mode
 
 ## `yagra init`
 
@@ -30,7 +33,7 @@ yagra init --list
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--template` | Template name to use (`branch`, `loop`, `rag`) | Required (unless `--list`) |
+| `--template` | Template name to use (`branch`, `loop`, `rag`, `tool-use`, `multi-agent`, `human-review`) | Required (unless `--list`) |
 | `--output` | Output directory | Current directory (`.`) |
 | `--force` | Overwrite existing files | `False` |
 | `--list` | List available templates | N/A |
@@ -45,10 +48,13 @@ yagra init --list
 
 Output:
 ```
-利用可能なテンプレート:
+Available templates:
   - branch
+  - human-review
   - loop
+  - multi-agent
   - rag
+  - tool-use
 ```
 
 **Initialize from template**:
@@ -366,6 +372,210 @@ Open `http://127.0.0.1:8787/` in your browser.
 3. **Preview Changes**: Click "Preview Diff"
 4. **Save**: Click "Save" to persist changes
 5. **Rollback** (if needed): Select backup and restore
+
+## `yagra handlers`
+
+Display the params schema for each built-in handler.
+
+### Usage
+
+```bash
+yagra handlers [--format <text|json>]
+```
+
+### Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--format` | Output format (`text` or `json`) | `text` |
+
+### Built-in Handlers
+
+| Handler | Description |
+|---------|-------------|
+| `llm` | Standard LLM call with prompt rendering |
+| `structured_llm` | LLM call that returns structured (schema-constrained) output |
+| `streaming_llm` | LLM call with server-sent event streaming support |
+
+### Examples
+
+**Text output** (human-readable):
+
+```bash
+yagra handlers
+```
+
+Output:
+
+```
+llm
+  model        (str, required)   LLM model name to use.
+  temperature  (float, optional) Sampling temperature. Default: 0.0
+  ...
+
+structured_llm
+  model        (str, required)   LLM model name to use.
+  schema_yaml  (str, required)   YAML string defining the output schema.
+  ...
+
+streaming_llm
+  model        (str, required)   LLM model name to use.
+  stream       (bool, optional)  Enable streaming mode. Default: true
+  ...
+```
+
+**JSON output** (for agent consumption):
+
+```bash
+yagra handlers --format json
+```
+
+Output:
+
+```json
+{
+  "llm": { ... },
+  "structured_llm": { ... },
+  "streaming_llm": { ... }
+}
+```
+
+## `yagra explain`
+
+Statically analyze a workflow YAML and report its structure: entry point, exit points, execution paths, required handlers, and variable flow.
+
+### Usage
+
+```bash
+yagra explain --workflow <file|-> [--bundle-root <dir>] [--format <text|json>]
+```
+
+### Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--workflow` | Path to workflow YAML, or `-` to read from stdin | Required |
+| `--bundle-root` | Base directory for reference resolution | Workflow parent directory |
+| `--format` | Output format (`text` or `json`) | `json` |
+
+### Examples
+
+**Analyze a workflow file**:
+
+```bash
+yagra explain --workflow workflows/support.yaml
+```
+
+**Read from stdin**:
+
+```bash
+cat workflows/support.yaml | yagra explain --workflow -
+```
+
+**Text output**:
+
+```bash
+yagra explain --workflow workflows/support.yaml --format text
+```
+
+**Pipe JSON output to `jq`**:
+
+```bash
+yagra explain --workflow workflows/support.yaml | jq '.execution_paths'
+```
+
+### JSON Output Structure
+
+```json
+{
+  "entry_point": "start_node",
+  "exit_points": ["end_node_a", "end_node_b"],
+  "execution_paths": [
+    ["start_node", "branch_node", "end_node_a"],
+    ["start_node", "branch_node", "end_node_b"]
+  ],
+  "required_handlers": ["llm", "structured_llm"],
+  "variable_flow": {
+    "start_node": {
+      "inputs": [],
+      "outputs": ["user_input"]
+    },
+    "branch_node": {
+      "inputs": ["user_input"],
+      "outputs": ["response"]
+    }
+  }
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `entry_point` | ID of the node where execution begins |
+| `exit_points` | IDs of nodes where execution terminates |
+| `execution_paths` | All possible node sequences from entry to exit |
+| `required_handlers` | Distinct handler names referenced by the workflow |
+| `variable_flow` | Per-node mapping of input and output variable names |
+
+## `yagra mcp`
+
+Start a Model Context Protocol (MCP) server in stdio mode, allowing AI agents and editors to interact with Yagra programmatically.
+
+### Installation
+
+The MCP extra must be installed:
+
+```bash
+pip install "yagra[mcp]"
+```
+
+### Usage
+
+```bash
+yagra mcp
+```
+
+The server communicates over stdin/stdout using the MCP protocol. No additional options are required.
+
+### Provided Tools
+
+| Tool | Description |
+|------|-------------|
+| `validate_workflow` | Validate a workflow YAML and return structured issues |
+| `explain_workflow` | Statically analyze a workflow and return structure report |
+| `list_templates` | List available `yagra init` templates |
+| `list_handlers` | List built-in handlers with their params schema |
+
+### Example: Claude Desktop Integration
+
+Add the following to your `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "yagra": {
+      "command": "yagra",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+### Example: VS Code / Cursor Integration
+
+```json
+{
+  "mcp": {
+    "servers": {
+      "yagra": {
+        "command": "yagra",
+        "args": ["mcp"]
+      }
+    }
+  }
+}
+```
+
+Once connected, the agent can call `validate_workflow`, `explain_workflow`, `list_templates`, and `list_handlers` directly as tools.
 
 ## Environment Variables
 

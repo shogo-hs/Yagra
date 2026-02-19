@@ -43,7 +43,7 @@ This installs [litellm](https://github.com/BerriAI/litellm), which provides a un
 yagra --help
 ```
 
-You should see available commands: `init`, `schema`, `validate`, `visualize`, `studio`.
+You should see available commands: `init`, `schema`, `validate`, `visualize`, `studio`, `handlers`, `explain`, `mcp`.
 
 ## Your First Workflow
 
@@ -59,10 +59,13 @@ yagra init --list
 
 Output:
 ```
-利用可能なテンプレート:
+Available templates:
   - branch
+  - human-review
   - loop
+  - multi-agent
   - rag
+  - tool-use
 ```
 
 #### 2. Initialize from Template
