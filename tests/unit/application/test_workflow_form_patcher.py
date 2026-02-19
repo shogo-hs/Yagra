@@ -237,7 +237,6 @@ def test_apply_form_edits_node_edit_node_id_not_str() -> None:
 
 def test_apply_form_edits_node_edit_node_payload_not_mapping() -> None:
     from collections.abc import Mapping as AbcMapping
-    from yagra.application.use_cases import workflow_form_patcher as _patcher
 
     class _NonDictNode(AbcMapping):  # type: ignore[type-arg]
         def __init__(self, id_: str) -> None:

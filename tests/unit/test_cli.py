@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import json
 import sys
 from pathlib import Path
@@ -542,7 +541,7 @@ class TestNormalizeRegistry:
         assert result is registry
 
     def test_wraps_plain_mapping(self) -> None:
-        """dict を渡すと InMemoryNodeRegistry でラップして返すこと。"""
+        """Dict を渡すと InMemoryNodeRegistry でラップして返すこと。"""
         result = _normalize_registry({})
         assert isinstance(result, InMemoryNodeRegistry)
 
@@ -809,7 +808,7 @@ class TestMcpCommand:
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """mcp パッケージが未インストールのとき終了コード 1 を返すこと。"""
+        """Mcp パッケージが未インストールのとき終了コード 1 を返すこと。"""
         monkeypatch.setattr(sys, "argv", ["yagra", "mcp"])
 
         import builtins
@@ -834,7 +833,7 @@ class TestMcpCommand:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """mcp パッケージがインストール済みのとき asyncio.run が呼び出されること。"""
+        """Mcp パッケージがインストール済みのとき asyncio.run が呼び出されること。"""
         monkeypatch.setattr(sys, "argv", ["yagra", "mcp"])
 
         called: list[Any] = []

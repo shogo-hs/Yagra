@@ -124,8 +124,6 @@ def test_tool_validate_workflow_null_payload():
 def test_tool_explain_workflow_import_error(monkeypatch):
     import sys
 
-    import yagra.application.use_cases
-
     monkeypatch.setitem(
         sys.modules,
         "yagra.application.use_cases.workflow_explainer",
@@ -220,8 +218,6 @@ def test_create_mcp_server_call_tool_if_mcp_installed():
     except ImportError:
         return
 
-    from mcp.types import TextContent
-
     call_tool_handler = None
     for handler_name, handler_fn in server.request_handlers.items():
         if "CallTool" in str(handler_name):
@@ -288,7 +284,6 @@ def test_create_mcp_server_call_tool_unknown_tool():
         import json
 
         result = asyncio.run(run_unknown())
-        from mcp.types import TextContent
 
         assert result is not None
         contents = result.root.content if hasattr(result, "root") else []

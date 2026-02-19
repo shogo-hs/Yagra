@@ -409,7 +409,7 @@ class TestLLMHandlerValidationErrors:
     """パラメータバリデーションエラーのテスト（patch コンテキストで動作確認）."""
 
     def test_handler_prompt_not_dict_raises_config_error(self, mock_litellm_import: None) -> None:
-        """prompt が dict でない場合に LLMHandlerConfigError が発生すること."""
+        """Prompt が dict でない場合に LLMHandlerConfigError が発生すること."""
         with patch("yagra.handlers.llm_handler.litellm") as _mock_litellm:
             handler = create_llm_handler(retry=1, timeout=10)
 
@@ -423,7 +423,7 @@ class TestLLMHandlerValidationErrors:
                 handler(state, params)
 
     def test_handler_model_not_dict_raises_config_error(self, mock_litellm_import: None) -> None:
-        """model が dict でない場合に LLMHandlerConfigError が発生すること."""
+        """Model が dict でない場合に LLMHandlerConfigError が発生すること."""
         with patch("yagra.handlers.llm_handler.litellm") as _mock_litellm:
             handler = create_llm_handler(retry=1, timeout=10)
 
@@ -439,7 +439,7 @@ class TestLLMHandlerValidationErrors:
     def test_handler_model_missing_provider_raises_config_error(
         self, mock_litellm_import: None
     ) -> None:
-        """model に provider が欠損している場合に LLMHandlerConfigError が発生すること."""
+        """Model に provider が欠損している場合に LLMHandlerConfigError が発生すること."""
         with patch("yagra.handlers.llm_handler.litellm") as _mock_litellm:
             handler = create_llm_handler(retry=1, timeout=10)
 
@@ -458,7 +458,7 @@ class TestLLMHandlerValidationErrors:
     def test_handler_model_missing_name_raises_config_error(
         self, mock_litellm_import: None
     ) -> None:
-        """model に name が欠損している場合に LLMHandlerConfigError が発生すること."""
+        """Model に name が欠損している場合に LLMHandlerConfigError が発生すること."""
         with patch("yagra.handlers.llm_handler.litellm") as _mock_litellm:
             handler = create_llm_handler(retry=1, timeout=10)
 
@@ -477,8 +477,9 @@ class TestLLMHandlerValidationErrors:
     def test_handler_prompt_interpolation_key_error_raises_config_error(
         self, mock_litellm_import: None
     ) -> None:
-        """input_keys に存在するキーが user テンプレートに含まれない変数を参照する場合に
-        LLMHandlerConfigError が発生すること.
+        """Input_keys に存在するキーが user テンプレートに含まれない変数を参照する場合に LLMHandlerConfigError が発生すること.
+
+        詳細:
 
         input_keys=["a"] で user="{b}" のとき、
         input_values = {"a": state.get("a", "")} となり、
