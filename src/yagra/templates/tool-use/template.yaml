@@ -1,0 +1,3 @@
+name: tool-use
+use_case: ツール呼び出し
+description: LLM がツール使用要否を判断し、外部ツールを経由して回答するパターン

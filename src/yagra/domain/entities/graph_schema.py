@@ -109,3 +109,13 @@ class GraphSpec(BaseModel):
         description="ワークフローレベルのグローバルパラメータ。現在は使用されていないが将来の拡張のために予約されている",
         examples=[{}],
     )
+    interrupt_before: list[str] = Field(
+        default_factory=list,
+        description="指定したノードの実行前に処理を中断するノード ID リスト。HITL（Human-in-the-Loop）で人間のレビュー・承認を挟むために使用する。`Yagra.resume()` で再開できる",
+        examples=[["review_node"], []],
+    )
+    interrupt_after: list[str] = Field(
+        default_factory=list,
+        description="指定したノードの実行後に処理を中断するノード ID リスト。HITL（Human-in-the-Loop）で人間が出力を確認・修正するために使用する。`Yagra.resume()` で再開できる",
+        examples=[["generate_node"], []],
+    )

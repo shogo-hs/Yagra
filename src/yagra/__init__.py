@@ -10,6 +10,8 @@ from os import PathLike
 from pathlib import Path
 from typing import Any
 
+from langchain_core.runnables.config import RunnableConfig
+from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph.state import CompiledStateGraph
 
 from yagra.adapters.inbound import create_workflow_studio_server
@@ -19,6 +21,7 @@ from yagra.application.services.template_initializer import (
     TemplateNotFoundError,
     initialize_from_template,
     list_templates,
+    list_templates_with_info,
 )
 from yagra.application.use_cases import (
     WorkflowValidationIssue,
@@ -51,14 +54,20 @@ class Yagra:
         registry: NodeRegistryPort | Mapping[str, NodeHandler],
         bundle_root: str | PathLike[str] | None = None,
         state_schema: Any = dict,
+        checkpointer: BaseCheckpointSaver | None = None,
     ) -> Yagra:
         """Creates a `Yagra` instance from a workflow file.
+
+        `interrupt_before` / `interrupt_after` が workflow YAML に定義されている場合、
+        HITL（Human-in-the-Loop）機能を有効にするために `checkpointer` を指定する必要がある。
+        `checkpointer` が None の場合は interrupt 設定が無視される。
 
         Args:
             workflow_path: Path to the entry `workflow.yaml`.
             registry: Registry implementation resolving handler names to callables, or handler mapping.
             bundle_root: Base directory for resolving split references. Defaults to workflow parent directory if not specified.
             state_schema: LangGraph state schema. Defaults to `dict`.
+            checkpointer: LangGraph checkpointer。`interrupt_before` / `interrupt_after` を使用する場合は必須。
 
         Returns:
             `Yagra` instance containing the compiled graph.
@@ -69,6 +78,7 @@ class Yagra:
             registry=normalized_registry,
             bundle_root=bundle_root,
             state_schema=state_schema,
+            checkpointer=checkpointer,
         )
         return cls(compiled)
 
@@ -77,19 +87,64 @@ class Yagra:
         """Returns the held compiled graph."""
         return self._compiled_graph
 
-    def invoke(self, state: Mapping[str, Any]) -> dict[str, Any]:
+    def invoke(
+        self,
+        state: Mapping[str, Any],
+        thread_id: str | None = None,
+    ) -> dict[str, Any]:
         """Executes the graph with an initial state.
+
+        HITL（Human-in-the-Loop）を使用する場合は `thread_id` を指定する。
+        `interrupt_before` / `interrupt_after` で中断された場合、戻り値は中断直前の状態となる。
+        再開するには `resume()` を呼び出す。
 
         Args:
             state: State dictionary at execution start.
+            thread_id: チェックポイント管理に使用するスレッド ID。
+                HITL を使用する場合は一意な文字列を指定する。
+                None の場合は checkpointer が設定されていても状態保存は行われない。
 
         Returns:
-            State dictionary after execution.
+            State dictionary after execution (or at interruption point).
 
         Raises:
             TypeError: If the graph execution result is not dict-compatible.
         """
-        result = self._compiled_graph.invoke(dict(state))
+        config: RunnableConfig = (
+            {"configurable": {"thread_id": thread_id}} if thread_id is not None else {}
+        )
+        result = self._compiled_graph.invoke(dict(state), config=config)
+        if not isinstance(result, Mapping):
+            raise TypeError("compiled graph returned non-mapping result")
+        return dict(result)
+
+    def resume(
+        self,
+        update: Mapping[str, Any] | None = None,
+        thread_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Resumes a graph that was interrupted.
+
+        `invoke()` で中断されたワークフローを再開する。
+        `update` で状態を修正してから再開できる（例: 人間のレビュー結果を注入）。
+
+        Args:
+            update: 再開前に状態へマージする更新辞書。None の場合は状態を変更せずに再開する。
+            thread_id: `invoke()` 時に指定したスレッド ID。
+
+        Returns:
+            State dictionary after resuming execution.
+
+        Raises:
+            TypeError: If the graph execution result is not dict-compatible.
+            ValueError: If thread_id is not provided when checkpointer requires it.
+        """
+        config: RunnableConfig = (
+            {"configurable": {"thread_id": thread_id}} if thread_id is not None else {}
+        )
+        if update is not None:
+            self._compiled_graph.update_state(config, dict(update))
+        result = self._compiled_graph.invoke(None, config=config)
         if not isinstance(result, Mapping):
             raise TypeError("compiled graph returned non-mapping result")
         return dict(result)
@@ -157,13 +212,20 @@ def _run_init_command(args: argparse.Namespace) -> int:
     """
     # テンプレート一覧表示
     if args.list:
-        templates = list_templates()
-        if not templates:
+        names = list_templates()
+        if not names:
             print("利用可能なテンプレートがありません。")
             return 1
+        infos = {info.name: info for info in list_templates_with_info()}
         print("利用可能なテンプレート:")
-        for template in templates:
-            print(f"  - {template}")
+        for name in names:
+            info = infos.get(name)
+            if info and info.use_case:
+                print(f"  - {name}  [{info.use_case}]")
+            else:
+                print(f"  - {name}")
+            if info and info.description:
+                print(f"      {info.description}")
         return 0
 
     # テンプレート名が指定されていない場合はエラー

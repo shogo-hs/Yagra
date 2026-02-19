@@ -1190,6 +1190,40 @@ def _studio_html() -> str:
                 </label>
               </div>
             </div>
+            <div class="field">
+              <label>interrupt_before</label>
+              <div v-if="nodeIdOptions.length === 0" class="hint">
+                Add nodes first.
+              </div>
+              <div v-else class="check-list">
+                <label v-for="nodeId in nodeIdOptions" :key="'ib-' + nodeId" class="check-item">
+                  <input
+                    type="checkbox"
+                    :value="nodeId"
+                    v-model="workflowMeta.interruptBefore"
+                    @change="onWorkflowMetaChange"
+                  />
+                  <span>{{ nodeId }}</span>
+                </label>
+              </div>
+            </div>
+            <div class="field">
+              <label>interrupt_after</label>
+              <div v-if="nodeIdOptions.length === 0" class="hint">
+                Add nodes first.
+              </div>
+              <div v-else class="check-list">
+                <label v-for="nodeId in nodeIdOptions" :key="'ia-' + nodeId" class="check-item">
+                  <input
+                    type="checkbox"
+                    :value="nodeId"
+                    v-model="workflowMeta.interruptAfter"
+                    @change="onWorkflowMetaChange"
+                  />
+                  <span>{{ nodeId }}</span>
+                </label>
+              </div>
+            </div>
             <div class="hint"><code>start_at</code> and <code>end_at</code> are applied to the workflow on save.</div>
           </section>
 
@@ -2210,6 +2244,8 @@ def _studio_html() -> str:
           version: "1.0",
           startAt: "",
           endAt: [],
+          interruptBefore: [],
+          interruptAfter: [],
         });
 
         const selectedNodeId = ref(null);
@@ -2702,6 +2738,8 @@ def _studio_html() -> str:
           workflowMeta.version = "1.0";
           workflowMeta.startAt = "";
           workflowMeta.endAt = [];
+          workflowMeta.interruptBefore = [];
+          workflowMeta.interruptAfter = [];
           nodeEditor.id = "";
           nodeEditor.handler = "";
           nodeEditor.promptFilePath = "";
@@ -2760,7 +2798,27 @@ def _studio_html() -> str:
             endAt.push(startAt);
           }
 
-          return { version, startAt, endAt };
+          const interruptBefore = [];
+          const ibSeen = new Set();
+          for (const rawNodeId of normalizeNodeIdList(metaLike?.interruptBefore)) {
+            if (!nodeIdSet.has(rawNodeId) || ibSeen.has(rawNodeId)) {
+              continue;
+            }
+            ibSeen.add(rawNodeId);
+            interruptBefore.push(rawNodeId);
+          }
+
+          const interruptAfter = [];
+          const iaSeen = new Set();
+          for (const rawNodeId of normalizeNodeIdList(metaLike?.interruptAfter)) {
+            if (!nodeIdSet.has(rawNodeId) || iaSeen.has(rawNodeId)) {
+              continue;
+            }
+            iaSeen.add(rawNodeId);
+            interruptAfter.push(rawNodeId);
+          }
+
+          return { version, startAt, endAt, interruptBefore, interruptAfter };
         }
 
         function syncWorkflowMetaWithNodes(nodeItems = nodes.value) {
@@ -2768,6 +2826,8 @@ def _studio_html() -> str:
           workflowMeta.version = normalized.version;
           workflowMeta.startAt = normalized.startAt;
           workflowMeta.endAt = normalized.endAt;
+          workflowMeta.interruptBefore = normalized.interruptBefore;
+          workflowMeta.interruptAfter = normalized.interruptAfter;
         }
 
         function syncNodeRoleFlags() {
@@ -3083,6 +3143,18 @@ def _studio_html() -> str:
           payload.version = normalizedMeta.version;
           payload.start_at = normalizedMeta.startAt;
           payload.end_at = normalizedMeta.endAt;
+          const interruptBefore = normalizeNodeIdList(workflowMeta.interruptBefore);
+          if (interruptBefore.length > 0) {
+            payload.interrupt_before = interruptBefore;
+          } else {
+            delete payload.interrupt_before;
+          }
+          const interruptAfter = normalizeNodeIdList(workflowMeta.interruptAfter);
+          if (interruptAfter.length > 0) {
+            payload.interrupt_after = interruptAfter;
+          } else {
+            delete payload.interrupt_after;
+          }
           payload.nodes = workflowNodes;
           payload.edges = workflowEdges;
           if (Object.keys(rootParams).length > 0) {
@@ -3305,6 +3377,12 @@ def _studio_html() -> str:
                 workflowMeta.startAt = nextNodeId;
               }
               workflowMeta.endAt = normalizeNodeIdList(workflowMeta.endAt).map(nodeId =>
+                nodeId === currentNodeId ? nextNodeId : nodeId,
+              );
+              workflowMeta.interruptBefore = normalizeNodeIdList(workflowMeta.interruptBefore).map(nodeId =>
+                nodeId === currentNodeId ? nextNodeId : nodeId,
+              );
+              workflowMeta.interruptAfter = normalizeNodeIdList(workflowMeta.interruptAfter).map(nodeId =>
                 nodeId === currentNodeId ? nextNodeId : nodeId,
               );
               selectedNodeId.value = nextNodeId;
@@ -3895,6 +3973,8 @@ def _studio_html() -> str:
             workflowMeta.version = normalizeText(data.workflow?.version) || "1.0";
             workflowMeta.startAt = resolveWorkflowStartAt(data.workflow?.start_at);
             workflowMeta.endAt = normalizeNodeIdList(data.workflow?.end_at);
+            workflowMeta.interruptBefore = normalizeNodeIdList(data.workflow?.interrupt_before);
+            workflowMeta.interruptAfter = normalizeNodeIdList(data.workflow?.interrupt_after);
             onWorkflowMetaChange();
             edges.value = buildEdgesFromPayload(data.workflow, data.ui_state, data.edges, nodes.value);
             refreshEdgeMetadata();

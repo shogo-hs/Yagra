@@ -223,8 +223,9 @@ __marimo__/
 .DS_Store
 .worktrees/
 .yagra
-workflows/
-prompts/
+# yagra init で生成されるワークフロー・プロンプトファイル（ルート直下のみ除外）
+/workflows/
+/prompts/
 .claude/
 .serena/
 .playwright-mcp/

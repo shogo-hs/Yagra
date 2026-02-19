@@ -86,6 +86,36 @@ def collect_graph_structure_issues(spec: GraphSpec) -> list[GraphStructureIssue]
                 )
             )
 
+    for index, node_id in enumerate(spec.interrupt_before):
+        if node_id not in node_id_set:
+            candidates = _fuzzy_candidates(node_id, node_id_set)
+            issues.append(
+                GraphStructureIssue(
+                    message=f"interrupt_before が未定義ノードを参照しています: {node_id}",
+                    location=("interrupt_before", index),
+                    context={
+                        "actual_value": node_id,
+                        "available_values": sorted(node_id_set),
+                        "suggestion": candidates[0] if candidates else None,
+                    },
+                )
+            )
+
+    for index, node_id in enumerate(spec.interrupt_after):
+        if node_id not in node_id_set:
+            candidates = _fuzzy_candidates(node_id, node_id_set)
+            issues.append(
+                GraphStructureIssue(
+                    message=f"interrupt_after が未定義ノードを参照しています: {node_id}",
+                    location=("interrupt_after", index),
+                    context={
+                        "actual_value": node_id,
+                        "available_values": sorted(node_id_set),
+                        "suggestion": candidates[0] if candidates else None,
+                    },
+                )
+            )
+
     for index, edge in enumerate(spec.edges):
         if edge.source not in node_id_set:
             candidates = _fuzzy_candidates(edge.source, node_id_set)
