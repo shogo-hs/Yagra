@@ -25,8 +25,11 @@ Built with **AI-Native principles**: JSON Schema export and validation CLI enabl
 - **Declarative Workflow Management**: Define nodes, edges, and conditional branching in YAML
 - **Implementation-Configuration Separation**: Connect YAML `handler` strings to Python callables via Registry
 - **Schema Validation**: Catch configuration errors early with Pydantic-based validation
+- **Custom State Schema**: Pass any `TypedDict` (including `MessagesState`) via `state_schema` — full LangGraph reducer support
+- **Advanced Patterns**: Fan-out/fan-in (parallel map-reduce via Send API) and subgraph nesting for composable workflows
 - **Visual Workflow Editor**: Launch Studio WebUI for visual editing, drag-and-drop node/edge management, and diff preview
-- **Template Library**: Quick-start templates for common patterns (branching, loops, RAG)
+- **Template Library**: Quick-start templates for common patterns (branching, loops, RAG, parallel, subgraph, and more)
+- **MCP Server**: Expose Yagra tools to AI agents via [Model Context Protocol](https://modelcontextprotocol.io/) (`yagra[mcp]`)
 - **AI-Ready**: JSON Schema export (`yagra schema`) and structured validation for coding agents
 
 ## 📦 Installation
@@ -34,9 +37,14 @@ Built with **AI-Native principles**: JSON Schema export and validation CLI enabl
 - Python 3.12+
 
 ```bash
-pip install yagra
+# Recommended (uv)
+uv add yagra
 
 # With LLM handler utilities (optional)
+uv add 'yagra[llm]'
+
+# Or with pip
+pip install yagra
 pip install 'yagra[llm]'
 ```
 
@@ -178,8 +186,11 @@ yagra validate --workflow my-workflow/workflow.yaml
 
 Available templates:
 - **branch**: Conditional branching pattern
+- **chat**: Single-node chat with `MessagesState` and `add_messages` reducer
 - **loop**: Planner → Evaluator loop pattern
+- **parallel**: Fan-out/fan-in map-reduce pattern via Send API
 - **rag**: Retrieve → Rerank → Generate RAG pattern
+- **subgraph**: Nested subgraph pattern for composable multi-workflow architectures
 - **tool-use**: LLM decides whether to invoke external tools and executes them to answer
 - **multi-agent**: Orchestrator, researcher, and writer agents collaborate in a multi-agent pattern
 - **human-review**: Human-in-the-loop pattern that pauses for review and approval via `interrupt_before`
@@ -380,6 +391,7 @@ Open `http://127.0.0.1:8787/` in your browser.
   - `structured_llm` → Schema Settings section (edit `schema_yaml` as YAML)
   - `streaming_llm` → Streaming Settings section (`stream: false` toggle)
   - `custom` → LLM-specific sections hidden automatically
+- **State Schema Editor**: Define workflow-level `state_schema` fields visually via a table editor (name, type, reducer columns) — no YAML hand-editing required
 - **Visual Editing**: Edit prompts, models, and conditions via forms
 - **Drag & Drop**: Add nodes, connect edges, adjust layout visually
 - **Diff Preview**: Review changes before saving

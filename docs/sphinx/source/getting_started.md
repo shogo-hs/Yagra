@@ -15,10 +15,10 @@ This guide will help you install Yagra and build your first workflow.
 pip install yagra
 ```
 
-Or with `uv`:
+Or with `uv` (recommended):
 
 ```bash
-uv pip install yagra
+uv add yagra
 ```
 
 ### Install with LLM Support
@@ -71,10 +71,13 @@ Output:
 ```
 Available templates:
   - branch
+  - chat
   - human-review
   - loop
   - multi-agent
+  - parallel
   - rag
+  - subgraph
   - tool-use
 ```
 
@@ -288,7 +291,7 @@ prompt_ref: "../prompts/missing.yaml#faq"
 Yagra provides built-in handler utilities for common LLM patterns. Install the `llm` extra first:
 
 ```bash
-pip install 'yagra[llm]'
+uv add 'yagra[llm]'
 ```
 
 Then register a handler in your Python code:
@@ -298,8 +301,8 @@ from yagra import Yagra
 from yagra.handlers import create_llm_handler
 
 registry = {"llm": create_llm_handler()}
-yagra = Yagra.from_workflow("workflow.yaml", registry)
-result = yagra.invoke({"query": "Hello!"})
+app = Yagra.from_workflow("workflow.yaml", registry)
+result = app.invoke({"query": "Hello!"})
 print(result["response"])
 ```
 
