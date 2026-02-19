@@ -1224,7 +1224,65 @@ def _studio_html() -> str:
                 </label>
               </div>
             </div>
-            <div class="hint"><code>start_at</code> and <code>end_at</code> are applied to the workflow on save.</div>
+            <div class="field">
+              <label>state_schema</label>
+              <div class="hint">Define typed state fields. <code>type</code>: str / int / float / bool / list / dict / messages. <code>reducer</code>: add (optional, for list fan-in).</div>
+              <table class="state-schema-table" style="width:100%; border-collapse:collapse; font-size:0.85em; margin-top:4px;">
+                <thead>
+                  <tr>
+                    <th style="text-align:left; padding:2px 4px;">field name</th>
+                    <th style="text-align:left; padding:2px 4px;">type</th>
+                    <th style="text-align:left; padding:2px 4px;">reducer</th>
+                    <th style="padding:2px 4px;"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(row, idx) in workflowMeta.stateSchema" :key="'ss-' + idx">
+                    <td style="padding:2px 4px;">
+                      <input
+                        v-model.trim="row.name"
+                        type="text"
+                        placeholder="field_name"
+                        style="width:100%; box-sizing:border-box;"
+                        @input="onWorkflowMetaChange"
+                      />
+                    </td>
+                    <td style="padding:2px 4px;">
+                      <select v-model="row.type" style="width:100%;" @change="onWorkflowMetaChange">
+                        <option value="str">str</option>
+                        <option value="int">int</option>
+                        <option value="float">float</option>
+                        <option value="bool">bool</option>
+                        <option value="list">list</option>
+                        <option value="dict">dict</option>
+                        <option value="messages">messages</option>
+                      </select>
+                    </td>
+                    <td style="padding:2px 4px;">
+                      <select v-model="row.reducer" style="width:100%;" @change="onWorkflowMetaChange">
+                        <option value="">(none)</option>
+                        <option value="add">add</option>
+                      </select>
+                    </td>
+                    <td style="padding:2px 4px;">
+                      <button
+                        type="button"
+                        class="btn-small"
+                        @click="workflowMeta.stateSchema.splice(idx, 1); onWorkflowMetaChange();"
+                        title="Remove"
+                      >✕</button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <button
+                type="button"
+                class="btn-secondary"
+                style="margin-top:6px; width:100%;"
+                @click="workflowMeta.stateSchema.push({ name: '', type: 'str', reducer: '' }); onWorkflowMetaChange();"
+              >+ Add Field</button>
+            </div>
+            <div class="hint"><code>start_at</code>, <code>end_at</code>, and <code>state_schema</code> are applied to the workflow on save.</div>
           </section>
 
           <section class="side-section">
@@ -2246,6 +2304,7 @@ def _studio_html() -> str:
           endAt: [],
           interruptBefore: [],
           interruptAfter: [],
+          stateSchema: [],
         });
 
         const selectedNodeId = ref(null);
@@ -2821,6 +2880,47 @@ def _studio_html() -> str:
           return { version, startAt, endAt, interruptBefore, interruptAfter };
         }
 
+        function normalizeStateSchema(value) {
+          if (!Array.isArray(value)) return [];
+          const rows = [];
+          for (const item of value) {
+            if (!isRecord(item)) continue;
+            const name = normalizeText(item.name);
+            const type = normalizeText(item.type);
+            const reducer = normalizeText(item.reducer);
+            if (!name || !type) continue;
+            rows.push({ name, type, reducer });
+          }
+          return rows;
+        }
+
+        function stateSchemaToPayload(rows) {
+          const schema = {};
+          for (const row of rows) {
+            const name = normalizeText(row.name);
+            const type = normalizeText(row.type);
+            const reducer = normalizeText(row.reducer);
+            if (!name || !type) continue;
+            const entry = { type };
+            if (reducer) entry.reducer = reducer;
+            schema[name] = entry;
+          }
+          return schema;
+        }
+
+        function stateSchemaFromPayload(payload) {
+          if (!isRecord(payload)) return [];
+          const rows = [];
+          for (const [name, value] of Object.entries(payload)) {
+            if (!isRecord(value)) continue;
+            const type = normalizeText(value.type);
+            const reducer = normalizeText(value.reducer);
+            if (!type) continue;
+            rows.push({ name, type, reducer: reducer || "" });
+          }
+          return rows;
+        }
+
         function syncWorkflowMetaWithNodes(nodeItems = nodes.value) {
           const normalized = normalizeWorkflowMeta(workflowMeta, nodeItems);
           workflowMeta.version = normalized.version;
@@ -3154,6 +3254,12 @@ def _studio_html() -> str:
             payload.interrupt_after = interruptAfter;
           } else {
             delete payload.interrupt_after;
+          }
+          const stateSchemaPayload = stateSchemaToPayload(normalizeStateSchema(workflowMeta.stateSchema));
+          if (Object.keys(stateSchemaPayload).length > 0) {
+            payload.state_schema = stateSchemaPayload;
+          } else {
+            delete payload.state_schema;
           }
           payload.nodes = workflowNodes;
           payload.edges = workflowEdges;
@@ -3975,6 +4081,7 @@ def _studio_html() -> str:
             workflowMeta.endAt = normalizeNodeIdList(data.workflow?.end_at);
             workflowMeta.interruptBefore = normalizeNodeIdList(data.workflow?.interrupt_before);
             workflowMeta.interruptAfter = normalizeNodeIdList(data.workflow?.interrupt_after);
+            workflowMeta.stateSchema = stateSchemaFromPayload(data.workflow?.state_schema);
             onWorkflowMetaChange();
             edges.value = buildEdgesFromPayload(data.workflow, data.ui_state, data.edges, nodes.value);
             refreshEdgeMetadata();

@@ -4,6 +4,8 @@
 
 ## [Unreleased]
 
+## [0.6.3] - 2026-02-19
+
 ### Added
 - ✨ **State Reducer / MessagesState サポート**: `state_schema` フィールドに `reducer: add` および `type: messages` を追加
   - `state_schema` の各フィールドに `reducer: "add"` を指定すると `Annotated[list, operator.add]` 型として解決され、並列ノードの出力を自動集約（fan-in）できる
@@ -18,7 +20,15 @@
   - 親グラフと registry・checkpointer を共有
   - 新テンプレート `subgraph` 追加（main_step → sub_agent → finalize パターン）
 - ✨ **edge_rule_validator の fan_out 対応**: `fan_out` エッジを独立したカテゴリとして扱い、通常/conditional エッジとの混在を YAML 検証時点で正しく検出
-- 📝 **ドキュメント更新**: `workflow_yaml.md` に `state_schema`・`fan_out`・subgraph ノードの説明を追加。`templates.md` に `parallel`, `subgraph`, `chat` テンプレートを追加
+- ✨ **Studio の `state_schema` エディタ**: Yagra Studio の Workflow Settings パネルに `state_schema` テーブルエディタを追加
+  - フィールド名・型・reducer をテーブル形式で編集可能
+  - `+ Add Field` / `✕` ボタンで行追加・削除
+  - 保存時に YAML の `state_schema` セクションへ自動変換。ロード時に既存 YAML から復元
+  - `fan_out` エッジ・subgraph ノードは引き続き YAML 直接編集が必要（Studio 非対応）
+- 📝 **ドキュメント更新**:
+  - `workflow_yaml.md` に `state_schema`・`fan_out`・subgraph ノードの説明を追加
+  - `templates.md` に `parallel`, `subgraph`, `chat` テンプレートを追加
+  - `cli_reference.md` の Studio セクションに Workflow Settings パネルと `state_schema` 設定手順を追加
 
 ## [0.6.2] - 2026-02-19
 

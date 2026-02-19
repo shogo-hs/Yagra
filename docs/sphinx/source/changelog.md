@@ -8,6 +8,32 @@ For the canonical changelog (Japanese), see [CHANGELOG.md](https://github.com/sh
 
 ## [Unreleased]
 
+## [0.6.3] - 2026-02-19
+
+### Added
+- ✨ **State Reducer / MessagesState support**: Added `reducer: add` and `type: messages` to `state_schema` fields
+  - `reducer: "add"` resolves to `Annotated[list, operator.add]`, enabling fan-in aggregation from parallel nodes
+  - `type: messages` activates LangGraph's `add_messages` reducer for append-mode chat history
+  - New `chat` template (simple chatbot using MessagesState)
+- ✨ **Send API / Parallel Fan-Out support**: Map-reduce patterns via `fan_out` edges in YAML
+  - `fan_out: {items_key, item_key}` dispatches items in parallel via LangGraph's Send API
+  - `fan_out` and `condition` are mutually exclusive (Pydantic validation enforced)
+  - New `parallel` template (prepare → parallel process → aggregate map-reduce pattern)
+- ✨ **SubGraph support**: Nest another workflow YAML as a subgraph via `handler: "subgraph"` nodes
+  - `params.workflow_ref` (relative path) triggers recursive build inside `build_state_graph`
+  - Shares the parent's registry and checkpointer
+  - New `subgraph` template (main_step → sub_agent → finalize pattern)
+- ✨ **edge_rule_validator fan_out support**: `fan_out` edges are treated as an independent category; mixing with regular/conditional edges is now correctly caught at YAML validation time
+- ✨ **Studio `state_schema` editor**: Added a `state_schema` table editor to the Workflow Settings panel in Yagra Studio
+  - Edit field name, type, and reducer in a table UI
+  - `+ Add Field` / `✕` buttons for adding and removing rows
+  - Auto-converts to YAML `state_schema` on save; restores from existing YAML on load
+  - `fan_out` edges and `subgraph` nodes still require direct YAML editing (not supported in Studio)
+- 📝 **Documentation updates**:
+  - `workflow_yaml.md`: Added `state_schema`, `fan_out`, and subgraph node documentation
+  - `templates.md`: Added `parallel`, `subgraph`, and `chat` template documentation
+  - `cli_reference.md`: Added Workflow Settings panel and `state_schema` setup instructions to the Studio section
+
 ## [0.6.2] - 2026-02-19
 
 ### Changed

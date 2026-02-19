@@ -325,6 +325,55 @@ yagra studio --workspace-root /path/to/project --port 8787
 - **Drag & Drop**: Add nodes, connect edges, adjust layout
 - **Re-wiring**: Drag edge endpoints to change connections
 
+#### Workflow Settings (Right Panel)
+
+The **Workflow Settings** panel on the right side of the canvas controls global workflow configuration:
+
+| Field | Description |
+|-------|-------------|
+| `version` | Workflow schema version (default: `1.0`) |
+| `start_at` | Entry node selected from a dropdown |
+| `end_at` | Exit nodes selected via checkboxes |
+| `interrupt_before` | Nodes to pause before (HITL) selected via checkboxes |
+| `interrupt_after` | Nodes to pause after (HITL) selected via checkboxes |
+| `state_schema` | Typed state field definitions (table editor) |
+
+##### Setting Up `state_schema` in Studio
+
+The `state_schema` section lets you define typed fields for the workflow state directly in the UI:
+
+1. In the **Workflow Settings** panel, scroll to the **state_schema** section
+2. Click **+ Add Field** to add a new row
+3. Fill in each column:
+   - **field name**: The key used in `state` (e.g., `messages`, `results`, `query`)
+   - **type**: One of `str`, `int`, `float`, `bool`, `list`, `dict`, `messages`
+   - **reducer**: Leave empty for default overwrite behavior, or select `add` for fan-in merging of list fields
+4. Click **✕** on a row to remove it
+5. Click **Preview Diff** to review the generated YAML, then **Save**
+
+**Example configurations**:
+
+| Use Case | field name | type | reducer |
+|----------|-----------|------|---------|
+| Chat history | `messages` | `messages` | (none) |
+| Parallel fan-in | `results` | `list` | `add` |
+| Query string | `query` | `str` | (none) |
+
+The generated YAML will look like:
+
+```yaml
+state_schema:
+  messages:
+    type: messages
+  results:
+    type: list
+    reducer: add
+  query:
+    type: str
+```
+
+> **Note**: `fan_out` edges and `subgraph` nodes require YAML direct editing — the Studio currently supports `state_schema` only as a table editor.
+
 #### Diff Preview
 - View exact YAML diff before saving
 - Validation results inline with diff
