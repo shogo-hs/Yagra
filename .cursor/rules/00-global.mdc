@@ -43,7 +43,7 @@ alwaysApply: true
 - Python 3.12+ を前提にする。
 - 型ヒントを必須にし、`mypy` で検証する。
 - `ruff` で format/lint を統一する。
-- docstring は Google style を採用し、処理意図が伝わる説明を日本語で記述する。
+- docstring は Google style を採用し、処理意図が伝わる説明を英語で記述する。
 - docstring は短文 1 行だけで終わらせず、少なくとも概要と入出力が分かる情報を含める。
 - 引数がある関数・メソッドは `Args`、戻り値がある場合は `Returns`、送出しうる例外がある場合は `Raises` を記載する。
 - docstring の説明内容は型ヒントおよび実装挙動と矛盾させない。
