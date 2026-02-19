@@ -1,0 +1,23 @@
+version: "1.0"
+start_at: generator
+end_at:
+  - publisher
+
+# HITL: publisher ノード実行前に中断し、人間のレビュー・承認を待つ
+interrupt_before:
+  - publisher
+
+nodes:
+  - id: generator
+    handler: generator_handler
+    params:
+      prompt_ref: prompts/human_review_prompts.yaml#generator
+
+  - id: publisher
+    handler: publisher_handler
+    params:
+      prompt_ref: prompts/human_review_prompts.yaml#publisher
+
+edges:
+  - source: generator
+    target: publisher

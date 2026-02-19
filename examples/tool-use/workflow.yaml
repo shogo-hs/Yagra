@@ -1,0 +1,50 @@
+version: "1.0"
+
+# tool-use サンプル: planner -[use_tool]→ tool_executor → synthesizer → finish
+#                            -[direct]→   synthesizer → finish
+start_at: "planner"
+end_at:
+  - "finish"
+
+nodes:
+  - id: "planner"
+    handler: "planner_handler"
+    params:
+      prompt_ref: "prompts.yaml#planner"
+      model:
+        provider: "openai"
+        name: "gpt-4o-mini"
+        kwargs:
+          temperature: 0.1
+      output_key: "tool_plan"
+
+  - id: "tool_executor"
+    handler: "tool_executor_handler"
+    params:
+      output_key: "tool_result"
+
+  - id: "synthesizer"
+    handler: "llm"
+    params:
+      prompt_ref: "prompts.yaml#synthesizer"
+      model:
+        provider: "openai"
+        name: "gpt-4o-mini"
+        kwargs:
+          temperature: 0.5
+      output_key: "final_answer"
+
+  - id: "finish"
+    handler: "finish_handler"
+
+edges:
+  - source: "planner"
+    target: "tool_executor"
+    condition: "use_tool"
+  - source: "planner"
+    target: "synthesizer"
+    condition: "direct"
+  - source: "tool_executor"
+    target: "synthesizer"
+  - source: "synthesizer"
+    target: "finish"

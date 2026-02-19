@@ -1,0 +1,3 @@
+name: rag
+use_case: RAG（検索拡張生成）
+description: ドキュメント検索・リランキング・生成の3段階 RAG パターン

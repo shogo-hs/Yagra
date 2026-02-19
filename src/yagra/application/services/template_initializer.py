@@ -3,11 +3,29 @@
 from __future__ import annotations
 
 import shutil
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import yaml
+
 if TYPE_CHECKING:
     from collections.abc import Sequence
+
+
+@dataclass(frozen=True)
+class TemplateInfo:
+    """テンプレートのメタ情報。
+
+    Attributes:
+        name: テンプレート名（ディレクトリ名）。
+        description: ユースケース説明（template.yaml から読み込み）。
+        use_case: 対象ユースケース（template.yaml から読み込み）。
+    """
+
+    name: str
+    description: str
+    use_case: str
 
 
 class TemplateNotFoundError(ValueError):
@@ -64,6 +82,43 @@ def list_templates() -> list[str]:
     return sorted(templates)
 
 
+def list_templates_with_info() -> list[TemplateInfo]:
+    """Returns a list of available templates with metadata.
+
+    各テンプレートディレクトリ内の `template.yaml` からメタ情報を読み込む。
+    `template.yaml` が存在しない場合はテンプレート名のみを返す。
+
+    Returns:
+        テンプレートのメタ情報リスト。
+    """
+    templates_dir = _get_templates_root()
+    if not templates_dir.exists():
+        return []
+
+    infos: list[TemplateInfo] = []
+    for item in sorted(templates_dir.iterdir()):
+        if not (item.is_dir() and (item / "workflow.yaml").exists()):
+            continue
+
+        meta_path = item / "template.yaml"
+        if meta_path.exists():
+            try:
+                with meta_path.open(encoding="utf-8") as f:
+                    meta = yaml.safe_load(f) or {}
+                description = str(meta.get("description", ""))
+                use_case = str(meta.get("use_case", ""))
+            except (yaml.YAMLError, OSError):
+                description = ""
+                use_case = ""
+        else:
+            description = ""
+            use_case = ""
+
+        infos.append(TemplateInfo(name=item.name, description=description, use_case=use_case))
+
+    return infos
+
+
 def initialize_from_template(
     template_name: str,
     output_dir: Path,
@@ -94,7 +149,7 @@ def initialize_from_template(
         if existing_files:
             raise FileAlreadyExistsError(existing_files)
 
-    # テンプレートファイルをコピー
+    # テンプレートファイルをコピー（template.yaml は除く）
     _copy_template_files(template_dir, output_dir)
 
 
@@ -120,7 +175,7 @@ def _check_existing_files(template_dir: Path, output_dir: Path) -> list[Path]:
     existing_files = []
 
     for item in template_dir.rglob("*"):
-        if item.is_file():
+        if item.is_file() and item.name != "template.yaml":
             relative_path = item.relative_to(template_dir)
             output_path = output_dir / relative_path
             if output_path.exists():
@@ -132,12 +187,14 @@ def _check_existing_files(template_dir: Path, output_dir: Path) -> list[Path]:
 def _copy_template_files(template_dir: Path, output_dir: Path) -> None:
     """Copies template files to the output destination.
 
+    `template.yaml`（メタ情報ファイル）はコピー対象から除外する。
+
     Args:
         template_dir: テンプレートディレクトリ。
         output_dir: 出力先ディレクトリ。
     """
     for item in template_dir.rglob("*"):
-        if item.is_file():
+        if item.is_file() and item.name != "template.yaml":
             relative_path = item.relative_to(template_dir)
             output_path = output_dir / relative_path
             output_path.parent.mkdir(parents=True, exist_ok=True)

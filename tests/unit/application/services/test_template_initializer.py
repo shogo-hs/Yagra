@@ -9,6 +9,7 @@ from yagra.application.services.template_initializer import (
     TemplateNotFoundError,
     initialize_from_template,
     list_templates,
+    list_templates_with_info,
 )
 
 
@@ -18,7 +19,28 @@ def test_list_templates_returns_available_templates() -> None:
     assert "branch" in templates
     assert "loop" in templates
     assert "rag" in templates
-    assert len(templates) >= 3
+    assert "multi-agent" in templates
+    assert "tool-use" in templates
+    assert len(templates) >= 5
+
+
+def test_list_templates_with_info_returns_metadata() -> None:
+    """list_templates_with_info がメタ情報を返すことを確認する。"""
+    infos = list_templates_with_info()
+    names = [info.name for info in infos]
+    assert "branch" in names
+    assert "multi-agent" in names
+    assert "tool-use" in names
+
+    # multi-agent のメタ情報が含まれることを確認
+    multi_agent_info = next(info for info in infos if info.name == "multi-agent")
+    assert multi_agent_info.use_case != ""
+    assert multi_agent_info.description != ""
+
+    # tool-use のメタ情報が含まれることを確認
+    tool_use_info = next(info for info in infos if info.name == "tool-use")
+    assert tool_use_info.use_case != ""
+    assert tool_use_info.description != ""
 
 
 def test_initialize_from_template_creates_files(tmp_path: Path) -> None:
@@ -104,3 +126,51 @@ def test_rag_template_has_correct_structure(tmp_path: Path) -> None:
     assert "retrieve" in workflow_content
     assert "rerank" in workflow_content
     assert "generate" in workflow_content
+
+
+def test_multi_agent_template_has_correct_structure(tmp_path: Path) -> None:
+    """multi-agent テンプレートが正しい構造を持つことを確認する。"""
+    output_dir = tmp_path / "multi-agent-workflow"
+
+    initialize_from_template("multi-agent", output_dir, force=False)
+
+    workflow_file = output_dir / "workflow.yaml"
+    prompts_file = output_dir / "prompts" / "multi_agent_prompts.yaml"
+
+    assert workflow_file.exists()
+    assert prompts_file.exists()
+
+    # template.yaml がコピーされないことを確認
+    assert not (output_dir / "template.yaml").exists()
+
+    # workflow.yaml にマルチエージェントパターンの要素が含まれることを確認
+    workflow_content = workflow_file.read_text()
+    assert "orchestrator" in workflow_content
+    assert "researcher" in workflow_content
+    assert "writer" in workflow_content
+    assert "retry" in workflow_content
+    assert "done" in workflow_content
+
+
+def test_tool_use_template_has_correct_structure(tmp_path: Path) -> None:
+    """tool-use テンプレートが正しい構造を持つことを確認する。"""
+    output_dir = tmp_path / "tool-use-workflow"
+
+    initialize_from_template("tool-use", output_dir, force=False)
+
+    workflow_file = output_dir / "workflow.yaml"
+    prompts_file = output_dir / "prompts" / "tool_use_prompts.yaml"
+
+    assert workflow_file.exists()
+    assert prompts_file.exists()
+
+    # template.yaml がコピーされないことを確認
+    assert not (output_dir / "template.yaml").exists()
+
+    # workflow.yaml にツール使用パターンの要素が含まれることを確認
+    workflow_content = workflow_file.read_text()
+    assert "planner" in workflow_content
+    assert "tool_executor" in workflow_content
+    assert "synthesizer" in workflow_content
+    assert "use_tool" in workflow_content
+    assert "direct" in workflow_content

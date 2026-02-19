@@ -1,0 +1,70 @@
+version: "1.0"
+
+# tool-use テンプレート
+# ユースケース: LLM がツール呼び出しを判断し、外部ツールを実行してから回答するパターン
+#
+# フロー:
+#   planner -[use_tool]→ tool_executor → synthesizer → finish
+#           -[direct]→   synthesizer   → finish
+#
+# 使い方:
+#   1. tool_executor_handler を実装して registry に登録してください
+#      （例: 検索 API 呼び出し、データベースクエリ、計算実行など）
+#   2. prompts/tool_use_prompts.yaml のプロンプトをカスタマイズしてください
+#   3. yagra validate --workflow workflow.yaml で検証してください
+
+start_at: "planner"
+end_at:
+  - "finish"
+
+params:
+  workflow_name: "tool-use-example"
+
+nodes:
+  - id: "planner"
+    handler: "llm"
+    params:
+      prompt_ref: "prompts/tool_use_prompts.yaml#planner"
+      model:
+        provider: "openai"
+        name: "gpt-4o-mini"
+        kwargs:
+          temperature: 0.1
+      output_key: "tool_plan"
+
+  - id: "tool_executor"
+    handler: "tool_executor_handler"
+    params:
+      prompt_ref: "prompts/tool_use_prompts.yaml#tool_executor"
+      model:
+        provider: "openai"
+        name: "gpt-4o-mini"
+        kwargs:
+          temperature: 0.0
+      output_key: "tool_result"
+
+  - id: "synthesizer"
+    handler: "llm"
+    params:
+      prompt_ref: "prompts/tool_use_prompts.yaml#synthesizer"
+      model:
+        provider: "openai"
+        name: "gpt-4o-mini"
+        kwargs:
+          temperature: 0.5
+      output_key: "final_answer"
+
+  - id: "finish"
+    handler: "finish_handler"
+
+edges:
+  - source: "planner"
+    target: "tool_executor"
+    condition: "use_tool"
+  - source: "planner"
+    target: "synthesizer"
+    condition: "direct"
+  - source: "tool_executor"
+    target: "synthesizer"
+  - source: "synthesizer"
+    target: "finish"

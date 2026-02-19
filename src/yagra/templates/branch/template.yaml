@@ -1,0 +1,3 @@
+name: branch
+use_case: 条件分岐
+description: ルーターが状態を判断して複数の処理パスに分岐するパターン

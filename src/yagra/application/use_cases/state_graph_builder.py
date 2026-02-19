@@ -7,6 +7,7 @@ from copy import deepcopy
 from os import PathLike
 from typing import Any, cast
 
+from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph import StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
@@ -24,13 +25,20 @@ def build_state_graph(
     spec: GraphSpec,
     registry: NodeRegistryPort,
     state_schema: Any = dict,
+    checkpointer: BaseCheckpointSaver | None = None,
 ) -> CompiledStateGraph:
     """`GraphSpec` と Registry からコンパイル済み StateGraph を構築する。
+
+    `spec.interrupt_before` / `spec.interrupt_after` が指定されている場合、
+    HITL（Human-in-the-Loop）を有効にするために checkpointer が必要となる。
+    checkpointer が None の場合、interrupt は設定されない。
 
     Args:
         spec: 検証済みの workflow 定義。
         registry: handler 名を callable へ解決するレジストリ。
         state_schema: LangGraph state schema. Defaults to `dict`.
+        checkpointer: LangGraph checkpointer。interrupt を使用する場合は必須。
+            None の場合は interrupt_before/interrupt_after を無視する。
 
     Returns:
         コンパイル済みの `CompiledStateGraph`。
@@ -73,7 +81,15 @@ def build_state_graph(
     for end_node in spec.end_at:
         state_graph.set_finish_point(end_node)
 
-    return state_graph.compile()
+    # interrupt_before / interrupt_after は checkpointer がある場合のみ有効
+    interrupt_before = list(spec.interrupt_before) if checkpointer is not None else []
+    interrupt_after = list(spec.interrupt_after) if checkpointer is not None else []
+
+    return state_graph.compile(
+        checkpointer=checkpointer,
+        interrupt_before=interrupt_before or None,
+        interrupt_after=interrupt_after or None,
+    )
 
 
 def build_from_workflow_path(
@@ -81,6 +97,7 @@ def build_from_workflow_path(
     registry: NodeRegistryPort,
     bundle_root: str | PathLike[str] | None = None,
     state_schema: Any = dict,
+    checkpointer: BaseCheckpointSaver | None = None,
 ) -> CompiledStateGraph:
     """Workflow パスを入口に `CompiledStateGraph` を構築する。
 
@@ -89,12 +106,15 @@ def build_from_workflow_path(
         registry: handler 名を callable へ解決するレジストリ。
         bundle_root: 分割参照時の基準ディレクトリ。未指定時は workflow 親を使う。
         state_schema: LangGraph state schema. Defaults to `dict`.
+        checkpointer: LangGraph checkpointer。interrupt を使用する場合は必須。
 
     Returns:
         コンパイル済みの `CompiledStateGraph`。
     """
     spec = load_graph_spec_from_workflow(workflow_path=workflow_path, bundle_root=bundle_root)
-    return build_state_graph(spec=spec, registry=registry, state_schema=state_schema)
+    return build_state_graph(
+        spec=spec, registry=registry, state_schema=state_schema, checkpointer=checkpointer
+    )
 
 
 def _split_edges(spec: GraphSpec) -> tuple[dict[str, dict[str, str]], dict[str, list[str]]]:
