@@ -225,6 +225,8 @@ __marimo__/
 .yagra
 workflows/
 prompts/
+!src/yagra/templates/**/prompts/
+!src/yagra/templates/**/prompts/**
 .claude/
 .serena/
 .playwright-mcp/
