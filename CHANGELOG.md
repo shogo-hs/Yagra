@@ -4,6 +4,20 @@
 
 ## [Unreleased]
 
+## [0.6.6] - 2026-02-20
+
+### Fixed
+- 🐛 **`explain_workflow`: `prompt_ref` を辿って変数を正しく抽出**: `resolve_workflow_references` 実行後のワークフローで `prompt_ref` が解決済みの `{system, user}` dict に置き換わるため、変数抽出が常に空リストを返していた問題を修正
+  - `_extract_input_variables` の dict ブランチが `content` キーのみ参照していたのを `_extract_vars_from_value` で全フィールド再帰走査に変更
+  - `explain_workflow` の `variable_flow` で `prompt_ref` ノードの `inputs` が正しく表示されるようになった
+
+### Added
+- ✨ **MCP: `validate_workflow` / `explain_workflow` に `base_dir` TIP を追加**: ツール説明に `base_dir` パラメータを渡すべきケースをガイドとして明記し、エージェントが `prompt_ref` の相対パス解決に失敗しにくくなった
+- ✨ **MCP: `list_handlers` にカスタムハンドラーガイドを追加**: `custom_handler_guide` フィールドとして署名規約・ルール・コード例を返すように変更。エージェントが仕様書なしでカスタムハンドラーを実装できる
+- ✨ **バリデーション: 条件分岐 source ノードの LLM 出力ラベルヒント**: `llm` ハンドラーが conditional edge の source になっている場合、出力すべきラベル一覧を `severity: info` の `edge_rule_error` として返すように変更。プロンプトにラベル指示が抜けるミスを防ぎやすくなった
+  - `EdgeRuleIssue` に `severity` フィールド（`Literal["error","warning","info"]`）を追加
+  - `WorkflowValidationIssue` への変換時に `severity` を引き継ぐよう修正
+
 ## [0.6.5] - 2026-02-19
 
 ### Fixed

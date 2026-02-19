@@ -210,6 +210,7 @@ def validate_workflow_payload_for_ui(
                 code="edge_rule_error",
                 message=edge_rule_issue.message,
                 location=edge_rule_issue.location,
+                severity=edge_rule_issue.severity,
             )
         )
 

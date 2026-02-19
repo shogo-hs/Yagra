@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Literal
 
 from yagra.domain.entities import GraphSpec
 
@@ -15,6 +16,7 @@ class EdgeRuleIssue:
 
     message: str
     location: Location
+    severity: Literal["error", "warning", "info"] = "warning"
 
 
 def collect_edge_rule_issues(spec: GraphSpec) -> list[EdgeRuleIssue]:
@@ -75,5 +77,32 @@ def collect_edge_rule_issues(spec: GraphSpec) -> list[EdgeRuleIssue]:
             issues.append(EdgeRuleIssue(message=message, location=("edges", index, "condition")))
         for index in normal_edge_indexes.get(source, []):
             issues.append(EdgeRuleIssue(message=message, location=("edges", index)))
+
+    # Hint: notify which labels the LLM must output for conditional branch source nodes
+    node_index_by_id: dict[str, int] = {node.id: i for i, node in enumerate(spec.nodes)}
+    for node_id, labels_map in conditional_labels_by_source.items():
+        node_index = node_index_by_id.get(node_id)
+        if node_index is None:
+            continue
+        node = spec.nodes[node_index]
+        # Only warn for llm handler (structured_llm is already caught by handler_compatibility_validator)
+        if node.handler != "llm":
+            continue
+        # Only emit hint when prompt is inline dict form; skip prompt_ref (static content not visible)
+        if "prompt" not in node.params or "prompt_ref" in node.params:
+            continue
+        label_list = sorted(labels_map.keys())
+        issues.append(
+            EdgeRuleIssue(
+                message=(
+                    f"node '{node_id}' (handler: 'llm') is a conditional branch source. "
+                    f"The LLM must output exactly one of these labels as plain text with no extra text: "
+                    f"{label_list}. "
+                    f"Make sure your prompt explicitly instructs this."
+                ),
+                location=("nodes", node_index, "handler"),
+                severity="info",
+            )
+        )
 
     return issues

@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import re
+from pathlib import Path
 from typing import Any
 
 from yagra.domain.entities.graph_schema import GraphSpec, NodeSpec
 
 
-def explain_workflow(spec: GraphSpec) -> dict[str, Any]:
+def explain_workflow(spec: GraphSpec, workflow_dir: Path | None = None) -> dict[str, Any]:
     """Statically analyzes a GraphSpec and returns execution information.
 
     Analyzes the workflow without actually executing it, returning the entry point,
@@ -16,6 +17,8 @@ def explain_workflow(spec: GraphSpec) -> dict[str, Any]:
 
     Args:
         spec: GraphSpec to analyze.
+        workflow_dir: Directory of the workflow file, used to resolve relative
+            prompt_ref paths. If None, prompt_ref file reading is skipped.
 
     Returns:
         Dictionary with the following keys:
@@ -32,7 +35,7 @@ def explain_workflow(spec: GraphSpec) -> dict[str, Any]:
         "exit_points": list(spec.end_at),
         "execution_paths": _enumerate_paths(spec),
         "required_handlers": _collect_handlers(spec),
-        "variable_flow": _build_variable_flow(spec, node_map),
+        "variable_flow": _build_variable_flow(spec, node_map, workflow_dir=workflow_dir),
     }
 
 
@@ -97,7 +100,9 @@ def _collect_handlers(spec: GraphSpec) -> list[str]:
 
 
 def _build_variable_flow(
-    spec: GraphSpec, node_map: dict[str, NodeSpec]
+    spec: GraphSpec,
+    node_map: dict[str, NodeSpec],
+    workflow_dir: Path | None = None,
 ) -> dict[str, dict[str, list[str]]]:
     """Extracts and returns input/output variables for each node.
 
@@ -110,6 +115,8 @@ def _build_variable_flow(
     Args:
         spec: GraphSpec to analyze.
         node_map: Mapping from node ID to NodeSpec.
+        workflow_dir: Directory of the workflow file, used to resolve relative
+            prompt_ref paths. If None, prompt_ref file reading is skipped.
 
     Returns:
         Dictionary keyed by node name. Values are dicts with {"inputs": [...], "outputs": [...]}.
@@ -127,7 +134,7 @@ def _build_variable_flow(
 
     flow: dict[str, dict[str, list[str]]] = {}
     for node in spec.nodes:
-        inputs = _extract_input_variables(node)
+        inputs = _extract_input_variables(node, workflow_dir=workflow_dir)
         outputs = _extract_output_variables(node, conditional_sources)
 
         # fan_out source: the node populates state[items_key]
@@ -146,30 +153,35 @@ def _build_variable_flow(
     return flow
 
 
-def _extract_input_variables(node: NodeSpec) -> list[str]:
+def _extract_input_variables(node: NodeSpec, workflow_dir: Path | None = None) -> list[str]:
     """Extracts input variables from a node's prompt.
 
     Args:
         node: NodeSpec to extract input variables from.
+        workflow_dir: Directory of the workflow file, used to resolve relative
+            prompt_ref paths. If None, prompt_ref file reading is skipped.
 
     Returns:
         List of {variable} names in the prompt template (deduplicated, in order of appearance).
     """
     params = node.params
-    prompt = params.get("prompt") or params.get("prompt_ref")
+    prompt_ref_value = params.get("prompt_ref")
+    prompt = params.get("prompt") or prompt_ref_value
     if prompt is None:
         return []
 
     # If prompt is a string, analyze it directly
     if isinstance(prompt, str):
+        # When the value came from prompt_ref, treat it as a file path
+        if prompt_ref_value is not None and prompt is prompt_ref_value:
+            return _extract_vars_from_prompt_ref(prompt, workflow_dir)
         return _extract_vars_from_text(prompt)
 
-    # If prompt is a dict, analyze the content field
+    # If prompt is a dict, analyze known text fields.
+    # Handles both inline prompt dicts (content key) and resolved prompt_ref dicts
+    # (system/user keys, as produced by resolve_workflow_references).
     if isinstance(prompt, dict):
-        content = prompt.get("content", "")
-        if isinstance(content, str):
-            return _extract_vars_from_text(content)
-        return []
+        return _extract_vars_from_value(prompt)
 
     # If prompt is a list, analyze the content of each message
     if isinstance(prompt, list):
@@ -185,8 +197,83 @@ def _extract_input_variables(node: NodeSpec) -> list[str]:
                             vars_list.append(var)
         return vars_list
 
-    # prompt_ref is a file path, so variable extraction is not possible in static analysis
     return []
+
+
+def _extract_vars_from_prompt_ref(prompt_ref: str, workflow_dir: Path | None) -> list[str]:
+    """Reads a prompt_ref file and extracts {variable} patterns from it.
+
+    Supports an anchor syntax: ``path/to/file.yaml#section_name`` where
+    ``#section_name`` selects a specific key from the top-level mapping.
+    When no anchor is given the entire file content is searched.
+
+    Args:
+        prompt_ref: Relative (or absolute) file path, optionally with a
+            ``#section`` anchor.
+        workflow_dir: Base directory used to resolve relative paths.
+            If None the function returns an empty list immediately.
+
+    Returns:
+        List of variable names found (deduplicated, in order of appearance).
+        Returns an empty list when the file cannot be read or parsed.
+    """
+    if workflow_dir is None:
+        return []
+
+    # Split off optional anchor (e.g. "prompts/foo.yaml#default")
+    if "#" in prompt_ref:
+        file_part, section = prompt_ref.split("#", 1)
+    else:
+        file_part, section = prompt_ref, None
+
+    file_path = Path(file_part)
+    if not file_path.is_absolute():
+        file_path = workflow_dir / file_path
+
+    try:
+        import yaml as yaml_lib
+
+        raw = file_path.read_text(encoding="utf-8")
+        data = yaml_lib.safe_load(raw)
+    except Exception:
+        return []
+
+    if section is not None:
+        if isinstance(data, dict):
+            data = data.get(section)
+        else:
+            return []
+
+    return _extract_vars_from_value(data)
+
+
+def _extract_vars_from_value(value: Any) -> list[str]:
+    """Recursively walks *value* and collects {variable} patterns from all strings.
+
+    Args:
+        value: Arbitrary Python value (str, dict, list, or other).
+
+    Returns:
+        Deduplicated list of variable names in order of first appearance.
+    """
+    seen: set[str] = set()
+    result: list[str] = []
+
+    def _walk(v: Any) -> None:
+        if isinstance(v, str):
+            for var in _extract_vars_from_text(v):
+                if var not in seen:
+                    seen.add(var)
+                    result.append(var)
+        elif isinstance(v, dict):
+            for item in v.values():
+                _walk(item)
+        elif isinstance(v, list):
+            for item in v:
+                _walk(item)
+
+    _walk(value)
+    return result
 
 
 def _extract_vars_from_text(text: str) -> list[str]:
