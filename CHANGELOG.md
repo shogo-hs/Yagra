@@ -4,6 +4,20 @@
 
 ## [Unreleased]
 
+## [0.6.5] - 2026-02-19
+
+### Fixed
+- 🐛 **Studio: custom ハンドラノードに Prompt Settings を常時表示**: custom ハンドラ選択時に Prompt Settings セクションが表示されない問題を修正
+  - 原因：`showPromptFields` computed が `setup()` の return オブジェクトに含まれていなかったため、テンプレートから常に `undefined`（falsy）として評価されていた
+  - チェックボックス（"use prompt (optional)"）を廃止し、LLM ハンドラと同様に Prompt Settings を常時表示するようシンプル化
+
+### Changed
+- 📝 **ドキュメント更新**:
+  - `prompt_model.md` に system プロンプトへの state 変数自動注入の説明を追加（v0.6.4 相当）
+  - `prompt_model.md` に custom ハンドラへの prompt 設定方法とハンドラコード例を追加
+  - `prompt_model.md` の Studio Integration セクションを更新（Prompt Settings が custom ハンドラにも表示される旨を明記）
+  - `prompt_model.md` の手動 `.format()` 例を修正（組み込みハンドラでは不要な旨を注記）
+
 ## [0.6.4] - 2026-02-19
 
 ### Added

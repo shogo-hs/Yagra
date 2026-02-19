@@ -8,6 +8,20 @@ For the canonical changelog (Japanese), see [CHANGELOG.md](https://github.com/sh
 
 ## [Unreleased]
 
+## [0.6.5] - 2026-02-19
+
+### Fixed
+- 🐛 **Studio: always show Prompt Settings for custom handler nodes**: Fixed a bug where the Prompt Settings section was not displayed when a custom handler was selected
+  - Root cause: `showPromptFields` computed was missing from the `setup()` return object, causing the template to always evaluate it as `undefined` (falsy)
+  - Removed the "use prompt (optional)" checkbox; Prompt Settings are now always visible for custom handler nodes, consistent with LLM handler nodes
+
+### Changed
+- 📝 **Documentation updates**:
+  - `prompt_model.md`: added explanation of automatic state variable injection in `system` prompts (feature introduced in v0.6.4)
+  - `prompt_model.md`: added section on using prompts with custom handler nodes, including example handler code
+  - `prompt_model.md`: updated Studio Integration section to reflect that Prompt Settings are shown for custom handler nodes
+  - `prompt_model.md`: corrected manual `.format()` example (not needed with built-in handlers)
+
 ## [0.6.4] - 2026-02-19
 
 ### Added

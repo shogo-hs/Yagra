@@ -1,6 +1,6 @@
 [project]
 name = "yagra"
-version = "0.6.4"
+version = "0.6.5"
 description = "Declarative LangGraph Builder powered by YAML"
 readme = "README.md"
 requires-python = ">=3.12"

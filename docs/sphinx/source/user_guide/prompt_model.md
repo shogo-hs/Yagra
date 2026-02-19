@@ -60,11 +60,15 @@ Yagra resolves `prompt_ref` before passing `params` to the handler:
 def answer_faq(state: AgentState, params: dict) -> dict:
     prompt = params["prompt"]  # Resolved content
     system = prompt["system"]
-    user = prompt["user"].format(query=state["query"])
+    user = prompt["user"]
+    # {variable} placeholders are automatically expanded from state
+    # by the built-in LLM handlers — no manual .format() needed
     # ... call LLM with system and user prompts
 ```
 
 **Note**: `prompt_ref` is removed from `params` after resolution—use `params["prompt"]` instead.
+
+> **Tip (built-in handlers)**: When using `llm`, `streaming_llm`, or `structured_llm`, you do **not** need to call `.format()` yourself. The handler automatically extracts every `{variable}` placeholder from **both** the `system` and `user` templates and substitutes the corresponding values from the graph state.
 
 ### Path Resolution Rules
 
@@ -107,6 +111,61 @@ retrieval:
 ```
 
 Reference nested prompts: `prompt_ref: "prompts.yaml#retrieval.search"`
+
+### State Variable Injection in Prompts
+
+Built-in LLM handlers (`llm`, `streaming_llm`, `structured_llm`) automatically inject state values into **both** the `system` and `user` prompt templates.
+
+**How it works**:
+
+1. **Auto-detection** (default — no `input_keys`): every `{variable}` placeholder found in the `system` or `user` template is extracted and resolved from the current graph state.
+
+   ```yaml
+   # system uses {persona}, user uses {query} — both are auto-detected
+   my_prompt:
+     system: |
+       You are {persona}. Answer concisely.
+     user: |
+       Question: {query}
+   ```
+
+2. **Explicit mode** (`input_keys` specified): only the declared keys are injected (backward-compatible with pre-v0.6.0 YAML).
+
+   ```yaml
+   params:
+     prompt_ref: "../prompts/support.yaml#faq"
+     input_keys: ["query", "persona"]
+   ```
+
+> **Note**: If a placeholder key is not present in the current state the handler substitutes an empty string and logs a warning—it does **not** raise an exception.
+
+### Prompts in Custom Handler Nodes
+
+You can associate a prompt with a `custom` handler node just like you would with a built-in LLM handler.
+The resolved `params["prompt"]` dict is passed to your function, and you can apply the templates however you like.
+
+**Workflow YAML**:
+
+```yaml
+nodes:
+  - id: "planner"
+    handler: "planner_handler"   # custom Python function
+    params:
+      prompt_ref: "../prompts/branch_prompts.yaml#planner"
+```
+
+**Handler code**:
+
+```python
+def planner_handler(state: AgentState, params: dict) -> dict:
+    prompt = params.get("prompt", {})
+    system = prompt.get("system", "")
+    user = prompt.get("user", "").format(**state)  # manual substitution
+    # ... call your LLM or custom logic
+    return {"plan": result}
+```
+
+> **Studio**: When a node's handler type is set to **custom**, the *Prompt Settings* section is shown in the Node Properties panel so you can attach and edit a prompt without writing YAML by hand.
 
 ## Model Configuration
 
@@ -180,10 +239,11 @@ nodes:
 
 Yagra Studio provides visual editing for prompts and models:
 
-1. **Prompt Editing**:
+1. **Prompt Editing** (LLM handlers **and** custom handler nodes):
    - Select a prompt YAML from dropdown (project YAML files, excluding tool and dot-directories)
    - Edit `system` and `user` fields in form
    - Auto-create prompt YAML if not selected
+   - The *Prompt Settings* section is visible for `llm`, `structured_llm`, `streaming_llm`, and `custom` handler types
 
 2. **Model Editing**:
    - Fill in `provider`, `name`, and `kwargs` via form
