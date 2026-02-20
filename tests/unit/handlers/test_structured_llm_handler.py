@@ -539,3 +539,227 @@ class TestDynamicSchemaHandler:
 
         assert isinstance(result["person"], PersonInfo)
         assert result["person"].name == "Bob"
+
+
+class TestStructuredLLMHandlerEdgeCases:
+    """Tests covering edge-case branches in the structured LLM handler."""
+
+    @pytest.fixture
+    def mock_litellm(self) -> MagicMock:
+        return MagicMock()
+
+    def _make_mock_response(self, content: str) -> MagicMock:
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock(message=MagicMock(content=content))]
+        return mock_response
+
+    def test_missing_provider_raises_config_error(self, mock_litellm: MagicMock) -> None:
+        """Covers lines 149-150: model dict missing 'provider' raises LLMHandlerConfigError."""
+        with patch("yagra.handlers.structured_llm_handler.litellm", mock_litellm):
+            from yagra.handlers.llm_handler import LLMHandlerConfigError
+            from yagra.handlers.structured_llm_handler import (
+                create_structured_llm_handler,
+            )
+
+            handler = create_structured_llm_handler(schema=PersonInfo, retry=1)
+            with pytest.raises(
+                LLMHandlerConfigError, match="'model' must have 'provider' and 'name' keys"
+            ):
+                handler(
+                    state={},
+                    params={
+                        "prompt": {"system": "Extract", "user": "Extract"},
+                        "model": {"name": "gpt-4o"},  # provider missing
+                    },
+                )
+
+    def test_missing_model_name_raises_config_error(self, mock_litellm: MagicMock) -> None:
+        """Covers lines 149-150: model dict missing 'name' raises LLMHandlerConfigError."""
+        with patch("yagra.handlers.structured_llm_handler.litellm", mock_litellm):
+            from yagra.handlers.llm_handler import LLMHandlerConfigError
+            from yagra.handlers.structured_llm_handler import (
+                create_structured_llm_handler,
+            )
+
+            handler = create_structured_llm_handler(schema=PersonInfo, retry=1)
+            with pytest.raises(
+                LLMHandlerConfigError, match="'model' must have 'provider' and 'name' keys"
+            ):
+                handler(
+                    state={},
+                    params={
+                        "prompt": {"system": "Extract", "user": "Extract"},
+                        "model": {"provider": "openai"},  # name missing
+                    },
+                )
+
+    def test_explicit_input_keys_used_when_provided(self, mock_litellm: MagicMock) -> None:
+        """Covers line 162: explicit input_keys path is taken instead of auto-extraction."""
+        json_content = json.dumps({"name": "Tom", "age": 50})
+        mock_litellm.completion.return_value = self._make_mock_response(json_content)
+
+        with patch("yagra.handlers.structured_llm_handler.litellm", mock_litellm):
+            from yagra.handlers.structured_llm_handler import (
+                create_structured_llm_handler,
+            )
+
+            handler = create_structured_llm_handler(schema=PersonInfo, retry=1)
+            result = handler(
+                state={"my_key": "Tom is 50 years old."},
+                params={
+                    "prompt": {"system": "Extract", "user": "Data: {my_key}"},
+                    "model": {"provider": "openai", "name": "gpt-4o"},
+                    "input_keys": ["my_key"],  # explicit keys
+                    "output_key": "person",
+                },
+            )
+
+        call_messages = mock_litellm.completion.call_args.kwargs["messages"]
+        assert "Tom is 50 years old." in call_messages[1]["content"]
+        assert result["person"].name == "Tom"
+
+    def test_prompt_interpolation_key_error_raises_config_error(
+        self, mock_litellm: MagicMock
+    ) -> None:
+        """Covers lines 175-177: KeyError during format raises LLMHandlerConfigError."""
+        with patch("yagra.handlers.structured_llm_handler.litellm", mock_litellm):
+            from yagra.handlers.llm_handler import LLMHandlerConfigError
+            from yagra.handlers.structured_llm_handler import (
+                create_structured_llm_handler,
+            )
+
+            handler = create_structured_llm_handler(schema=PersonInfo, retry=1)
+            # Use explicit input_keys pointing to a key not in state, and a template that
+            # has a different brace variable so format() raises KeyError.
+            with pytest.raises(
+                LLMHandlerConfigError, match="Missing key in state for prompt interpolation"
+            ):
+                handler(
+                    state={},
+                    params={
+                        # input_keys is None so auto-extraction is used.
+                        # system contains {missing_var} which won't be in state.
+                        "prompt": {"system": "Hello {missing_var}", "user": "test"},
+                        "model": {"provider": "openai", "name": "gpt-4o"},
+                        # Force it: explicitly set input_keys to something that causes
+                        # the format to fail. We pass input_keys=[] so keys=[] but the
+                        # template still contains {missing_var} which format() won't fill.
+                        "input_keys": [],
+                    },
+                )
+
+    def test_empty_choices_raises_call_error(self, mock_litellm: MagicMock) -> None:
+        """Covers lines 210-211: empty choices list raises LLMHandlerCallError."""
+        mock_response = MagicMock()
+        mock_response.choices = []  # empty choices
+        mock_litellm.completion.return_value = mock_response
+
+        with patch("yagra.handlers.structured_llm_handler.litellm", mock_litellm):
+            from yagra.handlers.llm_handler import LLMHandlerCallError
+            from yagra.handlers.structured_llm_handler import (
+                create_structured_llm_handler,
+            )
+
+            handler = create_structured_llm_handler(schema=PersonInfo, retry=1)
+            with pytest.raises(LLMHandlerCallError, match="LLM returned empty response"):
+                handler(
+                    state={},
+                    params={
+                        "prompt": {"system": "Extract", "user": "Extract"},
+                        "model": {"provider": "openai", "name": "gpt-4o"},
+                    },
+                )
+
+    def test_none_content_raises_call_error(self, mock_litellm: MagicMock) -> None:
+        """Covers lines 215-216: None content raises LLMHandlerCallError."""
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock(message=MagicMock(content=None))]
+        mock_litellm.completion.return_value = mock_response
+
+        with patch("yagra.handlers.structured_llm_handler.litellm", mock_litellm):
+            from yagra.handlers.llm_handler import LLMHandlerCallError
+            from yagra.handlers.structured_llm_handler import (
+                create_structured_llm_handler,
+            )
+
+            handler = create_structured_llm_handler(schema=PersonInfo, retry=1)
+            with pytest.raises(LLMHandlerCallError, match="LLM returned None content"):
+                handler(
+                    state={},
+                    params={
+                        "prompt": {"system": "Extract", "user": "Extract"},
+                        "model": {"provider": "openai", "name": "gpt-4o"},
+                    },
+                )
+
+    def test_token_usage_recorded_when_trace_context_active(self, mock_litellm: MagicMock) -> None:
+        """Covers line 233: TraceContext.current() returns a context and record_llm_call is called."""
+        json_content = json.dumps({"name": "Zara", "age": 27})
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock(message=MagicMock(content=json_content))]
+        mock_response.usage = MagicMock(prompt_tokens=10, completion_tokens=20, total_tokens=30)
+        mock_litellm.completion.return_value = mock_response
+
+        with patch("yagra.handlers.structured_llm_handler.litellm", mock_litellm):
+            from yagra.application.use_cases.trace_collector import TraceContext
+            from yagra.handlers.structured_llm_handler import (
+                create_structured_llm_handler,
+            )
+
+            handler = create_structured_llm_handler(schema=PersonInfo, retry=1)
+
+            mock_ctx = MagicMock(spec=TraceContext)
+
+            with patch(
+                "yagra.application.use_cases.trace_collector.TraceContext.current",
+                return_value=mock_ctx,
+            ):
+                result = handler(
+                    state={},
+                    params={
+                        "prompt": {"system": "Extract", "user": "Extract"},
+                        "model": {"provider": "openai", "name": "gpt-4o"},
+                        "output_key": "person",
+                    },
+                )
+
+        assert result["person"].name == "Zara"
+        mock_ctx.record_llm_call.assert_called_once_with(
+            model="openai/gpt-4o",
+            provider="openai",
+            prompt_tokens=10,
+            completion_tokens=20,
+            total_tokens=30,
+        )
+
+    def test_token_usage_not_recorded_when_usage_is_none(self, mock_litellm: MagicMock) -> None:
+        """Covers the response.usage is not None guard: no call when usage is None."""
+        json_content = json.dumps({"name": "Leo", "age": 33})
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock(message=MagicMock(content=json_content))]
+        mock_response.usage = None  # no usage data
+        mock_litellm.completion.return_value = mock_response
+
+        with patch("yagra.handlers.structured_llm_handler.litellm", mock_litellm):
+            from yagra.handlers.structured_llm_handler import (
+                create_structured_llm_handler,
+            )
+
+            handler = create_structured_llm_handler(schema=PersonInfo, retry=1)
+
+            mock_ctx = MagicMock()
+            with patch(
+                "yagra.application.use_cases.trace_collector.TraceContext.current",
+                return_value=mock_ctx,
+            ):
+                result = handler(
+                    state={},
+                    params={
+                        "prompt": {"system": "Extract", "user": "Extract"},
+                        "model": {"provider": "openai", "name": "gpt-4o"},
+                        "output_key": "person",
+                    },
+                )
+
+        assert result["person"].name == "Leo"
+        mock_ctx.record_llm_call.assert_not_called()

@@ -1,10 +1,16 @@
 """Tests for workflow_explainer."""
 
+from pathlib import Path
+
 from yagra.application.use_cases.workflow_explainer import (
     _extract_input_variables,
+    _extract_vars_from_prompt_ref,
+    _extract_vars_from_value,
     explain_workflow,
 )
 from yagra.domain.entities.graph_schema import GraphSpec, NodeSpec
+
+FIXTURES_ROOT = Path(__file__).resolve().parents[2] / "fixtures"
 
 
 def _make_spec(overrides: dict) -> GraphSpec:
@@ -446,3 +452,201 @@ def test_explain_execution_paths_fan_out_includes_target() -> None:
 
     # fan_out edge is traversed normally in path enumeration
     assert result["execution_paths"] == [["prepare", "process_item", "aggregate"]]
+
+
+# ---------------------------------------------------------------------------
+# _extract_input_variables: explicit input_keys fallback (line 208)
+# ---------------------------------------------------------------------------
+
+
+def test_extract_input_variables_no_prompt_with_explicit_input_keys() -> None:
+    # When prompt is None but input_keys is a list, return that list (line 208)
+    node = _make_node({"model": "gpt-4o-mini", "input_keys": ["foo", "bar"]})
+    result = _extract_input_variables(node)
+    assert result == ["foo", "bar"]
+
+
+def test_extract_input_variables_no_prompt_explicit_input_keys_filters_non_str() -> None:
+    # input_keys with non-string values are filtered out (line 208)
+    node = _make_node({"model": "gpt-4o-mini", "input_keys": ["foo", 42, "bar"]})
+    result = _extract_input_variables(node)
+    assert result == ["foo", "bar"]
+
+
+def test_extract_input_variables_no_prompt_input_keys_not_list() -> None:
+    # When input_keys is not a list, return empty (line 209 else branch)
+    node = _make_node({"model": "gpt-4o-mini", "input_keys": "not_a_list"})
+    result = _extract_input_variables(node)
+    assert result == []
+
+
+# ---------------------------------------------------------------------------
+# _extract_input_variables: prompt_ref path (line 216)
+# ---------------------------------------------------------------------------
+
+
+def test_extract_input_variables_prompt_ref_with_workflow_dir(tmp_path: Path) -> None:
+    # When prompt_ref is provided and workflow_dir is given, reads the file (line 216)
+    prompt_file = tmp_path / "prompts.yaml"
+    prompt_file.write_text("system: Hello {name}\nuser: Question {query}\n", encoding="utf-8")
+    node = _make_node({"model": "gpt-4o-mini", "prompt_ref": "prompts.yaml"})
+    result = _extract_input_variables(node, workflow_dir=tmp_path)
+    assert "name" in result
+    assert "query" in result
+
+
+def test_extract_input_variables_prompt_ref_without_workflow_dir() -> None:
+    # When prompt_ref is present but workflow_dir is None, returns empty (via _extract_vars_from_prompt_ref)
+    node = _make_node({"model": "gpt-4o-mini", "prompt_ref": "prompts/file.yaml"})
+    result = _extract_input_variables(node, workflow_dir=None)
+    assert result == []
+
+
+def test_extract_input_variables_prompt_ref_fallback_to_input_keys(tmp_path: Path) -> None:
+    # When prompt_ref file cannot be found but input_keys is set, fall back to input_keys (line 243)
+    node = _make_node(
+        {
+            "model": "gpt-4o-mini",
+            "prompt_ref": "nonexistent.yaml",
+            "input_keys": ["fallback_var"],
+        }
+    )
+    result = _extract_input_variables(node, workflow_dir=tmp_path)
+    assert result == ["fallback_var"]
+
+
+def test_extract_input_variables_string_prompt_fallback_to_input_keys() -> None:
+    # When prompt string has no vars but input_keys is set, fall back to input_keys (line 243)
+    node = _make_node(
+        {
+            "model": "gpt-4o-mini",
+            "prompt": "hello world",
+            "input_keys": ["needed_var"],
+        }
+    )
+    result = _extract_input_variables(node)
+    assert result == ["needed_var"]
+
+
+# ---------------------------------------------------------------------------
+# _extract_vars_from_prompt_ref: direct tests (lines 264-291)
+# ---------------------------------------------------------------------------
+
+
+def test_extract_vars_from_prompt_ref_workflow_dir_none() -> None:
+    # When workflow_dir is None, returns immediately with empty list (line 264-265)
+    result = _extract_vars_from_prompt_ref("prompts/foo.yaml", workflow_dir=None)
+    assert result == []
+
+
+def test_extract_vars_from_prompt_ref_reads_file(tmp_path: Path) -> None:
+    # Reads file and extracts variables from it (lines 277-291)
+    prompt_file = tmp_path / "foo.yaml"
+    prompt_file.write_text("user: translate {text} to {lang}\n", encoding="utf-8")
+    result = _extract_vars_from_prompt_ref("foo.yaml", workflow_dir=tmp_path)
+    assert "text" in result
+    assert "lang" in result
+
+
+def test_extract_vars_from_prompt_ref_with_anchor(tmp_path: Path) -> None:
+    # When '#section' anchor is provided, extracts only from that section (lines 268-270, 285-291)
+    prompt_file = tmp_path / "prompts.yaml"
+    prompt_file.write_text(
+        "planner:\n  system: Plan {task}\n  user: Execute {query}\nother:\n  user: Ignore {ignored}\n",
+        encoding="utf-8",
+    )
+    result = _extract_vars_from_prompt_ref("prompts.yaml#planner", workflow_dir=tmp_path)
+    assert "task" in result
+    assert "query" in result
+    assert "ignored" not in result
+
+
+def test_extract_vars_from_prompt_ref_with_anchor_data_not_dict(tmp_path: Path) -> None:
+    # When file contains a list (not dict) but anchor is specified, returns empty (line 288-289)
+    prompt_file = tmp_path / "list_prompts.yaml"
+    prompt_file.write_text("- item1\n- item2\n", encoding="utf-8")
+    result = _extract_vars_from_prompt_ref("list_prompts.yaml#section", workflow_dir=tmp_path)
+    assert result == []
+
+
+def test_extract_vars_from_prompt_ref_file_not_found(tmp_path: Path) -> None:
+    # When file does not exist, returns empty list (exception caught, line 282-283)
+    result = _extract_vars_from_prompt_ref("nonexistent.yaml", workflow_dir=tmp_path)
+    assert result == []
+
+
+def test_extract_vars_from_prompt_ref_invalid_yaml(tmp_path: Path) -> None:
+    # When file contains invalid YAML, returns empty list (exception caught, line 282-283)
+    prompt_file = tmp_path / "bad.yaml"
+    prompt_file.write_text("key: [unclosed bracket\n", encoding="utf-8")
+    result = _extract_vars_from_prompt_ref("bad.yaml", workflow_dir=tmp_path)
+    assert result == []
+
+
+def test_extract_vars_from_prompt_ref_absolute_path(tmp_path: Path) -> None:
+    # Absolute path (not relative to workflow_dir) is resolved correctly (line 274)
+    prompt_file = tmp_path / "abs_prompts.yaml"
+    prompt_file.write_text("user: Hello {name}\n", encoding="utf-8")
+    result = _extract_vars_from_prompt_ref(str(prompt_file), workflow_dir=tmp_path)
+    assert "name" in result
+
+
+def test_extract_vars_from_prompt_ref_uses_fixtures(tmp_path: Path) -> None:
+    # Uses the existing fixture file with anchor
+    result = _extract_vars_from_prompt_ref(
+        "prompts/support_prompts.yaml#planner", workflow_dir=FIXTURES_ROOT
+    )
+    # support_prompts.yaml planner section has no {variables}, so result should be empty
+    assert isinstance(result, list)
+
+
+# ---------------------------------------------------------------------------
+# _extract_vars_from_value: list items traversal (lines 315-317)
+# ---------------------------------------------------------------------------
+
+
+def test_extract_vars_from_value_with_list() -> None:
+    # When value is a list containing strings with variables (lines 315-317)
+    value = ["Hello {foo}", "World {bar}"]
+    result = _extract_vars_from_value(value)
+    assert "foo" in result
+    assert "bar" in result
+
+
+def test_extract_vars_from_value_nested_list_in_dict() -> None:
+    # Nested list inside dict (lines 312-317)
+    value = {"messages": ["Translate {text}", "to {lang}"]}
+    result = _extract_vars_from_value(value)
+    assert "text" in result
+    assert "lang" in result
+
+
+# ---------------------------------------------------------------------------
+# explain_workflow: warnings when prompt_ref unresolved (workflow_dir=None)
+# ---------------------------------------------------------------------------
+
+
+def test_explain_workflow_prompt_ref_without_workflow_dir_emits_warning() -> None:
+    # When workflow_dir is None and a node has prompt_ref, a warning is appended
+    spec = GraphSpec.model_validate(
+        {
+            "version": "1",
+            "start_at": "node_a",
+            "end_at": ["node_a"],
+            "nodes": [
+                {
+                    "id": "node_a",
+                    "handler": "llm",
+                    "params": {
+                        "model": "gpt-4o-mini",
+                        "prompt_ref": "prompts/file.yaml",
+                    },
+                }
+            ],
+            "edges": [],
+        }
+    )
+    result = explain_workflow(spec, workflow_dir=None)
+    assert len(result["warnings"]) == 1
+    assert result["warnings"][0]["code"] == "prompt_ref_unresolved"
+    assert result["warnings"][0]["node_id"] == "node_a"

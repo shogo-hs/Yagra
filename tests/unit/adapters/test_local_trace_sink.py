@@ -6,6 +6,8 @@ import json
 from datetime import UTC, datetime
 from pathlib import Path
 
+import pytest
+
 from yagra.adapters.outbound.local_trace_sink import LocalTraceSink
 from yagra.domain.entities.trace import NodeStatus, RunSummary, WorkflowRunTrace
 
@@ -92,3 +94,29 @@ class TestLocalTraceSink:
         path2 = sink.write(trace2)
         # Different run_ids -> different filenames (at minimum the id part differs)
         assert path1 != path2
+
+    def test_write_raises_trace_sink_error_on_mkdir_failure(self, tmp_path: Path) -> None:
+        """TraceSinkError is raised when the directory cannot be created (lines 63-64)."""
+        from unittest.mock import patch
+
+        from yagra.ports.outbound.trace_sink import TraceSinkError
+
+        sink = LocalTraceSink(base_dir=tmp_path)
+        trace = _make_minimal_trace("flow")
+
+        with patch("pathlib.Path.mkdir", side_effect=OSError("Permission denied")):
+            with pytest.raises(TraceSinkError, match="Failed to create trace directory"):
+                sink.write(trace)
+
+    def test_write_raises_trace_sink_error_on_write_failure(self, tmp_path: Path) -> None:
+        """TraceSinkError is raised when writing the JSON file fails (lines 80-81)."""
+        from unittest.mock import patch
+
+        from yagra.ports.outbound.trace_sink import TraceSinkError
+
+        sink = LocalTraceSink(base_dir=tmp_path)
+        trace = _make_minimal_trace("flow")
+
+        with patch("pathlib.Path.write_text", side_effect=OSError("Disk full")):
+            with pytest.raises(TraceSinkError, match="Failed to write trace file"):
+                sink.write(trace)

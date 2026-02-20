@@ -152,6 +152,100 @@ def test_multi_agent_template_has_correct_structure(tmp_path: Path) -> None:
     assert "done" in workflow_content
 
 
+def test_list_templates_returns_empty_when_templates_dir_missing(
+    monkeypatch, tmp_path: Path
+) -> None:
+    """list_templates returns [] when the templates root directory does not exist (line 74)."""
+    from yagra.application.services import template_initializer
+
+    monkeypatch.setattr(
+        template_initializer, "_get_templates_root", lambda: tmp_path / "nonexistent"
+    )
+
+    result = template_initializer.list_templates()
+    assert result == []
+
+
+def test_list_templates_with_info_returns_empty_when_templates_dir_missing(
+    monkeypatch, tmp_path: Path
+) -> None:
+    """list_templates_with_info returns [] when templates root does not exist (line 95)."""
+    from yagra.application.services import template_initializer
+
+    monkeypatch.setattr(
+        template_initializer, "_get_templates_root", lambda: tmp_path / "nonexistent"
+    )
+
+    result = template_initializer.list_templates_with_info()
+    assert result == []
+
+
+def test_list_templates_with_info_skips_dirs_without_workflow_yaml(
+    monkeypatch, tmp_path: Path
+) -> None:
+    """list_templates_with_info skips dirs that have no workflow.yaml (line 100)."""
+    from yagra.application.services import template_initializer
+
+    # Create a dir that is missing workflow.yaml — should be skipped
+    bad_dir = tmp_path / "not_a_template"
+    bad_dir.mkdir()
+    (bad_dir / "some_file.txt").write_text("hello")
+
+    # Create a valid template dir
+    good_dir = tmp_path / "valid_template"
+    good_dir.mkdir()
+    (good_dir / "workflow.yaml").write_text("version: '1'\n")
+    # No template.yaml — fallback to empty strings (lines 112-114)
+
+    monkeypatch.setattr(template_initializer, "_get_templates_root", lambda: tmp_path)
+
+    result = template_initializer.list_templates_with_info()
+    names = [info.name for info in result]
+    assert "valid_template" in names
+    assert "not_a_template" not in names
+
+
+def test_list_templates_with_info_uses_empty_strings_when_no_template_yaml(
+    monkeypatch, tmp_path: Path
+) -> None:
+    """When template.yaml is absent, description and use_case default to '' (lines 112-114)."""
+    from yagra.application.services import template_initializer
+
+    tmpl_dir = tmp_path / "mytemplate"
+    tmpl_dir.mkdir()
+    (tmpl_dir / "workflow.yaml").write_text("version: '1'\n")
+    # Deliberately no template.yaml
+
+    monkeypatch.setattr(template_initializer, "_get_templates_root", lambda: tmp_path)
+
+    result = template_initializer.list_templates_with_info()
+    assert len(result) == 1
+    info = result[0]
+    assert info.name == "mytemplate"
+    assert info.description == ""
+    assert info.use_case == ""
+
+
+def test_list_templates_with_info_handles_yaml_error_in_template_yaml(
+    monkeypatch, tmp_path: Path
+) -> None:
+    """When template.yaml contains invalid YAML, description/use_case default to '' (lines 109-111)."""
+    from yagra.application.services import template_initializer
+
+    tmpl_dir = tmp_path / "broken_template"
+    tmpl_dir.mkdir()
+    (tmpl_dir / "workflow.yaml").write_text("version: '1'\n")
+    (tmpl_dir / "template.yaml").write_text("not: valid: yaml: [")
+
+    monkeypatch.setattr(template_initializer, "_get_templates_root", lambda: tmp_path)
+
+    result = template_initializer.list_templates_with_info()
+    assert len(result) == 1
+    info = result[0]
+    assert info.description == ""
+    assert info.use_case == ""
+
+
 def test_tool_use_template_has_correct_structure(tmp_path: Path) -> None:
     """Confirms that the tool-use template has the correct structure."""
     output_dir = tmp_path / "tool-use-workflow"

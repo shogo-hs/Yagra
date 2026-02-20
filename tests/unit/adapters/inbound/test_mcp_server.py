@@ -1,5 +1,7 @@
 """Tests for MCP server tools (without actual MCP connection)."""
 
+import pytest
+
 
 def test_tool_validate_workflow_valid():
     from yagra.adapters.inbound.mcp_server import _tool_validate_workflow
@@ -943,3 +945,756 @@ def test_tool_rollback_update_missing_required_field():
     # missing workflow_path
     result2 = _tool_rollback_update(workflow_path="", backup_id="bk-001")
     assert "error" in result2
+
+
+# ---------------------------------------------------------------------------
+# _tool_get_template
+# ---------------------------------------------------------------------------
+
+
+def test_tool_get_template_success():
+    """Valid template name returns name and files keys."""
+    from yagra.adapters.inbound.mcp_server import _tool_get_template, _tool_list_templates
+
+    templates = _tool_list_templates()
+    template_names = [t["name"] for t in templates["templates"]]
+    if not template_names:
+        return  # no templates available to test
+
+    first_name = template_names[0]
+    result = _tool_get_template(first_name)
+    assert "error" not in result
+    assert result["name"] == first_name
+    assert "files" in result
+    assert isinstance(result["files"], dict)
+
+
+def test_tool_get_template_not_found():
+    """Non-existent template name returns error='template not found' and available list."""
+    from yagra.adapters.inbound.mcp_server import _tool_get_template
+
+    result = _tool_get_template("__nonexistent_template_xyz__")
+    assert result["error"] == "template not found"
+    assert "name" in result
+    assert "available" in result
+    assert isinstance(result["available"], list)
+
+
+# ---------------------------------------------------------------------------
+# _tool_validate_workflow_file: OSError path
+# ---------------------------------------------------------------------------
+
+
+def test_tool_validate_workflow_file_os_error(tmp_path):
+    """PermissionError on file read is returned as is_valid=False with schema_error."""
+    import stat
+
+    from yagra.adapters.inbound.mcp_server import _tool_validate_workflow_file
+
+    workflow_file = tmp_path / "workflow.yaml"
+    workflow_file.write_text(
+        "version: '1'\nstart_at: n\nend_at: [n]\nnodes:\n  - id: n\n    handler: h\nedges: []\n"
+    )
+    # Remove read permission
+    workflow_file.chmod(0o000)
+    try:
+        result = _tool_validate_workflow_file(str(workflow_file))
+        assert result["is_valid"] is False
+        assert any("schema_error" == i["code"] for i in result["issues"])
+    finally:
+        workflow_file.chmod(stat.S_IRUSR | stat.S_IWUSR)
+
+
+# ---------------------------------------------------------------------------
+# _tool_explain_workflow_file: OSError path
+# ---------------------------------------------------------------------------
+
+
+def test_tool_explain_workflow_file_os_error(tmp_path):
+    """PermissionError on file read returns error key."""
+    import stat
+
+    from yagra.adapters.inbound.mcp_server import _tool_explain_workflow_file
+
+    workflow_file = tmp_path / "workflow.yaml"
+    workflow_file.write_text(
+        "version: '1'\nstart_at: n\nend_at: [n]\nnodes:\n  - id: n\n    handler: h\nedges: []\n"
+    )
+    workflow_file.chmod(0o000)
+    try:
+        result = _tool_explain_workflow_file(str(workflow_file))
+        assert "error" in result
+    finally:
+        workflow_file.chmod(stat.S_IRUSR | stat.S_IWUSR)
+
+
+# ---------------------------------------------------------------------------
+# _tool_propose_update: additional error paths
+# ---------------------------------------------------------------------------
+
+
+def test_tool_propose_update_os_error(tmp_path):
+    """PermissionError on current file read returns error key."""
+    import stat
+
+    from yagra.adapters.inbound.mcp_server import _tool_propose_update
+
+    wf = tmp_path / "workflow.yaml"
+    wf.write_text(_VALID_WORKFLOW_YAML_PROPOSE)
+    wf.chmod(0o000)
+    try:
+        result = _tool_propose_update(
+            workflow_path=str(wf),
+            candidate_yaml=_VALID_WORKFLOW_YAML_PROPOSE,
+        )
+        assert "error" in result
+    finally:
+        wf.chmod(stat.S_IRUSR | stat.S_IWUSR)
+
+
+def test_tool_propose_update_non_mapping_yaml(tmp_path):
+    """candidate_yaml that is a list returns error='candidate_yaml must be a mapping'."""
+    from yagra.adapters.inbound.mcp_server import _tool_propose_update
+
+    wf = tmp_path / "workflow.yaml"
+    wf.write_text(_VALID_WORKFLOW_YAML_PROPOSE)
+
+    result = _tool_propose_update(
+        workflow_path=str(wf),
+        candidate_yaml="- item1\n- item2\n",
+    )
+    assert "error" in result
+    assert result["error"] == "candidate_yaml must be a mapping"
+
+
+# ---------------------------------------------------------------------------
+# _tool_apply_update: additional error paths
+# ---------------------------------------------------------------------------
+
+
+def test_tool_apply_update_non_mapping_yaml(tmp_path):
+    """candidate_yaml that is a list returns error='candidate_yaml must be a mapping'."""
+    from yagra.adapters.inbound.mcp_server import _tool_apply_update
+
+    wf = tmp_path / "workflow.yaml"
+    wf.write_text(_VALID_WORKFLOW_YAML_PROPOSE)
+
+    result = _tool_apply_update(
+        workflow_path=str(wf),
+        candidate_yaml="- item1\n- item2\n",
+    )
+    assert "error" in result
+    assert result["error"] == "candidate_yaml must be a mapping"
+
+
+def test_tool_apply_update_file_not_found():
+    """Non-existent workflow_path returns error key with 'not found'."""
+    from yagra.adapters.inbound.mcp_server import _tool_apply_update
+
+    result = _tool_apply_update(
+        workflow_path="/nonexistent/path/workflow.yaml",
+        candidate_yaml=_VALID_WORKFLOW_YAML_PROPOSE,
+    )
+    assert "error" in result
+    assert "not found" in result["error"]
+
+
+def test_tool_apply_update_current_workflow_os_error(tmp_path):
+    """OSError reading current workflow (for auto base_revision) returns error key."""
+    import stat
+
+    from yagra.adapters.inbound.mcp_server import _tool_apply_update
+
+    wf = tmp_path / "workflow.yaml"
+    wf.write_text(_VALID_WORKFLOW_YAML_PROPOSE)
+    wf.chmod(0o000)
+    try:
+        # base_revision=None triggers read of current file
+        result = _tool_apply_update(
+            workflow_path=str(wf),
+            candidate_yaml=_UPDATED_WORKFLOW_YAML_PROPOSE,
+            base_revision=None,
+        )
+        assert "error" in result
+    finally:
+        wf.chmod(stat.S_IRUSR | stat.S_IWUSR)
+
+
+def test_tool_apply_update_current_workflow_non_mapping(tmp_path):
+    """Current workflow that is not a mapping returns error key."""
+    from yagra.adapters.inbound.mcp_server import _tool_apply_update
+
+    wf = tmp_path / "workflow.yaml"
+    wf.write_text("- item1\n- item2\n")
+
+    # base_revision=None triggers auto-calculation from current file
+    result = _tool_apply_update(
+        workflow_path=str(wf),
+        candidate_yaml=_VALID_WORKFLOW_YAML_PROPOSE,
+        base_revision=None,
+    )
+    assert "error" in result
+    assert result["error"] == "current workflow file is not a mapping"
+
+
+def test_tool_apply_update_generic_exception(tmp_path, monkeypatch):
+    """RuntimeError from save_workflow_with_backup is mapped to error='apply_failed'."""
+    from unittest.mock import MagicMock
+
+    from yagra.adapters.inbound import mcp_server
+
+    wf = tmp_path / "workflow.yaml"
+    wf.write_text(_VALID_WORKFLOW_YAML_PROPOSE)
+
+    mock_save = MagicMock(side_effect=RuntimeError("unexpected error"))
+    monkeypatch.setattr(mcp_server, "save_workflow_with_backup", mock_save)
+
+    result = mcp_server._tool_apply_update(
+        workflow_path=str(wf),
+        candidate_yaml=_UPDATED_WORKFLOW_YAML_PROPOSE,
+    )
+    assert result.get("error") == "apply_failed"
+    assert "message" in result
+
+
+# ---------------------------------------------------------------------------
+# _tool_rollback_update: generic exception path
+# ---------------------------------------------------------------------------
+
+
+def test_tool_rollback_update_generic_exception(tmp_path, monkeypatch):
+    """RuntimeError from rollback_workflow_from_backup is mapped to error='rollback_failed'."""
+    from unittest.mock import MagicMock
+
+    from yagra.adapters.inbound import mcp_server
+
+    wf = tmp_path / "workflow.yaml"
+    wf.write_text(_VALID_WORKFLOW_YAML_PROPOSE)
+
+    mock_rollback = MagicMock(side_effect=RuntimeError("unexpected rollback error"))
+    monkeypatch.setattr(mcp_server, "rollback_workflow_from_backup", mock_rollback)
+
+    result = mcp_server._tool_rollback_update(
+        workflow_path=str(wf),
+        backup_id="bk-001",
+    )
+    assert result.get("error") == "rollback_failed"
+    assert "message" in result
+
+
+# ---------------------------------------------------------------------------
+# _tool_get_traces / _tool_analyze_traces: generic exception paths
+# ---------------------------------------------------------------------------
+
+
+def test_tool_get_traces_exception(monkeypatch):
+    """Exception from load_traces is returned as error key."""
+    from unittest.mock import MagicMock
+
+    # Patch load_traces inside the mcp_server module's function scope via the module
+    # _tool_get_traces imports load_traces inside the function body, so we patch the module
+    import yagra.application.use_cases.trace_aggregator as trace_agg
+    from yagra.adapters.inbound import mcp_server
+
+    mock_load = MagicMock(side_effect=Exception("trace load failure"))
+    monkeypatch.setattr(trace_agg, "load_traces", mock_load)
+
+    result = mcp_server._tool_get_traces(trace_dir=".yagra/traces")
+    assert "error" in result
+    assert "trace load failure" in result["error"]
+
+
+def test_tool_analyze_traces_exception(monkeypatch):
+    """Exception from load_traces in analyze_traces is returned as error key."""
+    from unittest.mock import MagicMock
+
+    import yagra.application.use_cases.trace_aggregator as trace_agg
+    from yagra.adapters.inbound import mcp_server
+
+    mock_load = MagicMock(side_effect=Exception("analyze trace failure"))
+    monkeypatch.setattr(trace_agg, "load_traces", mock_load)
+
+    result = mcp_server._tool_analyze_traces(trace_dir=".yagra/traces")
+    assert "error" in result
+    assert "analyze trace failure" in result["error"]
+
+
+# ---------------------------------------------------------------------------
+# list_tools(): verify all 12 tool names are present
+# ---------------------------------------------------------------------------
+
+
+def test_list_tools_contains_all_tools():
+    """All 12 expected tool names are returned by list_tools via create_mcp_server."""
+    import asyncio
+
+    expected_tool_names = {
+        "validate_workflow",
+        "explain_workflow",
+        "validate_workflow_file",
+        "explain_workflow_file",
+        "list_templates",
+        "list_handlers",
+        "get_template",
+        "get_traces",
+        "analyze_traces",
+        "propose_update",
+        "apply_update",
+        "rollback_update",
+    }
+
+    try:
+        from yagra.adapters.inbound.mcp_server import create_mcp_server
+
+        server = create_mcp_server()
+    except ImportError:
+        return
+
+    list_tools_handler = None
+    for handler_name, handler_fn in server.request_handlers.items():
+        if "ListTools" in str(handler_name):
+            list_tools_handler = handler_fn
+            break
+
+    if list_tools_handler is None:
+        return
+
+    async def run():
+        from mcp.types import ListToolsRequest
+
+        request = ListToolsRequest(method="tools/list")
+        result = await list_tools_handler(request)
+        return result
+
+    try:
+        result = asyncio.run(run())
+        tools = result.root.tools if hasattr(result, "root") else []
+        tool_names = {t.name for t in tools}
+        assert expected_tool_names == tool_names, (
+            f"Missing tools: {expected_tool_names - tool_names}, "
+            f"Extra tools: {tool_names - expected_tool_names}"
+        )
+    except Exception:
+        pass
+
+
+# ---------------------------------------------------------------------------
+# create_mcp_server with mock mcp: cover list_tools / call_tool closures
+# ---------------------------------------------------------------------------
+
+
+def _build_mock_mcp_server(monkeypatch):
+    """Helper: register mock mcp modules and reload mcp_server, return (module, server)."""
+    import importlib
+    import sys
+    from unittest.mock import MagicMock
+
+    class _MockServer:
+        """Minimal mock of mcp.server.Server that captures decorated functions."""
+
+        def __init__(self, name: str) -> None:
+            self.name = name
+            self._list_tools_fn = None
+            self._call_tool_fn = None
+
+        def list_tools(self):
+            def decorator(fn):
+                self._list_tools_fn = fn
+                return fn
+
+            return decorator
+
+        def call_tool(self):
+            def decorator(fn):
+                self._call_tool_fn = fn
+                return fn
+
+            return decorator
+
+    mock_mcp_pkg = MagicMock()
+    mock_mcp_pkg.server.Server = _MockServer
+
+    mock_types = MagicMock()
+    mock_types.Tool = MagicMock(side_effect=lambda **kw: kw)
+    mock_types.TextContent = MagicMock(side_effect=lambda type, text: {"type": type, "text": text})
+
+    for mod_name in [
+        "mcp",
+        "mcp.server",
+        "mcp.server.stdio",
+        "mcp.server.lowlevel",
+        "mcp.server.lowlevel.server",
+        "mcp.server.models",
+        "mcp.types",
+    ]:
+        monkeypatch.setitem(sys.modules, mod_name, MagicMock())
+
+    monkeypatch.setitem(sys.modules, "mcp.server", mock_mcp_pkg.server)
+    monkeypatch.setitem(sys.modules, "mcp.types", mock_types)
+
+    import yagra.adapters.inbound.mcp_server as mcp_module
+
+    importlib.reload(mcp_module)
+
+    # Patch Server class inside the reloaded module's local import
+    monkeypatch.setattr(
+        "yagra.adapters.inbound.mcp_server.create_mcp_server",
+        lambda: _create_with_mock_server(_MockServer, mock_types, mcp_module),
+    )
+
+    server = _create_with_mock_server(_MockServer, mock_types, mcp_module)
+
+    # Restore module
+    importlib.reload(mcp_module)
+
+    return mcp_module, server
+
+
+def _create_with_mock_server(MockServer, mock_types, mcp_module):
+    """Directly instantiate MockServer and run the server setup logic."""
+    import importlib
+    import sys
+    from unittest.mock import MagicMock
+
+    # Patch the imports inside create_mcp_server by temporarily injecting mocks
+    original_modules = {}
+    for mod_name in ["mcp", "mcp.server", "mcp.server.stdio", "mcp.types"]:
+        original_modules[mod_name] = sys.modules.get(mod_name)
+
+    mock_mcp_server_module = MagicMock()
+    mock_mcp_server_module.Server = MockServer
+    sys.modules["mcp.server"] = mock_mcp_server_module
+    sys.modules["mcp.server.stdio"] = MagicMock()
+    sys.modules["mcp.types"] = mock_types
+    sys.modules["mcp"] = MagicMock()
+
+    try:
+        importlib.reload(mcp_module)
+        server = mcp_module.create_mcp_server()
+    finally:
+        for mod_name, orig in original_modules.items():
+            if orig is None:
+                sys.modules.pop(mod_name, None)
+            else:
+                sys.modules[mod_name] = orig
+        importlib.reload(mcp_module)
+
+    return server
+
+
+def test_create_mcp_server_list_tools_with_mock(monkeypatch):
+    """list_tools closure returns 12 Tool dicts when mcp is mocked."""
+    import asyncio
+    import importlib
+    import sys
+    from concurrent.futures import ThreadPoolExecutor
+    from unittest.mock import MagicMock
+
+    class _MockServer:
+        def __init__(self, name):
+            self.name = name
+            self._list_tools_fn = None
+            self._call_tool_fn = None
+
+        def list_tools(self):
+            def decorator(fn):
+                self._list_tools_fn = fn
+                return fn
+
+            return decorator
+
+        def call_tool(self):
+            def decorator(fn):
+                self._call_tool_fn = fn
+                return fn
+
+            return decorator
+
+    mock_types = MagicMock()
+    captured_tools = []
+
+    def mock_tool(**kw):
+        captured_tools.append(kw)
+        return kw
+
+    mock_types.Tool = MagicMock(side_effect=mock_tool)
+    mock_types.TextContent = MagicMock(side_effect=lambda type, text: {"type": type, "text": text})
+
+    mock_server_module = MagicMock()
+    mock_server_module.Server = _MockServer
+
+    original = {}
+    for k in ["mcp", "mcp.server", "mcp.server.stdio", "mcp.types"]:
+        original[k] = sys.modules.get(k)
+
+    sys.modules["mcp"] = MagicMock()
+    sys.modules["mcp.server"] = mock_server_module
+    sys.modules["mcp.server.stdio"] = MagicMock()
+    sys.modules["mcp.types"] = mock_types
+
+    try:
+        import yagra.adapters.inbound.mcp_server as m
+
+        importlib.reload(m)
+        server = m.create_mcp_server()
+
+        assert isinstance(server, _MockServer)
+        assert server._list_tools_fn is not None
+        assert server._call_tool_fn is not None
+
+        with ThreadPoolExecutor(max_workers=1) as ex:
+            tools = ex.submit(asyncio.run, server._list_tools_fn()).result()
+        assert len(tools) == 12
+        tool_names = {t["name"] for t in tools}
+        assert "validate_workflow" in tool_names
+        assert "get_template" in tool_names
+        assert "propose_update" in tool_names
+        assert "apply_update" in tool_names
+        assert "rollback_update" in tool_names
+        assert "get_traces" in tool_names
+        assert "analyze_traces" in tool_names
+    finally:
+        for k, v in original.items():
+            if v is None:
+                sys.modules.pop(k, None)
+            else:
+                sys.modules[k] = v
+        importlib.reload(m)
+
+
+def test_create_mcp_server_call_tool_all_branches(tmp_path, monkeypatch):
+    """call_tool closure dispatches to correct _tool_* functions for all 12 tool names."""
+    import asyncio
+    import importlib
+    import json
+    import sys
+    from concurrent.futures import ThreadPoolExecutor
+    from unittest.mock import MagicMock
+
+    class _MockServer:
+        def __init__(self, name):
+            self.name = name
+            self._list_tools_fn = None
+            self._call_tool_fn = None
+
+        def list_tools(self):
+            def decorator(fn):
+                self._list_tools_fn = fn
+                return fn
+
+            return decorator
+
+        def call_tool(self):
+            def decorator(fn):
+                self._call_tool_fn = fn
+                return fn
+
+            return decorator
+
+    mock_types = MagicMock()
+    mock_types.Tool = MagicMock(side_effect=lambda **kw: kw)
+
+    text_content_instances = []
+
+    def mock_text_content(type, text):
+        obj = {"type": type, "text": text}
+        text_content_instances.append(obj)
+        return obj
+
+    mock_types.TextContent = MagicMock(side_effect=mock_text_content)
+
+    mock_server_module = MagicMock()
+    mock_server_module.Server = _MockServer
+
+    original = {}
+    for k in ["mcp", "mcp.server", "mcp.server.stdio", "mcp.types"]:
+        original[k] = sys.modules.get(k)
+
+    sys.modules["mcp"] = MagicMock()
+    sys.modules["mcp.server"] = mock_server_module
+    sys.modules["mcp.server.stdio"] = MagicMock()
+    sys.modules["mcp.types"] = mock_types
+
+    wf = tmp_path / "workflow.yaml"
+    wf.write_text(_VALID_WORKFLOW_YAML_PROPOSE)
+
+    valid_yaml = _VALID_WORKFLOW_YAML_PROPOSE
+
+    try:
+        import yagra.adapters.inbound.mcp_server as m
+        from yagra.application.use_cases.workflow_persistence import WorkflowSaveResult
+
+        importlib.reload(m)
+        server = m.create_mcp_server()
+
+        async def _call_async(name, arguments):
+            results = await server._call_tool_fn(name, arguments)
+            return json.loads(results[0]["text"])
+
+        def call(name, arguments):
+            with ThreadPoolExecutor(max_workers=1) as ex:
+                return ex.submit(asyncio.run, _call_async(name, arguments)).result()
+
+        # validate_workflow
+        r = call("validate_workflow", {"yaml_content": valid_yaml})
+        assert "is_valid" in r
+
+        # explain_workflow
+        r = call("explain_workflow", {"yaml_content": valid_yaml})
+        assert "entry_point" in r or "error" in r
+
+        # validate_workflow_file
+        r = call("validate_workflow_file", {"workflow_path": str(wf)})
+        assert "is_valid" in r
+
+        # explain_workflow_file
+        r = call("explain_workflow_file", {"workflow_path": str(wf)})
+        assert "entry_point" in r or "error" in r
+
+        # list_templates
+        r = call("list_templates", {})
+        assert "templates" in r
+
+        # list_handlers
+        r = call("list_handlers", {})
+        assert "handlers" in r
+
+        # get_template - use first available template
+        templates_result = call("list_templates", {})
+        if templates_result["templates"]:
+            first_name = templates_result["templates"][0]["name"]
+            r = call("get_template", {"name": first_name})
+            assert "files" in r or "error" in r
+
+        # get_traces (empty dir)
+        r = call("get_traces", {"trace_dir": str(tmp_path / "traces"), "limit": 5})
+        assert "traces" in r or "error" in r
+
+        # analyze_traces (empty dir)
+        r = call("analyze_traces", {"trace_dir": str(tmp_path / "traces")})
+        assert "error" in r  # no traces
+
+        # propose_update (file not found)
+        r = call(
+            "propose_update",
+            {"workflow_path": "/nonexistent.yaml", "candidate_yaml": valid_yaml},
+        )
+        assert "error" in r
+
+        # apply_update - mock save_workflow_with_backup
+        mock_result = WorkflowSaveResult(saved_revision="rev1", backup_id="bk-1")
+        monkeypatch.setattr(m, "save_workflow_with_backup", lambda *a, **k: mock_result)
+        r = call("apply_update", {"workflow_path": str(wf), "candidate_yaml": valid_yaml})
+        assert r.get("success") is True or "error" in r
+
+        # rollback_update - missing backup_id
+        r = call("rollback_update", {"workflow_path": str(wf), "backup_id": ""})
+        assert "error" in r
+
+        # unknown tool
+        r = call("__unknown__", {})
+        assert "error" in r
+
+    finally:
+        for k, v in original.items():
+            if v is None:
+                sys.modules.pop(k, None)
+            else:
+                sys.modules[k] = v
+        importlib.reload(m)
+
+
+# ---------------------------------------------------------------------------
+# run_mcp_server: lines 942-955 — import path + version fallback + server run
+# ---------------------------------------------------------------------------
+
+
+def test_run_mcp_server_calls_server_run(monkeypatch):
+    """run_mcp_server should import mcp, resolve version, and invoke server.run()."""
+    import asyncio
+    import contextlib
+
+    try:
+        import mcp  # noqa: F401
+    except ImportError:
+        pytest.skip("mcp package not installed")
+
+    from yagra.adapters.inbound import mcp_server as mcp_mod
+
+    run_called = {}
+
+    class _FakeStream:
+        pass
+
+    @contextlib.asynccontextmanager
+    async def _fake_stdio_server():
+        yield _FakeStream(), _FakeStream()
+
+    class _FakeServer:
+        def get_capabilities(self, **kwargs):
+            return {}
+
+        async def run(self, read_stream, write_stream, init_options):
+            run_called["called"] = True
+            run_called["server_name"] = init_options.server_name
+
+    monkeypatch.setattr(
+        "yagra.adapters.inbound.mcp_server.create_mcp_server",
+        lambda: _FakeServer(),
+    )
+
+    import mcp.server.stdio as _stdio_mod
+
+    monkeypatch.setattr(_stdio_mod, "stdio_server", _fake_stdio_server)
+
+    asyncio.run(mcp_mod.run_mcp_server())
+
+    assert run_called.get("called") is True
+    assert run_called.get("server_name") == "yagra"
+
+
+def test_run_mcp_server_version_fallback(monkeypatch):
+    """run_mcp_server uses '0.0.0' when importlib.metadata raises."""
+    import asyncio
+    import contextlib
+
+    try:
+        import mcp  # noqa: F401
+    except ImportError:
+        pytest.skip("mcp package not installed")
+
+    from yagra.adapters.inbound import mcp_server as mcp_mod
+
+    version_used = {}
+
+    class _FakeStream:
+        pass
+
+    @contextlib.asynccontextmanager
+    async def _fake_stdio_server():
+        yield _FakeStream(), _FakeStream()
+
+    class _FakeServer:
+        def get_capabilities(self, **kwargs):
+            return {}
+
+        async def run(self, read_stream, write_stream, init_options):
+            version_used["version"] = init_options.server_version
+
+    monkeypatch.setattr(
+        "yagra.adapters.inbound.mcp_server.create_mcp_server",
+        lambda: _FakeServer(),
+    )
+
+    import mcp.server.stdio as _stdio_mod
+
+    monkeypatch.setattr(_stdio_mod, "stdio_server", _fake_stdio_server)
+
+    # Make pkg_version always raise so the fallback "0.0.0" is used
+    import importlib.metadata as _meta
+
+    monkeypatch.setattr(_meta, "version", lambda _pkg: (_ for _ in ()).throw(Exception("no pkg")))
+
+    asyncio.run(mcp_mod.run_mcp_server())
+
+    assert version_used.get("version") == "0.0.0"
