@@ -4302,6 +4302,21 @@ def _studio_html() -> str:
           setStatus("Select a workflow target");
         });
 
+        // Expose pure utility functions for automated testing (e.g. pytest-playwright).
+        // Only active when the query parameter `?__test_utils=1` is present so that
+        // production builds are unaffected.
+        if (new URLSearchParams(window.location.search).get("__test_utils") === "1") {
+          window.__studioUtils = {
+            normalizePosixPath,
+            joinPosixPath,
+            relativePosixPath,
+            splitPromptReference,
+            getWorkflowDirectoryRelative,
+            promptRefPathToWorkspacePath,
+            workspacePathToPromptRefPath,
+          };
+        }
+
         return {
           revision,
           backupId,

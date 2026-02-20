@@ -51,6 +51,7 @@ dev = [
     "sphinx-intl>=2.3.2",
     "sphinx>=9.1.0",
     "types-pyyaml>=6.0.12.20250915",
+    "pytest-playwright>=0.7.2",
 ]
 
 [tool.ruff]
