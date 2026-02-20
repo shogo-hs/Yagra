@@ -29,6 +29,9 @@ jobs:
       - name: Sync dependencies
         run: uv sync --locked --dev
 
+      - name: Install Playwright browsers
+        run: uv run playwright install chromium --with-deps
+
       - name: Ruff format check
         run: uv run ruff format --check .
 
