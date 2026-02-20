@@ -800,6 +800,580 @@ class TestExplainCommand:
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# Yagra.compiled_graph property
+# ---------------------------------------------------------------------------
+
+
+class TestYagraCompiledGraphProperty:
+    """Tests for the Yagra.compiled_graph property."""
+
+    def test_compiled_graph_returns_held_graph(self) -> None:
+        """Should return the compiled graph passed to __init__."""
+        fake_graph = MagicMock()
+        instance = yagra.Yagra(compiled_graph=fake_graph)
+        assert instance.compiled_graph is fake_graph
+
+
+# ---------------------------------------------------------------------------
+# Yagra.resume
+# ---------------------------------------------------------------------------
+
+
+class TestYagraResume:
+    """Tests for the Yagra.resume method."""
+
+    def test_resume_raises_type_error_when_graph_returns_non_mapping(self) -> None:
+        """Should raise TypeError when compiled_graph returns a non-Mapping value."""
+        fake_graph = MagicMock()
+        fake_graph.invoke.return_value = "not-a-mapping"
+        instance = yagra.Yagra(compiled_graph=fake_graph)
+
+        with pytest.raises(TypeError, match="compiled graph returned non-mapping result"):
+            instance.resume()
+
+    def test_resume_returns_dict_on_success(self) -> None:
+        """Should return a dict when compiled_graph returns a Mapping."""
+        fake_graph = MagicMock()
+        fake_graph.invoke.return_value = {"result": "ok"}
+        instance = yagra.Yagra(compiled_graph=fake_graph)
+
+        result = instance.resume(thread_id="t1")
+        assert result == {"result": "ok"}
+
+    def test_resume_with_update_calls_update_state(self) -> None:
+        """Should call update_state when update is provided."""
+        fake_graph = MagicMock()
+        fake_graph.invoke.return_value = {"result": "ok"}
+        instance = yagra.Yagra(compiled_graph=fake_graph)
+
+        instance.resume(update={"key": "new_value"}, thread_id="t1")
+        fake_graph.update_state.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# handlers command
+# ---------------------------------------------------------------------------
+
+
+class TestHandlersCommand:
+    """Tests for the yagra handlers subcommand."""
+
+    def test_handlers_text_format_outputs_handler_info(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Should return exit code 0 and print handler names in text format."""
+        monkeypatch.setattr(sys, "argv", ["yagra", "handlers"])
+
+        with pytest.raises(SystemExit) as exc:
+            main()
+
+        assert exc.value.code == 0
+        captured = capsys.readouterr()
+        assert "llm" in captured.out
+        assert "structured_llm" in captured.out
+        assert "streaming_llm" in captured.out
+
+    def test_handlers_json_format_outputs_valid_json(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Should return exit code 0 and output valid JSON for --format json."""
+        monkeypatch.setattr(sys, "argv", ["yagra", "handlers", "--format", "json"])
+
+        with pytest.raises(SystemExit) as exc:
+            main()
+
+        assert exc.value.code == 0
+        captured = capsys.readouterr()
+        data = json.loads(captured.out)
+        assert "handlers" in data
+        handler_names = [h["name"] for h in data["handlers"]]
+        assert "llm" in handler_names
+        assert "structured_llm" in handler_names
+        assert "streaming_llm" in handler_names
+
+
+# ---------------------------------------------------------------------------
+# main() unknown command fallback (SystemExit(2))
+# ---------------------------------------------------------------------------
+
+
+def test_main_unknown_command_exits_two(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Should exit with code 2 when no subcommand is matched."""
+    # Bypass argparse by directly invoking main with a fake args object that
+    # sets command to an unknown value after parser runs.
+    import argparse
+
+    fake_args = argparse.Namespace(command="__unknown_command__")
+
+    def _fake_parse(self: argparse.ArgumentParser, *args: Any, **kwargs: Any) -> argparse.Namespace:
+        return fake_args
+
+    monkeypatch.setattr(argparse.ArgumentParser, "parse_args", _fake_parse)
+
+    with pytest.raises(SystemExit) as exc:
+        main()
+
+    assert exc.value.code == 2
+
+
+# ---------------------------------------------------------------------------
+# init --list: template without use_case (line 295)
+# ---------------------------------------------------------------------------
+
+
+class TestInitListTemplateWithoutUseCase:
+    """Tests for the init --list branch with templates lacking use_case."""
+
+    def test_list_template_without_use_case_shows_name_only(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Template entries without use_case should show only the name."""
+        from yagra.application.services.template_initializer import TemplateInfo
+
+        monkeypatch.setattr(sys, "argv", ["yagra", "init", "--list"])
+        monkeypatch.setattr(yagra, "list_templates", lambda: ["plain"])
+        monkeypatch.setattr(
+            yagra,
+            "list_templates_with_info",
+            lambda: [TemplateInfo(name="plain", description="", use_case="")],
+        )
+
+        with pytest.raises(SystemExit) as exc:
+            main()
+
+        assert exc.value.code == 0
+        captured = capsys.readouterr()
+        assert "plain" in captured.out
+        # No use_case bracket should appear
+        assert "[" not in captured.out
+
+
+# ---------------------------------------------------------------------------
+# init --template: success path with workflow validation (lines 323-340)
+# ---------------------------------------------------------------------------
+
+
+class TestInitCommandSuccessPath:
+    """Tests for the init subcommand success path including workflow validation."""
+
+    def test_init_success_with_valid_generated_workflow(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Should return exit code 0 and show validation success when init succeeds."""
+        from yagra.application.use_cases import WorkflowValidationReport
+
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "yagra",
+                "init",
+                "--template",
+                "branch",
+                "--output",
+                str(tmp_path),
+            ],
+        )
+
+        # Create a dummy workflow.yaml so the validation branch is reached
+        workflow_yaml = tmp_path / "workflow.yaml"
+        workflow_yaml.write_text("version: '1.0'\n", encoding="utf-8")
+
+        def _fake_initialize(**_: Any) -> None:
+            pass  # no-op; file already created above
+
+        valid_report = WorkflowValidationReport(issues=[])
+
+        monkeypatch.setattr(yagra, "initialize_from_template", _fake_initialize)
+        monkeypatch.setattr(yagra, "validate_workflow_for_ui", lambda **_: valid_report)
+
+        with pytest.raises(SystemExit) as exc:
+            main()
+
+        assert exc.value.code == 0
+        captured = capsys.readouterr()
+        assert "workflow is valid" in captured.out
+
+    def test_init_success_with_invalid_generated_workflow(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Should return exit code 1 when the generated workflow fails validation."""
+        from yagra.application.use_cases import (
+            WorkflowValidationIssue,
+            WorkflowValidationReport,
+        )
+
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "yagra",
+                "init",
+                "--template",
+                "branch",
+                "--output",
+                str(tmp_path),
+            ],
+        )
+
+        # Create a dummy workflow.yaml so the validation branch is reached
+        workflow_yaml = tmp_path / "workflow.yaml"
+        workflow_yaml.write_text("version: '1.0'\n", encoding="utf-8")
+
+        def _fake_initialize(**_: Any) -> None:
+            pass
+
+        invalid_report = WorkflowValidationReport(
+            issues=[
+                WorkflowValidationIssue(
+                    code="schema_error",
+                    message="missing required field",
+                    location=(),
+                )
+            ]
+        )
+
+        monkeypatch.setattr(yagra, "initialize_from_template", _fake_initialize)
+        monkeypatch.setattr(yagra, "validate_workflow_for_ui", lambda **_: invalid_report)
+
+        with pytest.raises(SystemExit) as exc:
+            main()
+
+        assert exc.value.code == 1
+        captured = capsys.readouterr()
+        assert captured.err != ""
+
+    def test_init_success_without_workflow_yaml(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Should return exit code 0 when init succeeds but no workflow.yaml is generated."""
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "yagra",
+                "init",
+                "--template",
+                "branch",
+                "--output",
+                str(tmp_path),
+            ],
+        )
+
+        def _fake_initialize(**_: Any) -> None:
+            pass  # no-op; don't create workflow.yaml
+
+        monkeypatch.setattr(yagra, "initialize_from_template", _fake_initialize)
+
+        with pytest.raises(SystemExit) as exc:
+            main()
+
+        assert exc.value.code == 0
+        captured = capsys.readouterr()
+        assert "Initialized from template" in captured.out
+
+
+# ---------------------------------------------------------------------------
+# analyze command
+# ---------------------------------------------------------------------------
+
+
+class TestAnalyzeCommand:
+    """Tests for the yagra analyze subcommand."""
+
+    def _make_trace(
+        self,
+        trace_dir: Path,
+        workflow_name: str = "test_wf",
+        *,
+        status: str = "success",
+        duration_ms: float = 100.0,
+        node_id: str = "node_a",
+        include_error_type: bool = False,
+        include_cost: bool = False,
+    ) -> None:
+        """Write a minimal trace JSON file."""
+        wf_dir = trace_dir / workflow_name
+        wf_dir.mkdir(parents=True, exist_ok=True)
+        node: dict[str, Any] = {
+            "node_id": node_id,
+            "status": status,
+            "duration_ms": duration_ms,
+        }
+        if include_error_type:
+            node["error"] = {"error_type": "ValueError"}
+        trace: dict[str, Any] = {
+            "workflow_name": workflow_name,
+            "started_at": "2024-01-01T00:00:00Z",
+            "ended_at": "2024-01-01T00:00:01Z",
+            "status": status,
+            "summary": {
+                "total_duration_ms": duration_ms,
+                "total_prompt_tokens": 10,
+                "total_completion_tokens": 5,
+                "total_tokens": 15,
+            },
+            "nodes": [node],
+        }
+        if include_cost:
+            trace["summary"]["total_estimated_cost_usd"] = 0.001
+        import uuid
+
+        (wf_dir / f"{uuid.uuid4()}.json").write_text(json.dumps(trace), encoding="utf-8")
+
+    def test_analyze_no_traces_returns_one(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Should return exit code 1 when no traces are found."""
+        empty_dir = tmp_path / "traces"
+        empty_dir.mkdir()
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            ["yagra", "analyze", "--trace-dir", str(empty_dir)],
+        )
+
+        with pytest.raises(SystemExit) as exc:
+            main()
+
+        assert exc.value.code == 1
+        captured = capsys.readouterr()
+        assert "No traces found" in captured.err
+
+    def test_analyze_text_format(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Should return exit code 0 and text output when traces exist."""
+        trace_dir = tmp_path / "traces"
+        self._make_trace(trace_dir)
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            ["yagra", "analyze", "--trace-dir", str(trace_dir)],
+        )
+
+        with pytest.raises(SystemExit) as exc:
+            main()
+
+        assert exc.value.code == 0
+        captured = capsys.readouterr()
+        assert "Workflow:" in captured.out
+        assert "Runs:" in captured.out
+
+    def test_analyze_json_format(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Should return exit code 0 and valid JSON when --format json is specified."""
+        trace_dir = tmp_path / "traces"
+        self._make_trace(trace_dir)
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            ["yagra", "analyze", "--trace-dir", str(trace_dir), "--format", "json"],
+        )
+
+        with pytest.raises(SystemExit) as exc:
+            main()
+
+        assert exc.value.code == 0
+        captured = capsys.readouterr()
+        data = json.loads(captured.out)
+        assert "workflow_name" in data
+        assert "total_runs" in data
+
+    def test_analyze_with_workflow_filter(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Should filter traces by workflow name when --workflow is specified."""
+        trace_dir = tmp_path / "traces"
+        self._make_trace(trace_dir, workflow_name="target_wf")
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "yagra",
+                "analyze",
+                "--trace-dir",
+                str(trace_dir),
+                "--workflow",
+                "target_wf",
+            ],
+        )
+
+        with pytest.raises(SystemExit) as exc:
+            main()
+
+        assert exc.value.code == 0
+
+    def test_analyze_with_limit(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Should limit trace count when --limit is specified."""
+        trace_dir = tmp_path / "traces"
+        for _ in range(3):
+            self._make_trace(trace_dir)
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "yagra",
+                "analyze",
+                "--trace-dir",
+                str(trace_dir),
+                "--limit",
+                "1",
+            ],
+        )
+
+        with pytest.raises(SystemExit) as exc:
+            main()
+
+        assert exc.value.code == 0
+        captured = capsys.readouterr()
+        assert "Workflow:" in captured.out
+
+    def test_analyze_text_with_node_stats_and_errors(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Should print per-node table and error types when node has errors."""
+        trace_dir = tmp_path / "traces"
+        self._make_trace(trace_dir, status="error", include_error_type=True)
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            ["yagra", "analyze", "--trace-dir", str(trace_dir)],
+        )
+
+        with pytest.raises(SystemExit) as exc:
+            main()
+
+        assert exc.value.code == 0
+        captured = capsys.readouterr()
+        assert "Node" in captured.out
+        assert "error:" in captured.out
+
+    def test_analyze_text_with_estimated_cost(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Should print estimated cost when it is present in trace data."""
+        trace_dir = tmp_path / "traces"
+        self._make_trace(trace_dir, include_cost=True)
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            ["yagra", "analyze", "--trace-dir", str(trace_dir)],
+        )
+
+        with pytest.raises(SystemExit) as exc:
+            main()
+
+        assert exc.value.code == 0
+        captured = capsys.readouterr()
+        assert "Estimated cost:" in captured.out
+        assert "N/A" not in captured.out
+
+    def test_analyze_text_estimated_cost_none(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Should print 'N/A' for estimated cost when no cost data is available."""
+        trace_dir = tmp_path / "traces"
+        self._make_trace(trace_dir, include_cost=False)
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            ["yagra", "analyze", "--trace-dir", str(trace_dir)],
+        )
+
+        with pytest.raises(SystemExit) as exc:
+            main()
+
+        assert exc.value.code == 0
+        captured = capsys.readouterr()
+        assert "Estimated cost: N/A" in captured.out
+
+    def test_analyze_text_with_no_node_stats(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Should print 'No node statistics available.' when trace has no node data."""
+        trace_dir = tmp_path / "traces"
+        wf_dir = trace_dir / "test_wf"
+        wf_dir.mkdir(parents=True)
+        # Trace with empty nodes list -> no node_stats after aggregation
+        trace: dict[str, Any] = {
+            "workflow_name": "test_wf",
+            "started_at": "2024-01-01T00:00:00Z",
+            "ended_at": "2024-01-01T00:00:01Z",
+            "status": "success",
+            "summary": {
+                "total_duration_ms": 50.0,
+                "total_prompt_tokens": 0,
+                "total_completion_tokens": 0,
+                "total_tokens": 0,
+            },
+            "nodes": [],
+        }
+        import uuid
+
+        (wf_dir / f"{uuid.uuid4()}.json").write_text(json.dumps(trace), encoding="utf-8")
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            ["yagra", "analyze", "--trace-dir", str(trace_dir)],
+        )
+
+        with pytest.raises(SystemExit) as exc:
+            main()
+
+        assert exc.value.code == 0
+        captured = capsys.readouterr()
+        assert "No node statistics available." in captured.out
+
+
 class TestMcpCommand:
     """Tests for the yagra mcp subcommand."""
 
@@ -838,12 +1412,20 @@ class TestMcpCommand:
 
         called: list[Any] = []
 
-        async def _fake_run_mcp_server() -> None:
-            called.append(True)
+        # asyncio.run itself is monkeypatched to avoid event loop conflict
+        # when running inside pytest's async runner.
+        fake_asyncio = MagicMock()
+        fake_asyncio.run = lambda coro: called.append(True)
+
+        fake_mcp_server = MagicMock()
+        fake_mcp_server.run_mcp_server = MagicMock(return_value=MagicMock())
 
         with patch.dict(
             "sys.modules",
-            {"yagra.adapters.inbound.mcp_server": MagicMock(run_mcp_server=_fake_run_mcp_server)},
+            {
+                "asyncio": fake_asyncio,
+                "yagra.adapters.inbound.mcp_server": fake_mcp_server,
+            },
         ):
             with pytest.raises(SystemExit) as exc:
                 main()

@@ -1,6 +1,6 @@
 # 到達ステップ
 
-最終更新: 2026-02-20 <!-- M-37〜M-41 を Done に更新、M-44 を削除（分析はエージェントに委ねる方針） -->
+最終更新: 2026-02-20 <!-- M-37〜M-41 を Done に更新、M-44 を削除（分析はエージェントに委ねる方針）、M-45〜M-47 を Done に更新 -->
 
 補足:
 - M-01〜M-36 は Phase 1（Declarative LangGraph Builder）として全て完了済み。各マイルストーンの完了詳細は本ファイル末尾の「Phase 1 完了ノート」を参照。
@@ -71,9 +71,9 @@
 
 | Milestone ID | 対応 Goal ID | 到達ステップ | 完了条件 | 状態 |
 | --- | --- | --- | --- | --- |
-| M-45 | G-18 | MCP サーバーに YAML 更新提案ツールを追加する | エージェントが分析結果に基づいて YAML の修正差分を生成し、`propose_update` ツール経由でユーザーに提示できる。提案には変更理由・影響範囲・バリデーション結果を含める | Planned |
-| M-46 | G-18 | 提案された YAML 変更の適用・ロールバック機構を実装する | ユーザー承認後に YAML 変更を適用し、自動バックアップと `yagra validate` による事後検証を行う。問題があればロールバックできる | Planned |
-| M-47 | G-19 | 最適化サイクルの E2E 統合テストを整備する | Build→Run & Observe→Analyze & Propose→Approve & Update の全工程を通したテストシナリオが動作し、サイクル完結を検証できる | Planned |
+| M-45 | G-18 | MCP サーバーに YAML 更新提案ツールを追加する | エージェントが分析結果に基づいて YAML の修正差分を生成し、`propose_update` ツール経由でユーザーに提示できる。提案には変更理由・影響範囲・バリデーション結果を含める | Done |
+| M-46 | G-18 | 提案された YAML 変更の適用・ロールバック機構を実装する | ユーザー承認後に YAML 変更を適用し、自動バックアップと `yagra validate` による事後検証を行う。問題があればロールバックできる | Done |
+| M-47 | G-19 | 最適化サイクルの E2E 統合テストを整備する | Build→Run & Observe→Analyze & Propose→Approve & Update の全工程を通したテストシナリオが動作し、サイクル完結を検証できる | Done |
 | M-48 | G-19 | 最適化サイクルのドキュメントとサンプルを整備する | 最適化サイクルの実行手順・エージェント向けプロンプト例・worked example を文書化し、ユーザーが 30 分以内に初回サイクルを完了できる | Planned |
 
 ## Goal 別の実装項目
@@ -254,15 +254,15 @@
 
 | Item ID | やるべきこと | 状態 | 根拠 |
 | --- | --- | --- | --- |
-| G18-I01 | MCP サーバーに `propose_update` ツールを追加する | Planned | — |
-| G18-I02 | 提案された YAML 変更の適用・ロールバック機構を実装する | Planned | — |
-| G18-I03 | 変更適用時の自動バリデーションと事後検証を実装する | Planned | — |
+| G18-I01 | MCP サーバーに `propose_update` ツールを追加する | Done | `src/yagra/adapters/inbound/mcp_server.py` |
+| G18-I02 | 提案された YAML 変更の適用・ロールバック機構を実装する | Done | `src/yagra/adapters/inbound/mcp_server.py` |
+| G18-I03 | 変更適用時の自動バリデーションと事後検証を実装する | Done | `src/yagra/adapters/inbound/mcp_server.py` |
 
 ### G-19: Build→Observe→Analyze→Update の最適化サイクルを手元環境で完結できる
 
 | Item ID | やるべきこと | 状態 | 根拠 |
 | --- | --- | --- | --- |
-| G19-I01 | 最適化サイクルの E2E 統合テストを整備する | Planned | — |
+| G19-I01 | 最適化サイクルの E2E 統合テストを整備する | Done | `tests/integration/test_optimization_cycle_e2e.py` |
 | G19-I02 | 最適化サイクルのドキュメント（実行手順・worked example）を整備する | Planned | — |
 | G19-I03 | エージェント向け最適化サイクルプロンプト例を作成する | Planned | — |
 

@@ -109,3 +109,100 @@ def test_graph_spec_json_schema_has_descriptions() -> None:
     assert "description" in props.get("version", {})
     assert "description" in props.get("start_at", {})
     assert "description" in props.get("nodes", {})
+
+
+# ---------------------------------------------------------------------------
+# Lines 76-77: end_at references undefined node
+# ---------------------------------------------------------------------------
+
+
+def test_collect_graph_structure_issues_detects_unknown_end_at() -> None:
+    """Lines 76-77: end_at references an undefined node, issue is appended."""
+    payload = deepcopy(_base_payload())
+    payload["end_at"] = ["nonexistent_end"]
+    # Override start_at to avoid a second issue
+    payload["start_at"] = "router"
+    spec = GraphSpec.model_validate(payload)
+
+    issues = collect_graph_structure_issues(spec)
+
+    end_at_issues = [i for i in issues if i.location == ("end_at", 0)]
+    assert len(end_at_issues) == 1
+    assert "end_at" in end_at_issues[0].message
+    assert "nonexistent_end" in end_at_issues[0].message
+
+
+def test_collect_graph_structure_issues_end_at_with_suggestion() -> None:
+    """Lines 76-77: end_at with a close match provides suggestion in context."""
+    payload = deepcopy(_base_payload())
+    # "finsh" is close to "finish" — should trigger fuzzy suggestion
+    payload["end_at"] = ["finsh"]
+    spec = GraphSpec.model_validate(payload)
+
+    issues = collect_graph_structure_issues(spec)
+
+    end_at_issues = [i for i in issues if i.location == ("end_at", 0)]
+    assert len(end_at_issues) == 1
+    issue = end_at_issues[0]
+    assert issue.context is not None
+    assert issue.context["suggestion"] == "finish"
+
+
+def test_collect_graph_structure_issues_end_at_no_suggestion_when_no_match() -> None:
+    """Lines 76-77: end_at with no close match results in suggestion=None."""
+    payload = deepcopy(_base_payload())
+    payload["end_at"] = ["zzzzz_no_match"]
+    spec = GraphSpec.model_validate(payload)
+
+    issues = collect_graph_structure_issues(spec)
+
+    end_at_issues = [i for i in issues if i.location == ("end_at", 0)]
+    assert len(end_at_issues) == 1
+    issue = end_at_issues[0]
+    assert issue.context is not None
+    assert issue.context["suggestion"] is None
+
+
+# ---------------------------------------------------------------------------
+# Lines 135-136: edge.source references undefined node
+# ---------------------------------------------------------------------------
+
+
+def test_collect_graph_structure_issues_detects_unknown_edge_source() -> None:
+    """Lines 135-136: edge.source references an undefined node, issue is appended."""
+    payload = deepcopy(_base_payload())
+    payload["edges"].append({"source": "ghost_node", "target": "finish"})
+    spec = GraphSpec.model_validate(payload)
+
+    issues = collect_graph_structure_issues(spec)
+
+    source_issues = [
+        i
+        for i in issues
+        if i.location == ("edges", len(spec.edges) - 1, "source") and "edge.source" in i.message
+    ]
+    assert len(source_issues) == 1
+    assert "ghost_node" in source_issues[0].message
+
+
+def test_collect_graph_structure_issues_edge_source_with_suggestion() -> None:
+    """Lines 135-136: edge.source with a close match provides suggestion in context."""
+    payload = deepcopy(_base_payload())
+    # "routr" is close to "router"
+    payload["edges"].append({"source": "routr", "target": "finish"})
+    spec = GraphSpec.model_validate(payload)
+
+    issues = collect_graph_structure_issues(spec)
+
+    source_issues = [
+        i
+        for i in issues
+        if len(i.location) == 3
+        and i.location[0] == "edges"
+        and i.location[2] == "source"
+        and "edge.source" in i.message
+    ]
+    assert len(source_issues) >= 1
+    issue = source_issues[0]
+    assert issue.context is not None
+    assert issue.context["suggestion"] == "router"
