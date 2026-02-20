@@ -2657,11 +2657,11 @@ def _studio_html() -> str:
             }
             return normalizePosixPath(normalizedPath.slice(workspacePrefix.length));
           }
-          if (normalizedPath.startsWith("../") || normalizedPath.startsWith("./")) {
-            const workflowDir = getWorkflowDirectoryRelative();
-            return joinPosixPath(workflowDir, normalizedPath);
-          }
-          return normalizedPath;
+          // Resolve relative paths (both explicit `./`, `../` and bare relative like `prompts/foo.yaml`)
+          // against the workflow file's directory, so the result is workspace-root-relative and
+          // can be matched against the `yamlFiles` list returned by /api/studio/files.
+          const workflowDir = getWorkflowDirectoryRelative();
+          return joinPosixPath(workflowDir, normalizedPath);
         }
 
         function workspacePathToPromptRefPath(rawPath) {
@@ -2669,6 +2669,7 @@ def _studio_html() -> str:
           if (!normalizedPath) {
             return "";
           }
+          // Resolve absolute paths to workspace-relative first, then fall through.
           if (normalizedPath.startsWith("/")) {
             const workspaceRoot = normalizePosixPath(studioWorkspaceRoot.value);
             if (!workspaceRoot) {
@@ -2679,6 +2680,19 @@ def _studio_html() -> str:
               return normalizedPath;
             }
             return workspacePathToPromptRefPath(normalizedPath.slice(workspacePrefix.length));
+          }
+          // Convert workspace-root-relative path to a path relative to the workflow file's
+          // directory, so it matches how prompt_ref is stored in the YAML (e.g.
+          // "bdi_workflow/prompts/foo.yaml" → "prompts/foo.yaml" when the workflow lives in
+          // "bdi_workflow/").
+          const workflowDir = getWorkflowDirectoryRelative();
+          if (workflowDir) {
+            const rel = relativePosixPath(workflowDir, normalizedPath);
+            // Use the relative form only when it doesn't escape the workflow directory
+            // (i.e. no leading "../../" that would be confusing).
+            if (rel && !rel.startsWith("../")) {
+              return rel;
+            }
           }
           return normalizedPath;
         }

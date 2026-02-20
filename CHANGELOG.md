@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+## [0.6.9] - 2026-02-20
+
+### Fixed
+- 🐛 **Studio: `prompt yaml` ドロップダウンが空欄になる問題を修正**: ワークフローファイルが workspace_root のサブディレクトリ（例: `bdi_workflow/`）に置かれている場合、`prompt_ref` に記載された相対パス（`prompts/bdi_prompts.yaml`）をワークスペース基準パス（`bdi_workflow/prompts/bdi_prompts.yaml`）へ変換できず、`yamlFiles` リストの該当エントリと一致しないため dropdown が空欄のように見えていた。`promptRefPathToWorkspacePath` でベアな相対パスもワークフローディレクトリ基準で解決するよう修正
+- 🐛 **Studio: dropdown で YAML ファイルを選択して Apply した際に `prompt_ref` のパスが workspace_root 基準になっていた問題を修正**: `workspacePathToPromptRefPath` がワークフローディレクトリからの相対パスへ正規化せず workspace 基準パスをそのまま保存していた。ワークフローファイルの親ディレクトリを基準に相対化するよう修正
+
 ## [0.6.8] - 2026-02-20
 
 ### Fixed

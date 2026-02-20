@@ -8,6 +8,12 @@ For the canonical changelog (Japanese), see [CHANGELOG.md](https://github.com/sh
 
 ## [Unreleased]
 
+## [0.6.9] - 2026-02-20
+
+### Fixed
+- 🐛 **Studio: "prompt yaml" dropdown appears empty for workflows in subdirectories**: When a workflow lives in a subdirectory of the workspace root (e.g. `bdi_workflow/`), the `prompt_ref` relative path (`prompts/bdi_prompts.yaml`) was not being resolved to its workspace-root-relative form (`bdi_workflow/prompts/bdi_prompts.yaml`), so no option in `yamlFiles` matched and the dropdown looked empty. Fixed `promptRefPathToWorkspacePath` to resolve bare relative paths against the workflow directory, not returning them as-is.
+- 🐛 **Studio: selecting a YAML file from the dropdown saved a workspace-root-relative `prompt_ref` instead of workflow-relative**: `workspacePathToPromptRefPath` was returning the workspace-root-relative path unchanged. Fixed to compute a path relative to the workflow file's directory so the stored `prompt_ref` stays portable.
+
 ## [0.6.8] - 2026-02-20
 
 ### Fixed
