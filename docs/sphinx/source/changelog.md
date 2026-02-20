@@ -8,6 +8,12 @@ For the canonical changelog (Japanese), see [CHANGELOG.md](https://github.com/sh
 
 ## [Unreleased]
 
+## [0.6.11] - 2026-02-20
+
+### Fixed
+- 🔧 **CI: Chromium not installed for Playwright tests**: Added `playwright install chromium --with-deps` step to the `quality` CI job so Chromium is always available when running browser-based JS utility tests.
+- 🔧 **CI: pytest-playwright event loop conflicts with `asyncio.run()` tests**: pytest-playwright holds a session-scoped event loop, causing `asyncio.run() cannot be called from a running event loop` in the existing `test_mcp_installed_runs_asyncio` test when run in the same process. Fixed by splitting Playwright tests into a separate `pytest` invocation.
+
 ## [0.6.10] - 2026-02-20
 
 ### Fixed

@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+## [0.6.11] - 2026-02-20
+
+### Fixed
+- 🔧 **CI: Playwright テストが Chromium 未インストールでエラーになる問題を修正**: GitHub Actions の `quality` ジョブに `playwright install chromium --with-deps` ステップを追加し、Chromium が確実に利用可能になるよう修正
+- 🔧 **CI: pytest-playwright の event loop が `asyncio.run()` テストと競合する問題を修正**: pytest-playwright はセッションスコープの event loop を保持するため、既存の `asyncio.run()` を使うテスト（`test_mcp_installed_runs_asyncio`）と同一プロセスで実行すると `cannot be called from a running event loop` エラーが発生していた。Playwright テストを独立した `pytest` プロセスで実行するよう CI を分割
+
 ## [0.6.10] - 2026-02-20
 
 ### Fixed
