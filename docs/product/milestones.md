@@ -1,10 +1,11 @@
 # 到達ステップ
 
-最終更新: 2026-02-20 <!-- AgentOps ビジョンに基づき M-37〜M-48 を追加 -->
+最終更新: 2026-02-20 <!-- M-37〜M-41 を Done に更新、M-44 を削除（分析はエージェントに委ねる方針） -->
 
 補足:
 - M-01〜M-36 は Phase 1（Declarative LangGraph Builder）として全て完了済み。各マイルストーンの完了詳細は本ファイル末尾の「Phase 1 完了ノート」を参照。
 - M-37〜M-48 は AgentOps ビジョンに基づく v1.0 目標。Phase 2→3→4 の順に依存関係がある。
+- M-44（ボトルネック検出・改善ヒント生成）は削除。分析・提案はコーディングエージェントに委ねる方針とし、Yagra はデータ収集と構造化出力に徹する。
 
 ## ステップ一覧
 
@@ -53,19 +54,18 @@
 
 | Milestone ID | 対応 Goal ID | 到達ステップ | 完了条件 | 状態 |
 | --- | --- | --- | --- | --- |
-| M-37 | G-14 | 実行トレースのデータモデルとログフォーマットを策定する | ノード単位の実行記録（node_id, start_time, end_time, duration_ms, input_snapshot, output_snapshot, status, error）を表現するドメインエンティティと JSON フォーマット仕様が定義され、テスト化されている | Planned |
-| M-38 | G-14 | StateGraph 実行にトレース収集フックを組み込む | `Yagra.invoke()` に `trace=True` オプションを追加し、実行時に各ノードの開始・終了・エラーを自動キャプチャする。既存 API の後方互換を維持する | Planned |
-| M-39 | G-14 | 実行トレースのローカルファイル出力を実装する | トレース結果を `.yagra/traces/` ディレクトリに構造化 JSON ファイルとして出力する。ファイル名は `{workflow_name}_{timestamp}_{run_id}.json` 形式。出力先はオプションで変更可能 | Planned |
-| M-40 | G-15 | LLM ハンドラーにトークン使用量の記録を追加する | 組み込み LLM ハンドラー（llm/structured_llm/streaming_llm）が litellm のレスポンスからトークン使用量（prompt_tokens, completion_tokens, total_tokens）を抽出し、トレースレコードに含める | Planned |
-| M-41 | G-15 | トレースにコスト推定情報を追加する | トークン使用量とモデル名から概算コスト（USD）を算出し、トレースレコードに含める。litellm の cost 情報または独自の料金テーブルを利用する | Planned |
+| M-37 | G-14 | 実行トレースのデータモデルとログフォーマットを策定する | ノード単位の実行記録（node_id, start_time, end_time, duration_ms, input_snapshot, output_snapshot, status, error）を表現するドメインエンティティと JSON フォーマット仕様が定義され、テスト化されている | Done |
+| M-38 | G-14 | StateGraph 実行にトレース収集フックを組み込む | `Yagra.invoke()` に `trace=True` オプションを追加し、実行時に各ノードの開始・終了・エラーを自動キャプチャする。既存 API の後方互換を維持する | Done |
+| M-39 | G-14 | 実行トレースのローカルファイル出力を実装する | トレース結果を `.yagra/traces/` ディレクトリに構造化 JSON ファイルとして出力する。ファイル名は `{workflow_name}_{timestamp}_{run_id}.json` 形式。出力先はオプションで変更可能 | Done |
+| M-40 | G-15 | LLM ハンドラーにトークン使用量の記録を追加する | 組み込み LLM ハンドラー（llm/structured_llm/streaming_llm）が litellm のレスポンスからトークン使用量（prompt_tokens, completion_tokens, total_tokens）を抽出し、トレースレコードに含める | Done |
+| M-41 | G-15 | トレースにコスト推定情報を追加する | トークン使用量とモデル名から概算コスト（USD）を算出し、トレースレコードに含める。litellm の cost 情報または独自の料金テーブルを利用する | Done |
 
 ### Phase 3: 分析と提案（Analyze & Propose） — v1.0 目標
 
 | Milestone ID | 対応 Goal ID | 到達ステップ | 完了条件 | 状態 |
 | --- | --- | --- | --- | --- |
-| M-42 | G-17 | 複数トレースの集約・サマリ生成機能を実装する | `.yagra/traces/` 内の複数トレースファイルを読み込み、ノード別の成功率・平均実行時間・トークン消費・コストの統計サマリを構造化 JSON で出力する CLI コマンド（`yagra analyze`）を提供する | Planned |
-| M-43 | G-16 | MCP サーバーに実行ログ取得・分析ツールを追加する | MCP サーバーに `get_traces` / `analyze_traces` ツールを追加し、エージェントが直接トレースデータを取得・分析できる | Planned |
-| M-44 | G-17 | ボトルネック検出・改善ヒント生成機能を実装する | 集約結果からボトルネックノード（高レイテンシ・高エラー率・高コスト）を検出し、改善ヒント（具体的なアクション候補）を構造化データとして出力する。エージェントがヒントを読み取り改善提案の根拠として利用できる | Planned |
+| M-42 | G-17 | 複数トレースの集約・サマリ生成機能を実装する | `.yagra/traces/` 内の複数トレースファイルを読み込み、ノード別の成功率・平均実行時間・トークン消費・コストの統計サマリを構造化 JSON で出力する CLI コマンド（`yagra analyze`）を提供する | Done |
+| M-43 | G-16 | MCP サーバーに実行ログ取得・分析ツールを追加する | MCP サーバーに `get_traces` / `analyze_traces` ツールを追加し、エージェントが直接トレースデータを取得・分析できる | Done |
 
 ### Phase 4: 承認と最適化（Approve & Update） — v1.0 目標
 
@@ -218,38 +218,37 @@
 
 | Item ID | やるべきこと | 状態 | 根拠 |
 | --- | --- | --- | --- |
-| G14-I01 | 実行トレースのドメインエンティティ（`TraceRecord`, `NodeTrace` 等）を定義する | Planned | — |
-| G14-I02 | トレース JSON フォーマット仕様を策定し、サンプル出力をドキュメント化する | Planned | — |
-| G14-I03 | `Yagra.invoke()` にトレース収集フック（`trace=True` オプション）を実装する | Planned | — |
-| G14-I04 | ノード実行の開始・終了・エラーを自動キャプチャするコールバック機構を実装する | Planned | — |
-| G14-I05 | トレース結果を `.yagra/traces/` にローカルファイル出力する機能を実装する | Planned | — |
-| G14-I06 | トレース収集の単体テスト・結合テストを整備する | Planned | — |
+| G14-I01 | 実行トレースのドメインエンティティ（`TraceRecord`, `NodeTrace` 等）を定義する | Done | `src/yagra/domain/entities/trace.py` |
+| G14-I02 | トレース JSON フォーマット仕様を策定し、サンプル出力をドキュメント化する | Done | `src/yagra/domain/entities/trace.py` |
+| G14-I03 | `Yagra.invoke()` にトレース収集フック（`trace=True` オプション）を実装する | Done | `src/yagra/__init__.py` |
+| G14-I04 | ノード実行の開始・終了・エラーを自動キャプチャするコールバック機構を実装する | Done | `src/yagra/application/use_cases/trace_collector.py` |
+| G14-I05 | トレース結果を `.yagra/traces/` にローカルファイル出力する機能を実装する | Done | `src/yagra/adapters/outbound/local_trace_sink.py` |
+| G14-I06 | トレース収集の単体テスト・結合テストを整備する | Done | `tests/unit/domain/test_trace.py`, `tests/unit/application/test_trace_collector.py` |
 
 ### G-15: LLM 呼び出しのトークン消費とコストを実行ログから把握できる
 
 | Item ID | やるべきこと | 状態 | 根拠 |
 | --- | --- | --- | --- |
-| G15-I01 | 組み込み LLM ハンドラーにトークン使用量の抽出・記録を追加する | Planned | — |
-| G15-I02 | ストリーミングハンドラーのトークン使用量取得に対応する | Planned | — |
-| G15-I03 | モデル名とトークン数からコスト推定を算出する機能を実装する | Planned | — |
-| G15-I04 | トークン・コスト情報をトレースレコードに統合する | Planned | — |
+| G15-I01 | 組み込み LLM ハンドラーにトークン使用量の抽出・記録を追加する | Done | `src/yagra/handlers/llm_handler.py` |
+| G15-I02 | ストリーミングハンドラーのトークン使用量取得に対応する | Done | `src/yagra/handlers/streaming_llm_handler.py` |
+| G15-I03 | モデル名とトークン数からコスト推定を算出する機能を実装する | Done | `src/yagra/domain/entities/cost_table.py` |
+| G15-I04 | トークン・コスト情報をトレースレコードに統合する | Done | `src/yagra/application/use_cases/trace_collector.py` |
 
 ### G-16: コーディングエージェントが実行ログを MCP 経由で取得・分析できる
 
 | Item ID | やるべきこと | 状態 | 根拠 |
 | --- | --- | --- | --- |
-| G16-I01 | MCP サーバーに `get_traces` ツールを追加する | Planned | — |
-| G16-I02 | MCP サーバーに `analyze_traces` ツールを追加する | Planned | — |
+| G16-I01 | MCP サーバーに `get_traces` ツールを追加する | Done | `src/yagra/adapters/inbound/mcp_server.py` |
+| G16-I02 | MCP サーバーに `analyze_traces` ツールを追加する | Done | `src/yagra/adapters/inbound/mcp_server.py` |
 | G16-I03 | エージェント向けの分析ツール利用ガイドを整備する | Planned | — |
 
 ### G-17: 複数回の実行結果を集約し、品質傾向を把握できる
 
 | Item ID | やるべきこと | 状態 | 根拠 |
 | --- | --- | --- | --- |
-| G17-I01 | 複数トレースファイルの読み込み・集約ロジックを実装する | Planned | — |
-| G17-I02 | ノード別の成功率・平均実行時間・トークン消費の統計サマリを生成する機能を実装する | Planned | — |
-| G17-I03 | `yagra analyze` CLI コマンドを実装する | Planned | — |
-| G17-I04 | ボトルネックノード検出と改善ヒント生成機能を実装する | Planned | — |
+| G17-I01 | 複数トレースファイルの読み込み・集約ロジックを実装する | Done | `src/yagra/application/use_cases/trace_aggregator.py` |
+| G17-I02 | ノード別の成功率・平均実行時間・トークン消費の統計サマリを生成する機能を実装する | Done | `src/yagra/application/use_cases/trace_aggregator.py` |
+| G17-I03 | `yagra analyze` CLI コマンドを実装する | Done | `src/yagra/__init__.py` |
 
 ### G-18: エージェントの改善提案に基づき YAML を安全に更新できる
 

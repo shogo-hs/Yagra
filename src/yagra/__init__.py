@@ -242,6 +242,9 @@ def main() -> None:
     if args.command == "explain":
         exit_code = _run_explain_command(args)
         raise SystemExit(exit_code)
+    if args.command == "analyze":
+        exit_code = _run_analyze_command(args)
+        raise SystemExit(exit_code)
     if args.command == "mcp":
         exit_code = _run_mcp_command(args)
         raise SystemExit(exit_code)
@@ -504,6 +507,34 @@ def _build_cli_parser() -> argparse.ArgumentParser:
         help="Output format (default: json)",
     )
 
+    analyze = subparsers.add_parser(
+        "analyze",
+        help="Aggregate and summarize execution traces",
+    )
+    analyze.add_argument(
+        "--trace-dir",
+        default=".yagra/traces",
+        help="Root trace directory (default: .yagra/traces)",
+    )
+    analyze.add_argument(
+        "--workflow",
+        default=None,
+        help="Filter by workflow name",
+    )
+    analyze.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        help="Limit to N most recent traces",
+    )
+    analyze.add_argument(
+        "--format",
+        choices=["json", "text"],
+        default="text",
+        dest="output_format",
+        help="Output format (default: text)",
+    )
+
     mcp_parser = subparsers.add_parser(
         "mcp",
         help="Start the MCP server in stdio mode (requires yagra[mcp])",
@@ -754,6 +785,99 @@ def _run_explain_command(args: argparse.Namespace) -> int:
         for node_id, flow in result["variable_flow"].items():
             print(f"  {node_id}: inputs={flow['inputs']} outputs={flow['outputs']}")
     return 0
+
+
+def _run_analyze_command(args: argparse.Namespace) -> int:
+    """Executes the `analyze` subcommand.
+
+    Loads execution traces, aggregates statistics, and outputs the result
+    in text or JSON format.
+
+    Args:
+        args: Parsed CLI arguments.
+
+    Returns:
+        Exit code. 0 on success, 1 if no traces found.
+    """
+    from yagra.application.use_cases.trace_aggregator import (  # noqa: PLC0415
+        aggregate_traces,
+        load_traces,
+    )
+
+    traces = load_traces(
+        args.trace_dir,
+        workflow_name=args.workflow,
+        limit=args.limit,
+    )
+    if not traces:
+        print("No traces found.", file=sys.stderr)
+        return 1
+
+    summary = aggregate_traces(traces)
+
+    if args.output_format == "json":
+        print(json.dumps(summary.to_dict(), indent=2, ensure_ascii=False))
+    else:
+        _print_analyze_text(summary)
+
+    return 0
+
+
+def _print_analyze_text(summary: Any) -> None:
+    """Print a human-readable text summary of aggregated trace data.
+
+    Displays workflow-level statistics followed by a per-node table with
+    key metrics such as execution count, success rate, duration, and tokens.
+
+    Args:
+        summary: AggregatedSummary instance to display.
+    """
+    print(f"Workflow: {summary.workflow_name}")
+    print(
+        f"Runs: {summary.total_runs} (success: {summary.successful_runs}, "
+        f"failed: {summary.failed_runs})"
+    )
+    print(f"Success rate: {summary.run_success_rate:.1%}")
+    print(
+        f"Duration (avg/min/max): "
+        f"{summary.avg_total_duration_ms:.1f}ms / "
+        f"{summary.min_total_duration_ms:.1f}ms / "
+        f"{summary.max_total_duration_ms:.1f}ms"
+    )
+    print(
+        f"Total tokens: {summary.total_tokens} "
+        f"(prompt: {summary.total_prompt_tokens}, "
+        f"completion: {summary.total_completion_tokens})"
+    )
+    if summary.total_estimated_cost_usd is not None:
+        print(f"Estimated cost: ${summary.total_estimated_cost_usd:.6f}")
+    else:
+        print("Estimated cost: N/A")
+    print(f"Time range: {summary.time_range_start} - {summary.time_range_end}")
+    print()
+
+    if not summary.node_stats:
+        print("No node statistics available.")
+        return
+
+    # Per-node table
+    header = (
+        f"{'Node':<20} {'Runs':>5} {'OK%':>6} "
+        f"{'Avg(ms)':>9} {'P50(ms)':>9} {'P95(ms)':>9} "
+        f"{'Tokens':>8} {'Errors':>6}"
+    )
+    print(header)
+    print("-" * len(header))
+    for ns in summary.node_stats:
+        node_label = ns.node_id[:20]
+        print(
+            f"{node_label:<20} {ns.execution_count:>5} {ns.success_rate:>5.0%} "
+            f"{ns.avg_duration_ms:>9.1f} {ns.p50_duration_ms:>9.1f} "
+            f"{ns.p95_duration_ms:>9.1f} {ns.total_tokens:>8} {ns.error_count:>6}"
+        )
+        if ns.error_types:
+            for err_type, count in ns.error_types.items():
+                print(f"  error: {err_type} ({count}x)")
 
 
 def _run_mcp_command(args: argparse.Namespace) -> int:
