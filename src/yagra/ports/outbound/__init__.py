@@ -7,6 +7,7 @@ from yagra.ports.outbound.node_registry import (
     NodeRegistryError,
     NodeRegistryPort,
 )
+from yagra.ports.outbound.trace_sink import TraceSinkError, TraceSinkPort
 
 __all__ = [
     "NodeHandler",
@@ -14,4 +15,6 @@ __all__ = [
     "NodeHandlerNotFoundError",
     "NodeRegistryError",
     "NodeRegistryPort",
+    "TraceSinkError",
+    "TraceSinkPort",
 ]
