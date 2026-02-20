@@ -2684,13 +2684,11 @@ def _studio_html() -> str:
           // Convert workspace-root-relative path to a path relative to the workflow file's
           // directory, so it matches how prompt_ref is stored in the YAML (e.g.
           // "bdi_workflow/prompts/foo.yaml" → "prompts/foo.yaml" when the workflow lives in
-          // "bdi_workflow/").
+          // "bdi_workflow/", or "other/foo.yaml" → "../other/foo.yaml").
           const workflowDir = getWorkflowDirectoryRelative();
           if (workflowDir) {
             const rel = relativePosixPath(workflowDir, normalizedPath);
-            // Use the relative form only when it doesn't escape the workflow directory
-            // (i.e. no leading "../../" that would be confusing).
-            if (rel && !rel.startsWith("../")) {
+            if (rel) {
               return rel;
             }
           }

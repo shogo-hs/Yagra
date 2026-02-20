@@ -104,10 +104,66 @@ def studio_server(studio_workspace: Path):
 
 
 @pytest.fixture()
+def studio_workspace_root_level(tmp_path: Path) -> Path:
+    """Creates a workspace where the workflow sits at the workspace root (no subdirectory).
+
+    Layout::
+
+        tmp_path/
+          workspace/
+            workflow.yaml          ← directly under workspace root
+            prompts/
+              my_prompts.yaml
+    """
+    workspace = tmp_path / "workspace"
+
+    workflow_path = workspace / "workflow.yaml"
+    _write_workflow(workflow_path, _minimal_workflow())
+
+    prompts_path = workspace / "prompts" / "my_prompts.yaml"
+    prompts_path.parent.mkdir(parents=True, exist_ok=True)
+    prompts_path.write_text(
+        textwrap.dedent("""\
+            step_a:
+              system: You are a helpful assistant.
+              user: "Hello: {{ query }}"
+        """),
+        encoding="utf-8",
+    )
+
+    return workspace
+
+
+@pytest.fixture()
+def studio_server_root_level(studio_workspace_root_level: Path):
+    """Studio server where the workflow is directly under the workspace root."""
+    workflow_path = studio_workspace_root_level / "workflow.yaml"
+
+    server = create_workflow_studio_server(
+        workspace_root=studio_workspace_root_level,
+        workflow_path=str(workflow_path),
+        backup_dir=studio_workspace_root_level / ".yagra-backups",
+        host="127.0.0.1",
+        port=0,
+    )
+    thread = Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+
+    address = server.server_address
+    host = address[0].decode("utf-8") if isinstance(address[0], bytes) else str(address[0])
+    base_url = f"http://{host}:{address[1]}"
+
+    yield server, base_url, workflow_path
+
+    server.shutdown()
+
+
+@pytest.fixture()
 def studio_utils_page(page: "Page", studio_server):
     """Opens the Studio page with ?__test_utils=1 and waits for Vue to mount.
 
     Returns (page, base_url) so tests can call page.evaluate("__studioUtils.*").
+    The workflow lives in a *subdirectory* (``sub_workflow/``).
     """
     _, base_url, _ = studio_server
 
@@ -115,6 +171,20 @@ def studio_utils_page(page: "Page", studio_server):
     page.goto(f"{base_url}/?__test_utils=1")
 
     # Wait until Vue has mounted and exposed the utilities.
+    page.wait_for_function("() => typeof window.__studioUtils !== 'undefined'", timeout=10_000)
+
+    return page, base_url
+
+
+@pytest.fixture()
+def studio_utils_page_root_level(page: "Page", studio_server_root_level):
+    """Same as studio_utils_page but the workflow is at the workspace root (no subdirectory).
+
+    ``getWorkflowDirectoryRelative()`` returns ``""`` in this configuration.
+    """
+    _, base_url, _ = studio_server_root_level
+
+    page.goto(f"{base_url}/?__test_utils=1")
     page.wait_for_function("() => typeof window.__studioUtils !== 'undefined'", timeout=10_000)
 
     return page, base_url

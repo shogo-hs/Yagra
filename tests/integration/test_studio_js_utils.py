@@ -151,6 +151,29 @@ class TestSplitPromptReference:
 
 
 # ---------------------------------------------------------------------------
+# getWorkflowDirectoryRelative
+# ---------------------------------------------------------------------------
+
+
+class TestGetWorkflowDirectoryRelative:
+    """``studioTargetPath`` is an absolute path; the function strips the
+    workspace prefix and returns the directory portion.
+    """
+
+    def test_returns_subdirectory_name(self, studio_utils_page):
+        """Workflow in sub_workflow/ → returns 'sub_workflow'."""
+        page, _ = studio_utils_page
+        result = _u(page, "getWorkflowDirectoryRelative")
+        assert result == "sub_workflow"
+
+    def test_returns_empty_when_workflow_at_root(self, studio_utils_page_root_level):
+        """Workflow directly under workspace root → returns ''."""
+        page, _ = studio_utils_page_root_level
+        result = _u(page, "getWorkflowDirectoryRelative")
+        assert result == ""
+
+
+# ---------------------------------------------------------------------------
 # promptRefPathToWorkspacePath  ← 今回バグがあった関数
 # ---------------------------------------------------------------------------
 
@@ -173,6 +196,12 @@ class TestPromptRefPathToWorkspacePath:
         result = _u(page, "promptRefPathToWorkspacePath", "./prompts/foo.yaml")
         assert result == "sub_workflow/prompts/foo.yaml"
 
+    def test_explicit_dot_dot(self, studio_utils_page):
+        """'../sibling/foo.yaml' from sub_workflow → 'sibling/foo.yaml' in workspace."""
+        page, _ = studio_utils_page
+        result = _u(page, "promptRefPathToWorkspacePath", "../sibling/foo.yaml")
+        assert result == "sibling/foo.yaml"
+
     def test_empty_returns_empty(self, studio_utils_page):
         page, _ = studio_utils_page
         assert _u(page, "promptRefPathToWorkspacePath", "") == ""
@@ -183,6 +212,39 @@ class TestPromptRefPathToWorkspacePath:
         result = _u(page, "promptRefPathToWorkspacePath", "sub_workflow/prompts/foo.yaml")
         # joinPosixPath("sub_workflow", "sub_workflow/prompts/foo.yaml")
         # The result includes the dir prefix; this documents current behaviour.
+        assert "prompts/foo.yaml" in result
+
+    def test_bare_relative_when_workflow_at_root(self, studio_utils_page_root_level):
+        """Workflow at root: 'prompts/foo.yaml' stays 'prompts/foo.yaml' (workflowDir='')."""
+        page, _ = studio_utils_page_root_level
+        result = _u(page, "promptRefPathToWorkspacePath", "prompts/foo.yaml")
+        assert result == "prompts/foo.yaml"
+
+    def test_absolute_path_stripped_to_workspace_relative(self, studio_utils_page):
+        """An absolute prompt_ref is converted to workspace-root-relative."""
+        page, _ = studio_utils_page
+        # Inject a fake absolute path that looks like it's inside studioWorkspaceRoot.
+        # We read the workspace root from the page first, then construct the absolute path.
+        workspace_root = page.evaluate("window.__studioUtils.normalizePosixPath('')")
+        # Use page.evaluate directly to build the absolute path dynamically.
+        result = page.evaluate("""
+            (() => {
+                const root = window.studioState?.workspaceRoot
+                    || document.querySelector('[data-workspace-root]')?.dataset.workspaceRoot
+                    || '';
+                // Build a synthetic absolute path matching studioWorkspaceRoot.
+                const ws = window.__studioUtils.normalizePosixPath(
+                    window.__studioWorkspaceRoot || ''
+                );
+                if (!ws) return '__skipped__';
+                return window.__studioUtils.promptRefPathToWorkspacePath(
+                    ws + '/sub_workflow/prompts/foo.yaml'
+                );
+            })()
+        """)
+        # If we couldn't determine the workspace root, skip gracefully.
+        if result == "__skipped__":
+            pytest.skip("workspace root not accessible from page context")
         assert "prompts/foo.yaml" in result
 
 
@@ -208,16 +270,43 @@ class TestWorkspacePathToPromptRefPath:
         page, _ = studio_utils_page
         assert _u(page, "workspacePathToPromptRefPath", "") == ""
 
-    def test_path_outside_workflow_dir_not_mangled(self, studio_utils_page):
-        """A path in a sibling directory keeps a usable relative path."""
+    def test_path_in_sibling_workflow_dir_uses_relative_escape(self, studio_utils_page):
+        """A path in a sibling directory must use '../' to escape the workflow dir."""
         page, _ = studio_utils_page
         result = _u(page, "workspacePathToPromptRefPath", "other_workflow/prompts/bar.yaml")
-        # Should start with "../" since it escapes the workflow dir.
-        assert result.startswith("../") or "/" in result
+        assert result == "../other_workflow/prompts/bar.yaml"
 
-    def test_round_trip(self, studio_utils_page):
+    def test_path_at_workspace_root_escapes_workflow_dir(self, studio_utils_page):
+        """A YAML at workspace root level (no subdir) gets '../' prefix."""
+        page, _ = studio_utils_page
+        result = _u(page, "workspacePathToPromptRefPath", "shared_prompts.yaml")
+        assert result == "../shared_prompts.yaml"
+
+    def test_workspace_relative_when_workflow_at_root(self, studio_utils_page_root_level):
+        """Workflow at root: path is already workflow-relative, returned as-is."""
+        page, _ = studio_utils_page_root_level
+        result = _u(page, "workspacePathToPromptRefPath", "prompts/foo.yaml")
+        assert result == "prompts/foo.yaml"
+
+    def test_round_trip_standard(self, studio_utils_page):
         """prompt_ref -> workspace path -> prompt_ref should be identity."""
         page, _ = studio_utils_page
+        original = "prompts/foo.yaml"
+        workspace_path = _u(page, "promptRefPathToWorkspacePath", original)
+        back = _u(page, "workspacePathToPromptRefPath", workspace_path)
+        assert back == original
+
+    def test_round_trip_nested(self, studio_utils_page):
+        """Round-trip with a deeply nested prompt file."""
+        page, _ = studio_utils_page
+        original = "prompts/nested/deep/foo.yaml"
+        workspace_path = _u(page, "promptRefPathToWorkspacePath", original)
+        back = _u(page, "workspacePathToPromptRefPath", workspace_path)
+        assert back == original
+
+    def test_round_trip_when_workflow_at_root(self, studio_utils_page_root_level):
+        """Round-trip works when the workflow is directly under the workspace root."""
+        page, _ = studio_utils_page_root_level
         original = "prompts/foo.yaml"
         workspace_path = _u(page, "promptRefPathToWorkspacePath", original)
         back = _u(page, "workspacePathToPromptRefPath", workspace_path)

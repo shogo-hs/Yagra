@@ -8,6 +8,14 @@ For the canonical changelog (Japanese), see [CHANGELOG.md](https://github.com/sh
 
 ## [Unreleased]
 
+## [0.6.10] - 2026-02-20
+
+### Fixed
+- 🐛 **Studio: `workspacePathToPromptRefPath` did not relativize paths outside the workflow directory**: When converting a workspace-root-relative path to a workflow-relative `prompt_ref`, paths in sibling directories or at the workspace root were returned as-is instead of being prefixed with `../`. Fixed by always using the `relativePosixPath` result regardless of `../` presence.
+
+### Added
+- ✅ **Studio: pytest-playwright tests for JS path-utility functions**: 32 integration test cases covering all 7 utility functions (`promptRefPathToWorkspacePath`, `workspacePathToPromptRefPath`, `getWorkflowDirectoryRelative`, etc.) executed in real Chromium. Covers subdirectory layouts, root-level workflows, `../` escaping, and round-trips.
+
 ## [0.6.9] - 2026-02-20
 
 ### Fixed

@@ -4,6 +4,14 @@
 
 ## [Unreleased]
 
+## [0.6.10] - 2026-02-20
+
+### Fixed
+- 🐛 **Studio: `workspacePathToPromptRefPath` がワークフローディレクトリ外のパスを正規化しない問題を修正**: ワークスペース基準パスをワークフロー相対パスに変換する際、`../` が必要なケース（兄弟ディレクトリや workspace root 直下のファイル）でも `../` を付けずそのまま返していた。`relativePosixPath` の結果を `../` 有無に関わらず使用するよう修正
+
+### Added
+- ✅ **Studio: JS パス変換ユーティリティの pytest-playwright テストを追加**: `promptRefPathToWorkspacePath`・`workspacePathToPromptRefPath`・`getWorkflowDirectoryRelative` 等 7 関数を対象に、実際の Chromium ブラウザ上で JS を実行する統合テストを追加（32 ケース）。サブディレクトリ配置・root 直下配置・`../` 脱出・ラウンドトリップ等のエッジケースをカバー
+
 ## [0.6.9] - 2026-02-20
 
 ### Fixed
