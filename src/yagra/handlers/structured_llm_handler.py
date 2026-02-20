@@ -245,8 +245,32 @@ STRUCTURED_LLM_HANDLER_PARAMS_SCHEMA: dict = {
     "type": "object",
     "description": "Parameters for the Pydantic structured output handler created by create_structured_llm_handler",
     "properties": {
-        "prompt": {"$ref": "#/definitions/prompt_field"},
-        "prompt_ref": {"$ref": "#/definitions/prompt_ref_field"},
+        "prompt": {
+            "oneOf": [
+                {
+                    "type": "string",
+                    "description": "Prompt text. State values can be expanded using {variable_name}",
+                },
+                {"type": "object", "description": "Prompt dictionary in role/content format"},
+                {"type": "array", "description": "List of multiple messages"},
+            ],
+            "description": "Prompt definition. Mutually exclusive with prompt_ref",
+        },
+        "prompt_ref": {
+            "type": "string",
+            "description": (
+                "Path to the prompt file (relative to the workflow YAML). "
+                "Use '#key' to select a section from a multi-prompt YAML "
+                "(e.g. 'prompts/all.yaml#greet'). "
+                "Nested keys use dot notation (e.g. 'prompts/all.yaml#chat.default'). "
+                "Mutually exclusive with prompt"
+            ),
+            "examples": [
+                "prompts/translate.yaml#default",
+                "./prompts/summarize.md",
+                "prompts/multi.yaml#chat.system",
+            ],
+        },
         "model": {
             "type": "object",
             "description": "LLM model configuration. provider and name are required. Additional parameters can be passed via kwargs",

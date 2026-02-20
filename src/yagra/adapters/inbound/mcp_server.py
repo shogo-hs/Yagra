@@ -145,6 +145,26 @@ def create_mcp_server() -> Any:
                     "properties": {},
                 },
             ),
+            Tool(
+                name="get_template",
+                description=(
+                    "Returns the file contents of a Yagra workflow template. "
+                    "Use list_templates first to see available template names. "
+                    "Returns a 'files' dict mapping relative paths to file contents "
+                    "(e.g. 'workflow.yaml', 'prompts/my_prompts.yaml'). "
+                    "Useful for understanding the structure of a template before initializing it."
+                ),
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "type": "string",
+                            "description": "Template name (from list_templates)",
+                        }
+                    },
+                    "required": ["name"],
+                },
+            ),
         ]
 
     @server.call_tool()
@@ -176,6 +196,8 @@ def create_mcp_server() -> Any:
             result = _tool_list_templates()
         elif name == "list_handlers":
             result = _tool_list_handlers()
+        elif name == "get_template":
+            result = _tool_get_template(arguments.get("name", ""))
         else:
             result = {"error": f"Unknown tool: {name}"}
 
@@ -430,6 +452,36 @@ def _tool_list_handlers() -> dict[str, Any]:
             ),
         },
     }
+
+
+def _tool_get_template(name: str) -> dict[str, Any]:
+    """Implementation of the get_template tool.
+
+    Returns the file contents of the named template as a dict mapping relative
+    file paths to their UTF-8 string content.
+
+    Args:
+        name: Template name (from list_templates).
+
+    Returns:
+        Dictionary with ``name`` and ``files`` keys on success, or ``error``,
+        ``name``, and ``available`` keys when the template is not found.
+    """
+    from yagra.application.services.template_initializer import (
+        TemplateNotFoundError,
+        get_template_files,
+        list_templates,
+    )
+
+    try:
+        files = get_template_files(name)
+        return {"name": name, "files": files}
+    except TemplateNotFoundError:
+        return {
+            "error": "template not found",
+            "name": name,
+            "available": list_templates(),
+        }
 
 
 async def run_mcp_server() -> None:

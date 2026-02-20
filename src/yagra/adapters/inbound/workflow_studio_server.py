@@ -130,9 +130,7 @@ def create_workflow_studio_server(
         workflow_abspath=workflow_abspath,
         workspace_root=workspace_root,
     )
-    bundle_root_path = (
-        Path(bundle_root).expanduser().resolve() if bundle_root is not None else workspace_root_path
-    )
+    bundle_root_path = Path(bundle_root).expanduser().resolve() if bundle_root is not None else None
     backup_dir_path = Path(backup_dir).expanduser().resolve()
 
     config = StudioSessionConfig(
@@ -3129,7 +3127,12 @@ def _studio_html() -> str:
                     : typeof params.prompt_ref === "string"
                       ? params.prompt_ref
                       : "",
-                  prompt: null,
+                  prompt: (typeof formItem?.prompt_user === "string" && formItem.prompt_user)
+                    ? {
+                        system: typeof formItem.prompt_system === "string" ? formItem.prompt_system : "",
+                        user: formItem.prompt_user,
+                      }
+                    : null,
                   model: modelObj,
                   params: Object.keys(loadedParams).length > 0 ? loadedParams : null,
                   isStart: startIds.has(node.id),

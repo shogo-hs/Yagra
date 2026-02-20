@@ -152,6 +152,37 @@ def initialize_from_template(
     _copy_template_files(template_dir, output_dir)
 
 
+def get_template_files(template_name: str) -> dict[str, str]:
+    """Returns the file contents of a template as a mapping from relative path to content.
+
+    Reads all files in the named template directory (excluding ``template.yaml``
+    which is metadata) and returns their contents keyed by their relative path
+    within the template directory.
+
+    Args:
+        template_name: Name of the template (directory name under the templates root).
+
+    Returns:
+        Dictionary mapping relative file path strings (e.g. ``"workflow.yaml"``,
+        ``"prompts/branch_prompts.yaml"``) to the corresponding file content as a
+        UTF-8 string.
+
+    Raises:
+        TemplateNotFoundError: If the specified template does not exist.
+    """
+    available_templates = list_templates()
+    if template_name not in available_templates:
+        raise TemplateNotFoundError(template_name, available_templates)
+
+    template_dir = _get_templates_root() / template_name
+    files: dict[str, str] = {}
+    for item in sorted(template_dir.rglob("*")):
+        if item.is_file() and item.name != "template.yaml":
+            relative_path = item.relative_to(template_dir)
+            files[str(relative_path)] = item.read_text(encoding="utf-8")
+    return files
+
+
 def _get_templates_root() -> Path:
     """Returns the path to the template root directory.
 

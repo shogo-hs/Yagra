@@ -4,6 +4,24 @@
 
 ## [Unreleased]
 
+## [0.6.8] - 2026-02-20
+
+### Fixed
+- 🐛 **Studio: `bundle_root=None` 時に `workspace_root` で上書きされ `prompt_ref` が誤解決される問題を修正**: `create_workflow_studio_server` で `bundle_root` が指定されていない場合、`bundle_root_path` が `workspace_root_path` にセットされてしまい、`prompts/bdi_prompts.yaml` のような相対パスが `<workspace>/prompts/bdi_prompts.yaml` に解決されていた。`None` のまま渡すよう修正し、ワークフローファイルの親ディレクトリを基準に正しく解決されるようになった
+- 🐛 **Studio: `build_workflow_catalog_preview` が `build_workflow_form_view` 内で二重に呼び出されていた問題を修正**: `get_form()` から既に呼ばれているにもかかわらず `build_workflow_form_view` 末尾でも重複して呼び出していた。内側の呼び出しを削除し `prompt_catalog_keys=()` に固定することで不要な処理を排除
+
+### Changed
+- ⚡ **Studio: ワークフロー一覧取得を高速化**: `rglob("*")` による全ファイル走査（`.venv/` 等を含む数万ファイル）を `os.scandir` ベースの再帰ウォークに変更。除外ディレクトリ（`.venv`, `node_modules`, `__pycache__` 等）には入らないよう早期プルーニングすることで、大規模リポジトリでの「Select Workflow」表示速度を改善
+
+## [0.6.7] - 2026-02-20
+
+### Fixed
+- 🐛 **Studio: `prompt_ref` が解決できない場合にプロンプトが表示されない問題を修正**: `build_workflow_form_view` でワークフロー全体の `resolve_workflow_references` が失敗した場合でも、ノードごとに個別に `prompt_ref` ファイルをロードするフォールバックを追加。これにより一部ノードの参照エラーが他ノードのプロンプト表示を妨げなくなった
+- 🐛 **`explain_workflow`: `base_dir` なし時に `variable_flow.inputs` が常に空になる問題に警告を追加**: `workflow_dir` が指定されていない（MCP で `base_dir` 未指定）場合、`prompt_ref` ファイルが読めないため変数抽出をスキップするが、その旨の `warnings` エントリが返されなかった。`explain_workflow` のレスポンスに `warnings` フィールドを追加し、スキップが発生したノードの理由を明示するようにした
+
+### Added
+- ✨ **MCP: `get_template` ツールを追加**: テンプレート名を渡すとそのテンプレートのファイル一覧と内容（`workflow.yaml`、`prompts/*.yaml` 等）を返す新ツール。`list_templates` でテンプレート名を確認してから `get_template` でサンプルの YAML 構造を把握できるようになり、MCP 経由でのワークフロー作成がドキュメント参照なしでも完結するようになった
+
 ## [0.6.6] - 2026-02-20
 
 ### Fixed

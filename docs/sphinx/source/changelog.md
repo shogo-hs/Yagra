@@ -8,6 +8,24 @@ For the canonical changelog (Japanese), see [CHANGELOG.md](https://github.com/sh
 
 ## [Unreleased]
 
+## [0.6.8] - 2026-02-20
+
+### Fixed
+- 🐛 **Studio: `prompt_ref` resolves to wrong path when `bundle_root` is not specified**: `create_workflow_studio_server` was overwriting `bundle_root_path` with `workspace_root_path` when `bundle_root=None`, causing relative paths like `prompts/bdi_prompts.yaml` to resolve against the workspace root instead of the workflow's parent directory. Fixed by keeping `bundle_root_path` as `None` and letting the workflow loader use the correct default.
+- 🐛 **Studio: `build_workflow_catalog_preview` called twice per form request**: `build_workflow_form_view` was calling `build_workflow_catalog_preview` internally, while `get_form()` also called it explicitly. Removed the redundant inner call and fixed `prompt_catalog_keys=()` to eliminate the double work.
+
+### Changed
+- ⚡ **Studio: faster workflow list on "Select Workflow"**: Replaced `rglob("*")` (which traversed tens of thousands of files including `.venv/`) with an `os.scandir`-based recursive walk that prunes excluded directories (`.venv`, `node_modules`, `__pycache__`, etc.) early. Significantly reduces scan time for large repositories.
+
+## [0.6.7] - 2026-02-20
+
+### Fixed
+- 🐛 **Studio: prompt not shown when `prompt_ref` resolution fails**: `build_workflow_form_view` now falls back to per-node `prompt_ref` loading when the whole-workflow `resolve_workflow_references` call raises. A single broken node no longer prevents prompt content from appearing in other nodes.
+- 🐛 **`explain_workflow`: `variable_flow.inputs` silently empty without `base_dir`**: When `workflow_dir` is `None` (MCP call without `base_dir`), `prompt_ref` files cannot be read and variable extraction is skipped. The response now includes a `warnings` list with a `prompt_ref_unresolved` entry for each affected node, making the limitation visible rather than silent.
+
+### Added
+- ✨ **MCP: new `get_template` tool**: Returns the full file contents of a named template (e.g. `workflow.yaml`, `prompts/*.yaml`) as a `files` dict. Use `list_templates` to discover available names, then `get_template` to inspect the YAML structure — enables workflow creation via MCP without external documentation.
+
 ## [0.6.6] - 2026-02-20
 
 ### Fixed

@@ -75,7 +75,11 @@ def resolve_workflow_references(
 
         if "prompt" in node_params and node_params["prompt"] is not None:
             raise WorkflowReferenceError(
-                "inline prompt is no longer supported; use prompt_ref to reference an external prompt file",
+                "inline prompt is no longer supported; use prompt_ref to reference an external prompt file.\n"
+                "Example – create prompts/my_prompt.yaml:\n"
+                '  system: "You are a helpful assistant."\n'
+                '  user: "Answer: {input}"\n'
+                'Then set: prompt_ref: "prompts/my_prompt.yaml"',
                 location=("nodes", index, "params", "prompt"),
             )
 
@@ -143,7 +147,18 @@ def _resolve_reference(
         workflow_path=workflow_path,
         bundle_root=bundle_root,
     )
-    catalog_data = _load_yaml_file(target_path, location=location)
+    try:
+        catalog_data = _load_yaml_file(target_path, location=location)
+    except WorkflowReferenceError:
+        if _is_mcp_sentinel(workflow_path) and bundle_root is None:
+            raise WorkflowReferenceError(
+                f"reference file not found: {target_path}\n"
+                "Hint: pass base_dir (the directory containing your workflow YAML) "
+                "to resolve relative paths, or use validate_workflow_file / "
+                "explain_workflow_file instead.",
+                location=location,
+            ) from None
+        raise
     if key_path is None:
         return deepcopy(catalog_data)
     return _lookup_key_path(
@@ -183,6 +198,11 @@ def _resolve_catalog_path(catalog_path: str, workflow_path: Path, bundle_root: P
 def _has_explicit_relative_prefix(path: Path) -> bool:
     """Returns whether the path is an explicit relative path containing `./` or `../`."""
     return any(part in {".", ".."} for part in path.parts)
+
+
+def _is_mcp_sentinel(workflow_path: Path) -> bool:
+    """Returns whether the workflow_path is the MCP sentinel value."""
+    return str(workflow_path) == "<mcp>"
 
 
 def _load_yaml_file(path: Path, location: Location = ()) -> Any:

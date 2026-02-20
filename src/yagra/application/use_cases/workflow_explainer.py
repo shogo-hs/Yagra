@@ -13,7 +13,8 @@ def explain_workflow(spec: GraphSpec, workflow_dir: Path | None = None) -> dict[
     """Statically analyzes a GraphSpec and returns execution information.
 
     Analyzes the workflow without actually executing it, returning the entry point,
-    exit nodes, execution paths, required handlers, and variable flow.
+    exit nodes, execution paths, required handlers, variable flow, and any warnings
+    generated during analysis (e.g. when prompt_ref files could not be read).
 
     Args:
         spec: GraphSpec to analyze.
@@ -27,15 +28,22 @@ def explain_workflow(spec: GraphSpec, workflow_dir: Path | None = None) -> dict[
         - execution_paths: list of possible execution paths (each path is a list of node names)
         - required_handlers: deduplicated list of required handler names
         - variable_flow: map of node names to input/output variables
+        - warnings: list of warning dicts generated during analysis
     """
     node_map = {node.id: node for node in spec.nodes}
+    warnings: list[dict[str, Any]] = []
+
+    variable_flow = _build_variable_flow(
+        spec, node_map, workflow_dir=workflow_dir, warnings=warnings
+    )
 
     return {
         "entry_point": spec.start_at,
         "exit_points": list(spec.end_at),
         "execution_paths": _enumerate_paths(spec),
         "required_handlers": _collect_handlers(spec),
-        "variable_flow": _build_variable_flow(spec, node_map, workflow_dir=workflow_dir),
+        "variable_flow": variable_flow,
+        "warnings": warnings,
     }
 
 
@@ -103,6 +111,7 @@ def _build_variable_flow(
     spec: GraphSpec,
     node_map: dict[str, NodeSpec],
     workflow_dir: Path | None = None,
+    warnings: list[dict[str, Any]] | None = None,
 ) -> dict[str, dict[str, list[str]]]:
     """Extracts and returns input/output variables for each node.
 
@@ -112,11 +121,16 @@ def _build_variable_flow(
     Fan-out source nodes have the items_key added to their outputs, and fan-out target nodes
     have the item_key added to their inputs.
 
+    When ``workflow_dir`` is ``None`` and a node has a ``prompt_ref`` param, variable
+    extraction is skipped for that node (the file cannot be read) and a warning is
+    appended to ``warnings`` if it is provided.
+
     Args:
         spec: GraphSpec to analyze.
         node_map: Mapping from node ID to NodeSpec.
         workflow_dir: Directory of the workflow file, used to resolve relative
             prompt_ref paths. If None, prompt_ref file reading is skipped.
+        warnings: Optional list to accumulate warning dicts generated during analysis.
 
     Returns:
         Dictionary keyed by node name. Values are dicts with {"inputs": [...], "outputs": [...]}.
@@ -134,6 +148,18 @@ def _build_variable_flow(
 
     flow: dict[str, dict[str, list[str]]] = {}
     for node in spec.nodes:
+        # Emit a warning when prompt_ref cannot be resolved due to missing workflow_dir
+        if workflow_dir is None and node.params.get("prompt_ref") is not None:
+            if warnings is not None:
+                warnings.append(
+                    {
+                        "code": "prompt_ref_unresolved",
+                        "node_id": node.id,
+                        "message": (
+                            "variable extraction skipped: pass base_dir to resolve prompt_ref files"
+                        ),
+                    }
+                )
         inputs = _extract_input_variables(node, workflow_dir=workflow_dir)
         outputs = _extract_output_variables(node, conditional_sources)
 
@@ -156,35 +182,49 @@ def _build_variable_flow(
 def _extract_input_variables(node: NodeSpec, workflow_dir: Path | None = None) -> list[str]:
     """Extracts input variables from a node's prompt.
 
+    Variables are primarily extracted from ``{variable}`` patterns in the prompt
+    template.  When prompt-based extraction yields no results (e.g. the prompt
+    file could not be read because ``workflow_dir`` is ``None``), the function
+    falls back to the explicit ``input_keys`` parameter if present.
+
     Args:
         node: NodeSpec to extract input variables from.
         workflow_dir: Directory of the workflow file, used to resolve relative
             prompt_ref paths. If None, prompt_ref file reading is skipped.
 
     Returns:
-        List of {variable} names in the prompt template (deduplicated, in order of appearance).
+        List of variable names (deduplicated, in order of appearance).
     """
     params = node.params
+
+    # Explicit input_keys serves as a fallback when prompt-based extraction
+    # returns an empty list (e.g. prompt_ref file unreadable without base_dir).
+    explicit_input_keys = params.get("input_keys")
+
     prompt_ref_value = params.get("prompt_ref")
     prompt = params.get("prompt") or prompt_ref_value
     if prompt is None:
+        if isinstance(explicit_input_keys, list):
+            return [k for k in explicit_input_keys if isinstance(k, str)]
         return []
 
     # If prompt is a string, analyze it directly
+    extracted: list[str] = []
     if isinstance(prompt, str):
         # When the value came from prompt_ref, treat it as a file path
         if prompt_ref_value is not None and prompt is prompt_ref_value:
-            return _extract_vars_from_prompt_ref(prompt, workflow_dir)
-        return _extract_vars_from_text(prompt)
+            extracted = _extract_vars_from_prompt_ref(prompt, workflow_dir)
+        else:
+            extracted = _extract_vars_from_text(prompt)
 
     # If prompt is a dict, analyze known text fields.
     # Handles both inline prompt dicts (content key) and resolved prompt_ref dicts
     # (system/user keys, as produced by resolve_workflow_references).
-    if isinstance(prompt, dict):
-        return _extract_vars_from_value(prompt)
+    elif isinstance(prompt, dict):
+        extracted = _extract_vars_from_value(prompt)
 
     # If prompt is a list, analyze the content of each message
-    if isinstance(prompt, list):
+    elif isinstance(prompt, list):
         vars_seen: set[str] = set()
         vars_list: list[str] = []
         for msg in prompt:
@@ -195,9 +235,13 @@ def _extract_input_variables(node: NodeSpec, workflow_dir: Path | None = None) -
                         if var not in vars_seen:
                             vars_seen.add(var)
                             vars_list.append(var)
-        return vars_list
+        extracted = vars_list
 
-    return []
+    # Fallback: when prompt-based extraction returned nothing but input_keys
+    # is explicitly declared, use it.
+    if not extracted and isinstance(explicit_input_keys, list):
+        return [k for k in explicit_input_keys if isinstance(k, str)]
+    return extracted
 
 
 def _extract_vars_from_prompt_ref(prompt_ref: str, workflow_dir: Path | None) -> list[str]:

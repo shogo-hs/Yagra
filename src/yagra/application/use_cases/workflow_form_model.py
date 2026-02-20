@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Mapping
 from copy import deepcopy
 from dataclasses import dataclass
@@ -14,6 +15,8 @@ import yaml
 from yagra.application.services.reference_resolver import resolve_workflow_references
 from yagra.application.use_cases.workflow_edit_session import compute_workflow_revision
 
+_logger = logging.getLogger(__name__)
+
 
 @dataclass(frozen=True, slots=True)
 class WorkflowNodeFormItem:
@@ -22,6 +25,7 @@ class WorkflowNodeFormItem:
     id: str
     handler: str
     prompt_ref: str | None
+    prompt_system: str | None
     prompt_user: str | None
     model: dict[str, Any] | None
 
@@ -29,12 +33,13 @@ class WorkflowNodeFormItem:
         """Converts to a dict in API response format.
 
         Returns:
-            Dictionary containing id, handler, prompt_ref, prompt_user, and model.
+            Dictionary containing id, handler, prompt_ref, prompt_system, prompt_user, and model.
         """
         return {
             "id": self.id,
             "handler": self.handler,
             "prompt_ref": self.prompt_ref,
+            "prompt_system": self.prompt_system,
             "prompt_user": self.prompt_user,
             "model": self.model,
         }
@@ -154,7 +159,8 @@ def build_workflow_form_view(
             workflow_path=workflow_abspath,
             bundle_root=bundle_root_path,
         )
-    except Exception:
+    except Exception as exc:
+        _logger.debug("prompt_ref resolution failed in build_workflow_form_view: %s", exc)
         resolved_workflow = dict(workflow)
 
     resolved_nodes_raw = resolved_workflow.get("nodes", []) or []
@@ -191,14 +197,28 @@ def build_workflow_form_view(
         if not isinstance(params, Mapping):
             continue
         params_mapping = dict(params)
-        # Retrieve prompt.user from the resolved node
+        # Retrieve prompt.system and prompt.user from the resolved node
         resolved_node = resolved_by_id.get(node_id, {})
         resolved_params = resolved_node.get("params") or {}
         resolved_prompt = (
             resolved_params.get("prompt") if isinstance(resolved_params, Mapping) else None
         )
+        # When whole-workflow resolution failed for this node, attempt individual
+        # prompt_ref resolution so that one failing node does not block all others.
+        if resolved_prompt is None:
+            prompt_ref_str = _as_optional_string(params_mapping.get("prompt_ref"))
+            if prompt_ref_str is not None:
+                resolved_prompt = _try_load_prompt_ref(
+                    prompt_ref=prompt_ref_str,
+                    workflow_path=workflow_abspath,
+                    bundle_root=bundle_root_path,
+                )
+        prompt_system: str | None = None
         prompt_user: str | None = None
         if isinstance(resolved_prompt, Mapping):
+            s = resolved_prompt.get("system")
+            if isinstance(s, str):
+                prompt_system = s
             u = resolved_prompt.get("user")
             if isinstance(u, str):
                 prompt_user = u
@@ -207,6 +227,7 @@ def build_workflow_form_view(
                 id=node_id,
                 handler=handler,
                 prompt_ref=_as_optional_string(params_mapping.get("prompt_ref")),
+                prompt_system=prompt_system,
                 prompt_user=prompt_user,
                 model=_as_optional_mapping(params_mapping.get("model")),
             )
@@ -233,19 +254,11 @@ def build_workflow_form_view(
             )
         )
 
-    workflow_abspath = Path(workflow_path).expanduser().resolve()
-    bundle_root_path = Path(bundle_root).expanduser().resolve() if bundle_root is not None else None
-    catalog_preview = build_workflow_catalog_preview(
-        workflow=workflow_mapping,
-        workflow_path=workflow_abspath,
-        bundle_root=bundle_root_path,
-    )
-
     return WorkflowFormView(
         revision=compute_workflow_revision(workflow_mapping, ui_state_mapping),
         nodes=tuple(nodes),
         edges=tuple(edges),
-        prompt_catalog_keys=catalog_preview.prompt_catalog_keys,
+        prompt_catalog_keys=(),
     )
 
 
@@ -415,6 +428,58 @@ def _collect_key_paths(payload: dict[str, Any], prefix: str) -> list[str]:
         if isinstance(value, Mapping):
             paths.extend(_collect_key_paths(dict(value), prefix=current))
     return paths
+
+
+def _try_load_prompt_ref(
+    prompt_ref: str,
+    workflow_path: Path,
+    bundle_root: Path | None,
+) -> Any | None:
+    """Attempts to load a prompt_ref file and return its content.
+
+    Parses the prompt_ref string (splitting on ``#`` for an optional section
+    anchor), resolves the file path relative to the workflow directory or
+    bundle_root, loads the YAML, and optionally extracts the named section.
+
+    Args:
+        prompt_ref: Relative file path string, optionally with a ``#section``
+            anchor (e.g. ``"prompts/chat.yaml#default"``).
+        workflow_path: Absolute path to the workflow file. The parent directory
+            is used as the base for relative path resolution when ``bundle_root``
+            is ``None``.
+        bundle_root: Optional base directory that overrides the workflow parent
+            for relative path resolution.
+
+    Returns:
+        The loaded YAML content (or the extracted section when an anchor is
+        present), or ``None`` when the file cannot be read or parsed for any reason.
+    """
+    try:
+        section: str | None
+        if "#" in prompt_ref:
+            file_part, _section_raw = prompt_ref.split("#", 1)
+            section = _section_raw.strip() or None
+        else:
+            file_part, section = prompt_ref, None
+
+        raw_path = Path(file_part.strip())
+        if raw_path.is_absolute():
+            file_path = raw_path.resolve()
+        elif bundle_root is not None:
+            file_path = (bundle_root / raw_path).resolve()
+        else:
+            file_path = (workflow_path.parent / raw_path).resolve()
+
+        raw = file_path.read_text(encoding="utf-8")
+        data = yaml.safe_load(raw)
+
+        if section is not None:
+            if isinstance(data, dict):
+                return data.get(section)
+            return None
+        return data
+    except Exception:
+        return None
 
 
 def _as_optional_mapping(value: Any) -> dict[str, Any] | None:

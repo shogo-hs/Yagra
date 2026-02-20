@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from threading import Lock
@@ -96,33 +97,119 @@ def _resolve_ui_state_for_target(workflow_path: Path, ui_state_override: Path | 
 
 _EXCLUDED_DIRS = {"venv", "node_modules", "__pycache__", ".tox", "dist", "build"}
 
+#: Directory names that hold only prompt/catalog YAML files, not workflow entry-points.
+_PROMPT_DIRS = {"prompts", "prompt", "catalogs", "catalog"}
+
+#: File names that are always metadata, never workflow entry-points.
+_NON_WORKFLOW_FILENAMES = {"template.yaml", "template.yml"}
+
+
+def _is_workflow_candidate(relative: Path) -> bool:
+    """Returns True when the YAML file is likely a workflow entry-point.
+
+    Heuristic: exclude files that live inside a dedicated prompt/catalog
+    directory (e.g. ``prompts/``, ``catalog/``) and known metadata files
+    (``template.yaml``).  All other ``.yaml`` / ``.yml`` files are considered
+    potential workflow entry-points so that custom names like
+    ``my-workflow.yaml`` are still included.
+
+    Args:
+        relative: Path relative to the workspace root.
+
+    Returns:
+        True if the file should appear in the launcher workflow picker.
+    """
+    if relative.name in _NON_WORKFLOW_FILENAMES:
+        return False
+    parts = relative.parts[:-1]
+    if any(part.lower() in _PROMPT_DIRS for part in parts):
+        return False
+    return True
+
+
+def _walk_yaml_files(
+    workspace_root: Path,
+) -> list[Path]:
+    """Walks the workspace and yields YAML files, pruning excluded directories early.
+
+    Uses ``os.scandir`` so that excluded directories (dot-dirs, tool dirs) are
+    never descended into, avoiding expensive traversal of large subtrees like
+    ``.venv/`` or ``Yagra/``.
+
+    Args:
+        workspace_root: Absolute path to the workspace root directory.
+
+    Returns:
+        List of absolute Path objects for YAML files under the workspace.
+    """
+    results: list[Path] = []
+
+    def _scan(dir_path: Path, depth: int) -> None:
+        if depth > 10:
+            return
+        try:
+            entries = sorted(os.scandir(dir_path), key=lambda e: e.name)
+        except OSError:
+            return
+        for entry in entries:
+            name = entry.name
+            if name.startswith("."):
+                continue
+            if entry.is_dir(follow_symlinks=False):
+                if name in _EXCLUDED_DIRS:
+                    continue
+                _scan(Path(entry.path), depth + 1)
+            elif entry.is_file(follow_symlinks=False):
+                suffix = Path(name).suffix.lower()
+                if suffix in _WORKFLOW_EXTENSIONS:
+                    results.append(Path(entry.path))
+
+    _scan(workspace_root, 0)
+    return results
+
 
 def _list_workflow_candidates(workspace_root: Path) -> list[str]:
-    """Returns a list of workflow candidates under the workspace.
+    """Returns workflow entry-point candidates under the workspace.
 
-    Excludes dot-directories (e.g. .git, .venv, .github, .yagra),
-    common non-project tool directories, and root-level dot-files.
-    User-defined directories such as ``src/`` or ``tests/`` are included.
+    Excludes files inside prompt/catalog directories and known metadata files
+    (e.g. ``template.yaml``) so that auxiliary YAML files are not mixed into
+    the launcher list.  Also excludes dot-directories, common non-project tool
+    directories, and root-level dot-files.
+
+    Args:
+        workspace_root: Absolute path to the workspace root directory.
+
+    Returns:
+        Sorted list of workspace-relative POSIX paths.
     """
     candidates: list[str] = []
-    for path in sorted(workspace_root.rglob("*")):
-        if not path.is_file():
-            continue
-        if path.suffix.lower() not in _WORKFLOW_EXTENSIONS:
-            continue
+    for path in _walk_yaml_files(workspace_root):
         relative = path.relative_to(workspace_root)
-        parts = relative.parts[:-1]
-        # Skip dot-directories (e.g. .git, .venv, .github, .yagra, .serena)
-        if any(part.startswith(".") for part in parts):
-            continue
-        # Skip common non-project tool directories
-        if any(part in _EXCLUDED_DIRS for part in parts):
-            continue
-        # Skip root-level dot-files (e.g. .pre-commit-config.yaml)
-        if relative.name.startswith("."):
+        if not _is_workflow_candidate(relative):
             continue
         candidates.append(relative.as_posix())
-    return candidates
+    return sorted(candidates)
+
+
+def _list_yaml_files(workspace_root: Path) -> list[str]:
+    """Returns all YAML file candidates under the workspace.
+
+    Used to populate file-picker dropdowns (e.g. prompt_ref selectors) where
+    any YAML file is a valid target, not only workflow entry-points.
+    Excludes dot-directories, common non-project tool directories, and
+    root-level dot-files.
+
+    Args:
+        workspace_root: Absolute path to the workspace root directory.
+
+    Returns:
+        Sorted list of workspace-relative POSIX paths.
+    """
+    candidates: list[str] = []
+    for path in _walk_yaml_files(workspace_root):
+        relative = path.relative_to(workspace_root)
+        candidates.append(relative.as_posix())
+    return sorted(candidates)
 
 
 def _to_workspace_relative_path(path: Path, workspace_root: Path) -> str:
@@ -208,14 +295,21 @@ class StudioService(StudioPort):
         }
 
     def get_studio_files(self) -> dict[str, Any]:
-        """Returns a list of workflow/YAML candidates under the workspace."""
+        """Returns workflow entry-points and all YAML files under the workspace.
+
+        ``workflows`` contains only ``workflow.yaml`` / ``workflow.yml`` files
+        for use in the launcher open-workflow picker.
+        ``yaml_files`` contains all YAML files for use in file-picker dropdowns
+        such as the prompt_ref selector.
+        """
         with self._config.lock:
             workspace_root = self._config.workspace_root
-            candidates = _list_workflow_candidates(workspace_root)
+            workflow_candidates = _list_workflow_candidates(workspace_root)
+            yaml_files = _list_yaml_files(workspace_root)
         return {
             "workspace_root": str(workspace_root),
-            "workflows": candidates,
-            "yaml_files": candidates,
+            "workflows": workflow_candidates,
+            "yaml_files": yaml_files,
         }
 
     def read_studio_yaml_file(self, body: dict[str, Any]) -> dict[str, Any]:

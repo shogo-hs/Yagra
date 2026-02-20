@@ -218,8 +218,18 @@ LLM_HANDLER_PARAMS_SCHEMA: dict = {
         },
         "prompt_ref": {
             "type": "string",
-            "description": "Path to the prompt file (relative or absolute path from the workflow YAML). Mutually exclusive with prompt",
-            "examples": ["prompts/translate.txt", "./prompts/summarize.md"],
+            "description": (
+                "Path to the prompt file (relative to the workflow YAML). "
+                "Use '#key' to select a section from a multi-prompt YAML "
+                "(e.g. 'prompts/all.yaml#greet'). "
+                "Nested keys use dot notation (e.g. 'prompts/all.yaml#chat.default'). "
+                "Mutually exclusive with prompt"
+            ),
+            "examples": [
+                "prompts/translate.yaml#default",
+                "./prompts/summarize.md",
+                "prompts/multi.yaml#chat.system",
+            ],
         },
         "model": {
             "type": "object",
