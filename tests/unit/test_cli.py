@@ -838,12 +838,20 @@ class TestMcpCommand:
 
         called: list[Any] = []
 
-        async def _fake_run_mcp_server() -> None:
-            called.append(True)
+        # asyncio.run itself is monkeypatched to avoid event loop conflict
+        # when running inside pytest's async runner.
+        fake_asyncio = MagicMock()
+        fake_asyncio.run = lambda coro: called.append(True)
+
+        fake_mcp_server = MagicMock()
+        fake_mcp_server.run_mcp_server = MagicMock(return_value=MagicMock())
 
         with patch.dict(
             "sys.modules",
-            {"yagra.adapters.inbound.mcp_server": MagicMock(run_mcp_server=_fake_run_mcp_server)},
+            {
+                "asyncio": fake_asyncio,
+                "yagra.adapters.inbound.mcp_server": fake_mcp_server,
+            },
         ):
             with pytest.raises(SystemExit) as exc:
                 main()
