@@ -222,6 +222,22 @@ def create_structured_llm_handler(
                     msg = f"Failed to parse LLM response as {resolved_schema.__name__}: {e}"
                     raise LLMHandlerCallError(msg) from e
 
+                # Report token usage to TraceContext if tracing is active (G-15)
+                if response.usage is not None:
+                    from yagra.application.use_cases.trace_collector import (
+                        TraceContext,  # noqa: PLC0415
+                    )
+
+                    ctx = TraceContext.current()
+                    if ctx is not None:
+                        ctx.record_llm_call(
+                            model=litellm_model,
+                            provider=provider,
+                            prompt_tokens=response.usage.prompt_tokens or 0,
+                            completion_tokens=response.usage.completion_tokens or 0,
+                            total_tokens=response.usage.total_tokens or 0,
+                        )
+
                 return {output_key: instance}
 
             except LLMHandlerCallError:

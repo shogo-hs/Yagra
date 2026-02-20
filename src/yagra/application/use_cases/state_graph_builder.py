@@ -102,6 +102,7 @@ def build_state_graph(
     state_schema: Any = None,
     checkpointer: BaseCheckpointSaver | None = None,
     workflow_path: PathLike[str] | str | None = None,
+    trace_collector: Any | None = None,
 ) -> CompiledStateGraph:
     """Builds a compiled StateGraph from a `GraphSpec` and registry.
 
@@ -128,6 +129,8 @@ def build_state_graph(
             If None, interrupt_before/interrupt_after are ignored.
         workflow_path: Path to the current workflow file. Required to resolve
             relative ``workflow_ref`` paths in subgraph nodes.
+        trace_collector: Optional TraceCollector instance. If provided, each node runner
+            is wrapped to record execution traces (G-14, G-15).
 
     Returns:
         Compiled `CompiledStateGraph`.
@@ -160,14 +163,18 @@ def build_state_graph(
             state_graph.add_node(node.id, compiled_subgraph)
         else:
             handler = registry.resolve(node.handler)
-            state_graph.add_node(
-                node.id,
-                _build_node_runner(
-                    handler=handler,
-                    node_params=node.params,
-                    is_cond_source=node.id in cond_source_ids,
-                ),
+            node_runner = _build_node_runner(
+                handler=handler,
+                node_params=node.params,
+                is_cond_source=node.id in cond_source_ids,
             )
+            if trace_collector is not None:
+                node_runner = trace_collector.wrap_node(
+                    node_id=node.id,
+                    handler=node_runner,
+                    handler_name=node.handler,
+                )
+            state_graph.add_node(node.id, node_runner)
 
     for source, targets in unconditional_by_source.items():
         for target in targets:
@@ -207,6 +214,7 @@ def build_from_workflow_path(
     bundle_root: str | PathLike[str] | None = None,
     state_schema: Any = None,
     checkpointer: BaseCheckpointSaver | None = None,
+    trace_collector: Any | None = None,
 ) -> CompiledStateGraph:
     """Builds a `CompiledStateGraph` starting from a workflow path.
 
@@ -217,6 +225,8 @@ def build_from_workflow_path(
         state_schema: LangGraph state schema. If None, automatically resolved
             from the workflow's state_schema definition or defaults to dict.
         checkpointer: LangGraph checkpointer. Required when using interrupts.
+        trace_collector: Optional TraceCollector instance. Passed through to
+            build_state_graph() to wrap node runners (G-14, G-15).
 
     Returns:
         Compiled `CompiledStateGraph`.
@@ -228,6 +238,7 @@ def build_from_workflow_path(
         state_schema=state_schema,
         checkpointer=checkpointer,
         workflow_path=workflow_path,
+        trace_collector=trace_collector,
     )
 
 

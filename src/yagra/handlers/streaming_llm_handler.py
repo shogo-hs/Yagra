@@ -172,13 +172,23 @@ def create_streaming_llm_handler(
                 )
 
                 # 5. Return a generator that yields chunks
+                # provider/litellm_model are str here (validated above); cast for mypy
+                _bound_model: str = litellm_model
+                _bound_provider: str = str(provider)
+
                 def _stream(
                     resp: Any,
+                    bound_model: str = _bound_model,
+                    bound_provider: str = _bound_provider,
                 ) -> Generator[str, None, None]:
                     """Yields string chunks from the LLM streaming response.
 
+                    Reports token usage to TraceContext after the stream is fully consumed.
+
                     Args:
                         resp: Litellm streaming response object (iterable).
+                        bound_model: litellm model string, bound at definition time.
+                        bound_provider: Provider name, bound at definition time.
 
                     Yields:
                         str: Non-empty content chunks from the LLM response.
@@ -192,6 +202,26 @@ def create_streaming_llm_handler(
                         content = delta.content
                         if content is not None:
                             yield content
+                    # Stream fully consumed: report token usage if available
+                    # litellm may include usage in the last chunk via stream_options
+                    try:
+                        usage = getattr(resp, "usage", None) or getattr(resp, "_usage", None)
+                        if usage is not None:
+                            from yagra.application.use_cases.trace_collector import (
+                                TraceContext,  # noqa: PLC0415
+                            )
+
+                            ctx = TraceContext.current()
+                            if ctx is not None:
+                                ctx.record_llm_call(
+                                    model=bound_model,
+                                    provider=bound_provider,
+                                    prompt_tokens=getattr(usage, "prompt_tokens", 0) or 0,
+                                    completion_tokens=getattr(usage, "completion_tokens", 0) or 0,
+                                    total_tokens=getattr(usage, "total_tokens", 0) or 0,
+                                )
+                    except Exception:  # noqa: BLE001
+                        pass  # token reporting is best-effort; never break the stream
 
                 return {output_key: _stream(response)}
 
