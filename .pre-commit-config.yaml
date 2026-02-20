@@ -28,8 +28,15 @@ repos:
         pass_filenames: false
 
       - id: pytest
-        name: pytest
-        entry: uv run pytest -q
+        name: pytest (unit + integration)
+        entry: uv run pytest -q --ignore=tests/integration/test_studio_js_utils.py
+        language: system
+        pass_filenames: false
+        stages: [pre-push]
+
+      - id: pytest-playwright
+        name: pytest (Playwright JS utils)
+        entry: uv run pytest -q tests/integration/test_studio_js_utils.py --browser chromium
         language: system
         pass_filenames: false
         stages: [pre-push]
