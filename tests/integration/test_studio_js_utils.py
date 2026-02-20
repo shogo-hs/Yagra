@@ -35,7 +35,7 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 
 
-def _u(page: "Page", fn: str, *args: Any) -> Any:
+def _u(page: Page, fn: str, *args: Any) -> Any:
     """Call ``window.__studioUtils.<fn>`` with positional *args* and return the result."""
     js_args = ", ".join(
         f'"{a}"' if isinstance(a, str) else ("null" if a is None else str(a)) for a in args
@@ -72,9 +72,7 @@ class TestNormalizePosixPath:
     def test_windows_backslash_converted(self, studio_utils_page):
         page, _ = studio_utils_page
         # Pass the string via page.evaluate to avoid Python escape-sequence interpretation.
-        result = page.evaluate(
-            r'window.__studioUtils.normalizePosixPath("prompts\\foo.yaml")'
-        )
+        result = page.evaluate(r'window.__studioUtils.normalizePosixPath("prompts\\foo.yaml")')
         assert result == "prompts/foo.yaml"
 
 
@@ -110,7 +108,10 @@ class TestRelativePosixPath:
     def test_sibling_directory(self, studio_utils_page):
         page, _ = studio_utils_page
         # sub_workflow → sub_workflow/prompts/foo.yaml
-        assert _u(page, "relativePosixPath", "sub_workflow", "sub_workflow/prompts/foo.yaml") == "prompts/foo.yaml"
+        assert (
+            _u(page, "relativePosixPath", "sub_workflow", "sub_workflow/prompts/foo.yaml")
+            == "prompts/foo.yaml"
+        )
 
     def test_same_directory(self, studio_utils_page):
         page, _ = studio_utils_page
@@ -137,9 +138,7 @@ class TestSplitPromptReference:
 
     def test_without_hash(self, studio_utils_page):
         page, _ = studio_utils_page
-        result = page.evaluate(
-            'window.__studioUtils.splitPromptReference("prompts/foo.yaml")'
-        )
+        result = page.evaluate('window.__studioUtils.splitPromptReference("prompts/foo.yaml")')
         assert result["path"] == "prompts/foo.yaml"
         assert result["keyPath"] == ""
 
@@ -156,8 +155,9 @@ class TestSplitPromptReference:
 
 
 class TestGetWorkflowDirectoryRelative:
-    """``studioTargetPath`` is an absolute path; the function strips the
-    workspace prefix and returns the directory portion.
+    """``studioTargetPath`` is an absolute path; the function strips the workspace prefix.
+
+    Returns the directory portion as a workspace-root-relative string.
     """
 
     def test_returns_subdirectory_name(self, studio_utils_page):
@@ -223,9 +223,6 @@ class TestPromptRefPathToWorkspacePath:
     def test_absolute_path_stripped_to_workspace_relative(self, studio_utils_page):
         """An absolute prompt_ref is converted to workspace-root-relative."""
         page, _ = studio_utils_page
-        # Inject a fake absolute path that looks like it's inside studioWorkspaceRoot.
-        # We read the workspace root from the page first, then construct the absolute path.
-        workspace_root = page.evaluate("window.__studioUtils.normalizePosixPath('')")
         # Use page.evaluate directly to build the absolute path dynamically.
         result = page.evaluate("""
             (() => {

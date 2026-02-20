@@ -34,7 +34,13 @@ def _minimal_workflow() -> dict[str, Any]:
         "version": "1.0",
         "start_at": "step_a",
         "end_at": ["step_a"],
-        "nodes": [{"id": "step_a", "handler": "llm", "params": {"prompt_ref": "prompts/my_prompts.yaml#step_a"}}],
+        "nodes": [
+            {
+                "id": "step_a",
+                "handler": "llm",
+                "params": {"prompt_ref": "prompts/my_prompts.yaml#step_a"},
+            }
+        ],
         "edges": [],
         "params": {},
     }
@@ -159,7 +165,7 @@ def studio_server_root_level(studio_workspace_root_level: Path):
 
 
 @pytest.fixture()
-def studio_utils_page(page: "Page", studio_server):
+def studio_utils_page(page: Page, studio_server):
     """Opens the Studio page with ?__test_utils=1 and waits for Vue to mount.
 
     Returns (page, base_url) so tests can call page.evaluate("__studioUtils.*").
@@ -177,7 +183,7 @@ def studio_utils_page(page: "Page", studio_server):
 
 
 @pytest.fixture()
-def studio_utils_page_root_level(page: "Page", studio_server_root_level):
+def studio_utils_page_root_level(page: Page, studio_server_root_level):
     """Same as studio_utils_page but the workflow is at the workspace root (no subdirectory).
 
     ``getWorkflowDirectoryRelative()`` returns ``""`` in this configuration.
