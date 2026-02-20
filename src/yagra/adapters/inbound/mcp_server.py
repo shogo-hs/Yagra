@@ -165,6 +165,56 @@ def create_mcp_server() -> Any:
                     "required": ["name"],
                 },
             ),
+            Tool(
+                name="get_traces",
+                description=(
+                    "Retrieve raw execution trace data from local trace files. "
+                    "Returns structured JSON traces with per-node execution details, "
+                    "timing, token usage, and errors."
+                ),
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "trace_dir": {
+                            "type": "string",
+                            "description": ("Root trace directory. Defaults to '.yagra/traces'."),
+                        },
+                        "workflow_name": {
+                            "type": "string",
+                            "description": "Filter by workflow name.",
+                        },
+                        "limit": {
+                            "type": "integer",
+                            "description": ("Maximum number of traces to return. Defaults to 20."),
+                        },
+                    },
+                },
+            ),
+            Tool(
+                name="analyze_traces",
+                description=(
+                    "Aggregate multiple execution traces and return statistical summary. "
+                    "Provides per-node success rates, latency percentiles, "
+                    "token consumption, and cost statistics."
+                ),
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "trace_dir": {
+                            "type": "string",
+                            "description": ("Root trace directory. Defaults to '.yagra/traces'."),
+                        },
+                        "workflow_name": {
+                            "type": "string",
+                            "description": "Filter by workflow name.",
+                        },
+                        "limit": {
+                            "type": "integer",
+                            "description": "Limit traces to aggregate.",
+                        },
+                    },
+                },
+            ),
         ]
 
     @server.call_tool()
@@ -198,6 +248,18 @@ def create_mcp_server() -> Any:
             result = _tool_list_handlers()
         elif name == "get_template":
             result = _tool_get_template(arguments.get("name", ""))
+        elif name == "get_traces":
+            result = _tool_get_traces(
+                trace_dir=arguments.get("trace_dir", ".yagra/traces"),
+                workflow_name=arguments.get("workflow_name"),
+                limit=arguments.get("limit", 20),
+            )
+        elif name == "analyze_traces":
+            result = _tool_analyze_traces(
+                trace_dir=arguments.get("trace_dir", ".yagra/traces"),
+                workflow_name=arguments.get("workflow_name"),
+                limit=arguments.get("limit"),
+            )
         else:
             result = {"error": f"Unknown tool: {name}"}
 
@@ -482,6 +544,79 @@ def _tool_get_template(name: str) -> dict[str, Any]:
             "name": name,
             "available": list_templates(),
         }
+
+
+def _tool_get_traces(
+    trace_dir: str = ".yagra/traces",
+    workflow_name: str | None = None,
+    limit: int | None = 20,
+) -> dict[str, Any]:
+    """Implementation of the get_traces tool.
+
+    Retrieves raw execution trace data from local trace files.
+
+    Args:
+        trace_dir: Root trace directory. Defaults to ``.yagra/traces``.
+        workflow_name: Filter by workflow name. If None, load all workflows.
+        limit: Maximum number of traces to return. Defaults to 20.
+
+    Returns:
+        Dictionary with ``traces`` and ``count`` keys on success,
+        or ``error`` key on failure.
+    """
+    try:
+        from yagra.application.use_cases.trace_aggregator import load_traces
+
+        traces = load_traces(
+            trace_dir=trace_dir,
+            workflow_name=workflow_name,
+            limit=limit,
+        )
+        return {"traces": traces, "count": len(traces)}
+    except Exception as exc:
+        return {"error": str(exc)}
+
+
+def _tool_analyze_traces(
+    trace_dir: str = ".yagra/traces",
+    workflow_name: str | None = None,
+    limit: int | None = None,
+) -> dict[str, Any]:
+    """Implementation of the analyze_traces tool.
+
+    Aggregates multiple execution traces and returns statistical summary.
+
+    Args:
+        trace_dir: Root trace directory. Defaults to ``.yagra/traces``.
+        workflow_name: Filter by workflow name. If None, load all workflows.
+        limit: Limit traces to aggregate. If None, aggregate all available.
+
+    Returns:
+        Dictionary containing the aggregated summary on success.
+        Returns a dictionary with ``error`` key when no traces are found
+        or an exception occurs.
+    """
+    try:
+        from yagra.application.use_cases.trace_aggregator import (
+            aggregate_traces,
+            load_traces,
+        )
+
+        traces = load_traces(
+            trace_dir=trace_dir,
+            workflow_name=workflow_name,
+            limit=limit,
+        )
+        if not traces:
+            return {
+                "error": "No traces found",
+                "trace_dir": trace_dir,
+                "workflow_name": workflow_name,
+            }
+        summary = aggregate_traces(traces)
+        return summary.to_dict()
+    except Exception as exc:
+        return {"error": str(exc)}
 
 
 async def run_mcp_server() -> None:

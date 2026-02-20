@@ -64,8 +64,8 @@
 
 | Milestone ID | 対応 Goal ID | 到達ステップ | 完了条件 | 状態 |
 | --- | --- | --- | --- | --- |
-| M-42 | G-17 | 複数トレースの集約・サマリ生成機能を実装する | `.yagra/traces/` 内の複数トレースファイルを読み込み、ノード別の成功率・平均実行時間・トークン消費・コストの統計サマリを構造化 JSON で出力する CLI コマンド（`yagra analyze`）を提供する | Planned |
-| M-43 | G-16 | MCP サーバーに実行ログ取得・分析ツールを追加する | MCP サーバーに `get_traces` / `analyze_traces` ツールを追加し、エージェントが直接トレースデータを取得・分析できる | Planned |
+| M-42 | G-17 | 複数トレースの集約・サマリ生成機能を実装する | `.yagra/traces/` 内の複数トレースファイルを読み込み、ノード別の成功率・平均実行時間・トークン消費・コストの統計サマリを構造化 JSON で出力する CLI コマンド（`yagra analyze`）を提供する | Done |
+| M-43 | G-16 | MCP サーバーに実行ログ取得・分析ツールを追加する | MCP サーバーに `get_traces` / `analyze_traces` ツールを追加し、エージェントが直接トレースデータを取得・分析できる | Done |
 
 ### Phase 4: 承認と最適化（Approve & Update） — v1.0 目標
 
@@ -238,17 +238,17 @@
 
 | Item ID | やるべきこと | 状態 | 根拠 |
 | --- | --- | --- | --- |
-| G16-I01 | MCP サーバーに `get_traces` ツールを追加する | Planned | — |
-| G16-I02 | MCP サーバーに `analyze_traces` ツールを追加する | Planned | — |
+| G16-I01 | MCP サーバーに `get_traces` ツールを追加する | Done | `src/yagra/adapters/inbound/mcp_server.py` |
+| G16-I02 | MCP サーバーに `analyze_traces` ツールを追加する | Done | `src/yagra/adapters/inbound/mcp_server.py` |
 | G16-I03 | エージェント向けの分析ツール利用ガイドを整備する | Planned | — |
 
 ### G-17: 複数回の実行結果を集約し、品質傾向を把握できる
 
 | Item ID | やるべきこと | 状態 | 根拠 |
 | --- | --- | --- | --- |
-| G17-I01 | 複数トレースファイルの読み込み・集約ロジックを実装する | Planned | — |
-| G17-I02 | ノード別の成功率・平均実行時間・トークン消費の統計サマリを生成する機能を実装する | Planned | — |
-| G17-I03 | `yagra analyze` CLI コマンドを実装する | Planned | — |
+| G17-I01 | 複数トレースファイルの読み込み・集約ロジックを実装する | Done | `src/yagra/application/use_cases/trace_aggregator.py` |
+| G17-I02 | ノード別の成功率・平均実行時間・トークン消費の統計サマリを生成する機能を実装する | Done | `src/yagra/application/use_cases/trace_aggregator.py` |
+| G17-I03 | `yagra analyze` CLI コマンドを実装する | Done | `src/yagra/__init__.py` |
 
 ### G-18: エージェントの改善提案に基づき YAML を安全に更新できる
 
