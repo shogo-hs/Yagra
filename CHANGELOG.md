@@ -4,6 +4,32 @@
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-02-21
+
+### Added
+- ✨ **Phase 4: Approve & Update サイクル（G-18, G-19, M-45–M-47）**: エージェントが提案した YAML 修正をユーザー承認後に安全に適用する仕組みを実装。Build → Run & Observe → Analyze & Propose → Approve & Update の全最適化サイクルがローカル完結で動作
+  - `propose_update` MCP ツール: エージェントが生成した候補 YAML の diff とバリデーション結果を返す
+  - `apply_update` MCP ツール: 候補 YAML をバックアップ付きで適用（`save_workflow_with_backup` 活用）
+  - `rollback_update` MCP ツール: `backup_id` 指定で以前のバージョンに復元
+  - `WorkflowEditSession`: diff 生成・バリデーション・パッチ適用を一括管理するセッションクラス
+  - `WorkflowFormModel` / `WorkflowFormPatcher`: UI 駆動のフォームベース編集に対応した構造化モデルとパッチャー
+  - `WorkflowValidationReporter`: バリデーション結果を修正提案付きのレポートとして出力
+  - Build → Run & Observe → Analyze & Propose → Approve & Update の全工程 E2E 統合テストを追加
+
+### Fixed
+- 🔧 **asyncio event loop 競合の解消**: `test_mcp_installed_runs_asyncio` で `asyncio.run()` が pytest-anyio の event loop と競合していた問題を `ThreadPoolExecutor` で別スレッド実行することで解消。フルスイート実行時も安定して通過するように
+
+### Changed
+- 📈 **テストカバレッジ 91% → 96%**: 全モジュールを対象にカバレッジを改善。`workflow_explainer`, `workflow_form_model`, `workflow_persistence`, `workflow_edit_session`, `edge_rule_validator`, `reference_resolver`, `local_trace_sink`, `workflow_file_store`, `structured_llm_handler`, `template_initializer`, `workflow_validation_reporter` が 100% カバレッジに到達。合計 760 テスト通過
+
+### v1.0.0 達成ゴール
+- ✅ G-14: ワークフロー実行時にノード単位の構造化ログが自動出力される
+- ✅ G-15: LLM 呼び出しのトークン消費とコストを実行ログから把握できる
+- ✅ G-16: コーディングエージェントが実行ログを MCP 経由で取得・分析できる
+- ✅ G-17: 複数回の実行結果を集約し、品質傾向を把握できる
+- ✅ G-18: エージェントの改善提案に基づき YAML を安全に更新できる
+- ✅ G-19: Build→Observe→Analyze→Update の最適化サイクルを手元環境で完結できる
+
 ## [0.6.11] - 2026-02-20
 
 ### Fixed

@@ -8,6 +8,32 @@ For the canonical changelog (Japanese), see [CHANGELOG.md](https://github.com/sh
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-02-21
+
+### Added
+- ✨ **Phase 4: Approve & Update cycle (G-18, G-19, M-45–M-47)**: Enables safe YAML updates based on agent improvement proposals, completing the full Build → Run & Observe → Analyze & Propose → Approve & Update optimization cycle in a local environment
+  - `propose_update` MCP tool: returns diff and validation result for agent-generated candidate YAML
+  - `apply_update` MCP tool: applies candidate YAML with backup support (via `save_workflow_with_backup`)
+  - `rollback_update` MCP tool: restores a previous version by `backup_id`
+  - `WorkflowEditSession`: unified session class for diff generation, validation, and patch application
+  - `WorkflowFormModel` / `WorkflowFormPatcher`: structured model and patcher for UI-driven form-based editing
+  - `WorkflowValidationReporter`: outputs validation results as actionable reports with fix suggestions
+  - Full E2E integration test covering the complete Build → Observe → Analyze → Update cycle
+
+### Fixed
+- 🔧 **asyncio event loop conflict resolved**: `test_mcp_installed_runs_asyncio` was conflicting with pytest-anyio's event loop when run in the full suite. Fixed by running `asyncio.run()` in a separate thread via `ThreadPoolExecutor`
+
+### Changed
+- 📈 **Test coverage improved from 91% to 96%**: All targeted modules now reach 95%+ coverage. `workflow_explainer`, `workflow_form_model`, `workflow_persistence`, `workflow_edit_session`, `edge_rule_validator`, `reference_resolver`, `local_trace_sink`, `workflow_file_store`, `structured_llm_handler`, `template_initializer`, and `workflow_validation_reporter` all reach 100%. Total: 760 tests passing
+
+### v1.0.0 Goals Achieved
+- ✅ G-14: Structured per-node logs automatically output during workflow execution
+- ✅ G-15: Token consumption and LLM costs tracked in execution logs
+- ✅ G-16: Coding agents can retrieve and analyze execution logs via MCP
+- ✅ G-17: Aggregate multiple run results to understand quality trends
+- ✅ G-18: Safely update YAML based on agent improvement proposals
+- ✅ G-19: Complete Build→Observe→Analyze→Update optimization cycle runs locally end-to-end
+
 ## [0.6.11] - 2026-02-20
 
 ### Fixed
