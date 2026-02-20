@@ -41,8 +41,11 @@ jobs:
       - name: Mypy
         run: uv run mypy .
 
-      - name: Pytest
-        run: uv run pytest -q --cov=src/yagra --cov-report=xml
+      - name: Pytest (unit + integration)
+        run: uv run pytest -q --cov=src/yagra --cov-report=xml --ignore=tests/integration/test_studio_js_utils.py
+
+      - name: Pytest (Playwright JS utils)
+        run: uv run pytest -q tests/integration/test_studio_js_utils.py --browser chromium
 
       - name: Run octocov
         uses: k1LoW/octocov-action@v1
