@@ -1,8 +1,10 @@
 # ユーザー到達状態ゴール
 
-最終更新: 2026-02-19 <!-- 競合分析を踏まえ G-12/G-13 を追加 -->
+最終更新: 2026-02-20 <!-- AgentOps ビジョンに基づき G-14〜G-19 を追加 -->
 
 ## ゴール一覧
+
+### Phase 1: 構築（Build） — 既達成
 
 | Goal ID | ユーザーが到達したい状態 | 到達判定（Definition of Done） | 状態 |
 | --- | --- | --- | --- |
@@ -20,6 +22,27 @@
 | G-12 | ワークフロー定義を Git で管理し、CI で自動検証できる | `yagra validate` を GitHub Actions に組み込み、PR ごとにワークフロー変更を自動検証できる。変更差分・実行パスの変化が PR コメントとして可視化され、チームがコードレビューと同じ感覚でワークフローをレビューできる | Done |
 | G-13 | 多様なユースケースに対応するテンプレートから素早く開発を開始できる | multi-agent・tool-use・human-review 等の実用テンプレートが揃い、`yagra init --list` でユースケース別に選択できる。各テンプレートには動作可能なサンプルコードが付属し、5 分以内に動作確認できる | Done |
 
+### Phase 2: 実行と計測（Run & Observe) — v1.0 目標
+
+| Goal ID | ユーザーが到達したい状態 | 到達判定（Definition of Done） | 状態 |
+| --- | --- | --- | --- |
+| G-14 | ワークフロー実行時にノード単位の構造化ログが自動出力される | `Yagra.invoke()` 実行時に、各ノードの実行時間・入出力スナップショット・エラー情報を含む構造化 JSON ログがローカルファイルに出力される。ログ出力は opt-in で有効化でき、既存 API の後方互換を維持する | Planned |
+| G-15 | LLM 呼び出しのトークン消費とコストを実行ログから把握できる | 組み込み LLM ハンドラー（llm/structured_llm/streaming_llm）がトークン使用量（input/output/total）を実行ログに記録する。複数回実行の集計により、ワークフロー全体のコスト傾向を把握できる | Planned |
+
+### Phase 3: 分析と提案（Analyze & Propose） — v1.0 目標
+
+| Goal ID | ユーザーが到達したい状態 | 到達判定（Definition of Done） | 状態 |
+| --- | --- | --- | --- |
+| G-16 | コーディングエージェントが実行ログを MCP 経由で取得・分析できる | MCP サーバーに実行ログ取得ツールが追加され、エージェントが直接ログデータを読み取り、ノード別の成功率・レイテンシ・トークン効率を分析できる | Planned |
+| G-17 | 複数回の実行結果を集約し、品質傾向を把握できる | 実行ログの集約機能により、ノード別の成功率・平均レイテンシ・トークン消費の傾向をサマリとして出力できる。エージェントがサマリを読み取り、改善提案の根拠として利用できる | Planned |
+
+### Phase 4: 承認と最適化（Approve & Update） — v1.0 目標
+
+| Goal ID | ユーザーが到達したい状態 | 到達判定（Definition of Done） | 状態 |
+| --- | --- | --- | --- |
+| G-18 | エージェントの改善提案に基づき YAML を安全に更新できる | エージェントが分析結果に基づいて YAML 修正を提案し、ユーザーの承認後に変更が適用される。変更は Git diff として追跡可能で、`yagra validate` による自動検証を経て品質が担保される | Planned |
+| G-19 | Build→Observe→Analyze→Update の最適化サイクルを手元環境で完結できる | 上記 G-14〜G-18 の全工程がローカル完結（外部 SaaS 不要）で動作し、コーディングエージェントとの対話によって反復的にワークフローが改善される。サイクル 1 周を 30 分以内に完了できる | Planned |
+
 ## 運用ルール
 
 - アクティブなゴールは 3〜5 個に絞る。
@@ -27,13 +50,6 @@
 - 各ゴールに `到達判定（Definition of Done）` を 1 つ以上持たせる。
 
 補足:
-- G-05 は M-11 で UI ビジュアル品質向上まで完了。CSS Variables によるデザインシステム統一、状態表現の明確化、タイポグラフィ・余白の体系化により、非エンジニアが迷わず運用できる WebUI が整った。
-- G-06 は AI-Native 方針に基づく新規ゴール。M-12（JSON Schema + validate CLI）、M-13（テンプレートライブラリ）により完了。コーディングエージェントが Yagra ワークフローを正確に生成・検証できる環境が整った。
-- G-07 は DX 改善ゴール。LLM ノードの実装を簡潔にし、初学者の参入障壁を下げる。4 段階で実装：M-14（基本 LLM ハンドラー）、M-15（構造化出力）、M-16（ストリーミング）、M-17（WebUI ハンドラータイプ別フォーム）。
-- G-07 は M-17（WebUI ハンドラータイプ別フォーム）の完了をもって Done。M-27 で WebUI の `schema_yaml` から動的 Pydantic モデル生成を追加し、Python コードなしで構造化出力が完結するようになった。G-01〜G-07 すべて Done。
-- G-08 は handler データフロー改善ゴール。handler タイプ別の責務整理を前提に、`input_keys` の自動検出と `output_key` の WebUI 設定を実現する。3 段階で実装: M-18（handler type セレクト — v0.4.1）、M-19（input_keys 自動検出 — v0.4.2）、M-20（output_key の WebUI 設定）。G-01〜G-08 すべて Done。
-- G-09 は M-21（GraphSpec HITL フィールド追加）・M-22（StateGraph checkpointer 統合）・M-23（Yagra API resume() 追加）の3段階で実装完了。`interrupt_before` / `interrupt_after` バリデーション、MemorySaver 対応の動作確認済み。G-01〜G-09, G-10, G-11 すべて Done。
-- G-10 は M-24（バッジ表示）、M-25（ON/OFF トグル）、M-26（UX 洗練）の完了をもって Done（v0.5.0）。Studio WebUI および Read-Only 可視化 HTML の両方で IN/OUT バッジが表示され、ツールバーのチェックボックスで独立したトグルが可能になった。バッジは色分け・max-width による省略・title tooltip により視認性を確保。G-01〜G-08, G-10 すべて Done。
-- G-11 は G-06（AI-Native 基盤）を深化させるゴール。M-28（スキーマ意味情報付与）・M-29（バリデーション修正提案）・M-30（explain コマンド）・M-31（stdin 対応）・M-32（handlers コマンド）・M-33（エージェント統合ガイド）・M-34（MCP サーバー）の 7 マイルストーンで実装完了。G-01〜G-11 すべて Done。
-- G-12 は M-35（GitHub Actions 統合）で実装完了。`.github/workflows/validate-example.yml`、PR コメントスクリプト、CI 統合ガイドを提供し、LangFlow・Flowise 等が不得意とする CI/CD 統合領域で競合優位を確立した。
-- G-13 は M-36（テンプレート拡充）で実装完了。multi-agent・tool-use・human-review の 3 テンプレートを追加（合計 6 テンプレート）。各テンプレートに `template.yaml`（メタ情報）・動作サンプル・README を付属。`yagra init --list` にユースケース説明を表示する機能も追加。
+- G-01〜G-13 は Phase 1（Declarative LangGraph Builder）として全て完了済み。詳細は各 Goal の実装項目（milestones.md）を参照。
+- G-14〜G-19 は AgentOps ビジョンに基づく v1.0 目標。Phase 2→3→4 の順に依存関係がある。
+- G-14/G-15（Run & Observe）が基盤となり、G-16/G-17（Analyze & Propose）はログ出力に依存する。G-18/G-19（Approve & Update）は分析機能に依存する。

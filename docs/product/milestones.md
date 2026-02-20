@@ -1,22 +1,14 @@
 # 到達ステップ
 
-最終更新: 2026-02-19 <!-- 競合分析を踏まえ M-35/M-36 を追加 -->
+最終更新: 2026-02-20 <!-- AgentOps ビジョンに基づき M-37〜M-48 を追加 -->
 
 補足:
-- M-21〜M-23 は完了（G-09）。`GraphSpec` に `interrupt_before` / `interrupt_after` フィールドを追加しバリデーション統合（M-21）、`build_state_graph()` に `checkpointer` 引数を追加（M-22）、`Yagra` に `from_workflow(checkpointer=)` / `invoke(thread_id=)` / `resume()` を追加（M-23）。MemorySaver を使った中断・再開サイクルの動作を単体テスト 15 件で確認済み。G-01〜G-13 すべて Done。
-- M-35 は完了（G-12）。`.github/workflows/validate-example.yml`（yagra validate + explain を GitHub Actions で実行し PR コメントに投稿）、`scripts/pr-comment-example.sh`（PR コメント投稿スクリプト）、`docs/ci-integration-guide.md`（CI 統合ガイド）を提供。
-- M-36 は完了（G-13）。multi-agent（orchestrator/researcher/writer パターン）、tool-use（planner/tool_executor/synthesizer パターン）、human-review（generator/publisher + interrupt_before パターン）の 3 テンプレートを追加。各テンプレートに `template.yaml`（ユースケース説明）・動作サンプル（`examples/`）・README を付属。`list_templates_with_info()` で `yagra init --list` にユースケース説明を表示する機能を実装。単体テスト 15 件追加。
-- M-28〜M-34 は完了（G-11）。`GraphSpec`/`NodeSpec`/`EdgeSpec` 全フィールドに `description`/`examples` 付与（M-28）、`WorkflowValidationIssue` に `severity`/`context` とファジーマッチ修正提案を追加（M-29）、`yagra explain` コマンド実装（M-30）、`yagra validate --workflow -` で stdin 対応（M-31）、組み込みハンドラーの params スキーマ公開と `yagra handlers` コマンド追加（M-32）、エージェント統合ガイド作成（M-33）、MCP サーバー実装（M-34）。単体テスト 181 件（+約 60 件）・ruff/mypy クリア。
-- M-27 は完了。WebUI の Schema Settings テキストエリアに入力された YAML スキーマ（`name: str` / `age: int` 等のフラット形式）を `schema_builder.py` で Pydantic BaseModel に動的変換し、`create_structured_llm_handler(schema=None)` 時に `params.schema_yaml` から実行時解決する。Python コードでのスキーマ定義が不要になり、YAML + WebUI だけで構造化出力が完結する。単体テスト 27 件・動的ハンドラーテスト 5 件・結合テスト 3 件追加。
-- M-20 は完了。WebUI のノードプロパティパネルに Output Settings セクション（output_key テキスト入力）を追加。isLlmHandler 条件下で表示し、空欄時はデフォルト（"output"）を使用。Apply 時に params.output_key に書き込む。G-08 DoD 達成。
-- M-19 は完了。プロンプトテンプレートの `{変数名}` を `re.findall` で自動抽出し、`input_keys` の明示指定が不要になった。`input_keys` 指定時は後方互換で動作（`None` と `[]` を区別）。3 handler すべて対応、単体テスト 5 件追加。
-- M-18 は完了（v0.4.1）。handler 入力を type セレクト（llm/structured_llm/streaming_llm/custom）に変更。組み込み型選択時は handler 名を自動入力、custom 選択時のみ自由テキスト入力。
-- M-17 は完了。handler 値（llm/structured_llm/streaming_llm）に応じてノードプロパティパネルのフォームが切り替わり、structured_llm では Schema Settings（schema_yaml 入力）、streaming_llm では Streaming Settings（stream: false チェックボックス）が表示される。
-- M-15 は完了。`create_structured_llm_handler(schema=PydanticModel)` で型安全な構造化出力が動作することを確認済み。単体テスト 16 件・結合テスト 3 件追加。WebUI スキーマ編集は M-16 にスコープ移動（WebUI フォーム設計の大幅変更を伴うため）。
-- M-16 は完了。`create_streaming_llm_handler()` でストリーミングレスポンスを受け取れ、YAML 定義だけで動作することを確認済み。単体テスト 13 件・結合テスト 3 件追加。
-- M-14 は完了。`examples/llm-basic/` で YAML 定義だけで LLM 呼び出しが動作することを確認済み。Issue #11（例外テストの fixture 競合）はコア機能に影響なし。
+- M-01〜M-36 は Phase 1（Declarative LangGraph Builder）として全て完了済み。各マイルストーンの完了詳細は本ファイル末尾の「Phase 1 完了ノート」を参照。
+- M-37〜M-48 は AgentOps ビジョンに基づく v1.0 目標。Phase 2→3→4 の順に依存関係がある。
 
 ## ステップ一覧
+
+### Phase 1: 構築（Build） — 既達成
 
 | Milestone ID | 対応 Goal ID | 到達ステップ | 完了条件 | 状態 |
 | --- | --- | --- | --- | --- |
@@ -56,6 +48,33 @@
 | M-34 | G-11 | MCP サーバーとして Yagra 機能を公開する | `validate` / `explain` / `list_templates` / `list_handlers` を MCP ツールとして提供し、エージェントが CLI を経由せずに直接呼び出せる | Done |
 | M-35 | G-12 | GitHub Actions 統合を提供する | `yagra validate` を GitHub Actions ワークフローに組み込むサンプル設定と使用ガイドを提供し、PR ごとにワークフロー変更を自動検証できる | Done |
 | M-36 | G-13 | テンプレートライブラリを拡充する | multi-agent・tool-use・human-review（G-09 完了後）の実用テンプレートを追加し、各テンプレートに動作可能サンプルコードを付属させる | Done |
+
+### Phase 2: 実行と計測（Run & Observe） — v1.0 目標
+
+| Milestone ID | 対応 Goal ID | 到達ステップ | 完了条件 | 状態 |
+| --- | --- | --- | --- | --- |
+| M-37 | G-14 | 実行トレースのデータモデルとログフォーマットを策定する | ノード単位の実行記録（node_id, start_time, end_time, duration_ms, input_snapshot, output_snapshot, status, error）を表現するドメインエンティティと JSON フォーマット仕様が定義され、テスト化されている | Planned |
+| M-38 | G-14 | StateGraph 実行にトレース収集フックを組み込む | `Yagra.invoke()` に `trace=True` オプションを追加し、実行時に各ノードの開始・終了・エラーを自動キャプチャする。既存 API の後方互換を維持する | Planned |
+| M-39 | G-14 | 実行トレースのローカルファイル出力を実装する | トレース結果を `.yagra/traces/` ディレクトリに構造化 JSON ファイルとして出力する。ファイル名は `{workflow_name}_{timestamp}_{run_id}.json` 形式。出力先はオプションで変更可能 | Planned |
+| M-40 | G-15 | LLM ハンドラーにトークン使用量の記録を追加する | 組み込み LLM ハンドラー（llm/structured_llm/streaming_llm）が litellm のレスポンスからトークン使用量（prompt_tokens, completion_tokens, total_tokens）を抽出し、トレースレコードに含める | Planned |
+| M-41 | G-15 | トレースにコスト推定情報を追加する | トークン使用量とモデル名から概算コスト（USD）を算出し、トレースレコードに含める。litellm の cost 情報または独自の料金テーブルを利用する | Planned |
+
+### Phase 3: 分析と提案（Analyze & Propose） — v1.0 目標
+
+| Milestone ID | 対応 Goal ID | 到達ステップ | 完了条件 | 状態 |
+| --- | --- | --- | --- | --- |
+| M-42 | G-17 | 複数トレースの集約・サマリ生成機能を実装する | `.yagra/traces/` 内の複数トレースファイルを読み込み、ノード別の成功率・平均実行時間・トークン消費・コストの統計サマリを構造化 JSON で出力する CLI コマンド（`yagra analyze`）を提供する | Planned |
+| M-43 | G-16 | MCP サーバーに実行ログ取得・分析ツールを追加する | MCP サーバーに `get_traces` / `analyze_traces` ツールを追加し、エージェントが直接トレースデータを取得・分析できる | Planned |
+| M-44 | G-17 | ボトルネック検出・改善ヒント生成機能を実装する | 集約結果からボトルネックノード（高レイテンシ・高エラー率・高コスト）を検出し、改善ヒント（具体的なアクション候補）を構造化データとして出力する。エージェントがヒントを読み取り改善提案の根拠として利用できる | Planned |
+
+### Phase 4: 承認と最適化（Approve & Update） — v1.0 目標
+
+| Milestone ID | 対応 Goal ID | 到達ステップ | 完了条件 | 状態 |
+| --- | --- | --- | --- | --- |
+| M-45 | G-18 | MCP サーバーに YAML 更新提案ツールを追加する | エージェントが分析結果に基づいて YAML の修正差分を生成し、`propose_update` ツール経由でユーザーに提示できる。提案には変更理由・影響範囲・バリデーション結果を含める | Planned |
+| M-46 | G-18 | 提案された YAML 変更の適用・ロールバック機構を実装する | ユーザー承認後に YAML 変更を適用し、自動バックアップと `yagra validate` による事後検証を行う。問題があればロールバックできる | Planned |
+| M-47 | G-19 | 最適化サイクルの E2E 統合テストを整備する | Build→Run & Observe→Analyze & Propose→Approve & Update の全工程を通したテストシナリオが動作し、サイクル完結を検証できる | Planned |
+| M-48 | G-19 | 最適化サイクルのドキュメントとサンプルを整備する | 最適化サイクルの実行手順・エージェント向けプロンプト例・worked example を文書化し、ユーザーが 30 分以内に初回サイクルを完了できる | Planned |
 
 ## Goal 別の実装項目
 
@@ -152,14 +171,14 @@
 
 | Item ID | やるべきこと | 状態 | 根拠 |
 | --- | --- | --- | --- |
-| G10-I01 | ノードの `rawNode.params` から入力変数（`prompt`(dict) または `prompt_ref`(str) があればテンプレートの `{変数名}` または `input_keys`）を抽出する JavaScript ヘルパーを実装する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` (WorkflowNode 内) |
-| G10-I02 | ノードの `rawNode.params` から出力変数（`output_key` が明示指定されている場合のみ。conditional edge の source ノードには `__next__` を追加）を抽出する JavaScript ヘルパーを実装する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` (WorkflowNode 内) |
-| G10-I03 | `buildNodesFromPayload()` で抽出した入力変数・出力変数を `node.data` に格納する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` (buildNodesFromPayload) |
-| G10-I04 | WorkflowNode コンポーネントのテンプレートに入力バッジ（IN ラベル＋変数名 pill）を追加する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` (WorkflowNode template) |
-| G10-I05 | WorkflowNode コンポーネントのテンプレートに出力バッジ（OUT ラベル＋変数名 pill）を追加する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` (WorkflowNode template) |
-| G10-I06 | 入力バッジ・出力バッジの CSS スタイル（色分け・pill デザイン・レスポンシブ対応）を実装する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` (CSS) |
-| G10-I07 | ツールバーに入力バッジ ON/OFF トグルと出力バッジ ON/OFF トグルを追加する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` (toolbar) |
-| G10-I08 | バッジ数が多い場合のレイアウト崩れ防止（折り返し上限・ツールチップ展開）を実装する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` (CSS/JS) |
+| G10-I01 | ノードの `rawNode.params` から入力変数を抽出する JavaScript ヘルパーを実装する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` |
+| G10-I02 | ノードの `rawNode.params` から出力変数を抽出する JavaScript ヘルパーを実装する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` |
+| G10-I03 | `buildNodesFromPayload()` で抽出した入出力変数を `node.data` に格納する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` |
+| G10-I04 | WorkflowNode コンポーネントに入力バッジを追加する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` |
+| G10-I05 | WorkflowNode コンポーネントに出力バッジを追加する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` |
+| G10-I06 | 入出力バッジの CSS スタイルを実装する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` |
+| G10-I07 | ツールバーにバッジ ON/OFF トグルを追加する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` |
+| G10-I08 | バッジ数が多い場合のレイアウト崩れ防止を実装する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` |
 | G10-I09 | Read-Only 可視化 HTML にも入出力変数情報を表示する | Done | `src/yagra/application/use_cases/workflow_visualization.py` |
 
 ### G-11: コーディングエージェントが Yagra ワークフローを高精度に自律生成・修正できる
@@ -167,15 +186,15 @@
 | Item ID | やるべきこと | 状態 | 根拠 |
 | --- | --- | --- | --- |
 | G11-I01 | `GraphSpec` / `NodeSpec` / `EdgeSpec` の全フィールドに `description` と `examples` を追加する | Done | `src/yagra/domain/entities/graph_schema.py` |
-| G11-I02 | `params` のハンドラー別構造（`prompt_ref`, `model`, `schema_yaml` 等）をスキーマドキュメントとして整備する | Done | `src/yagra/domain/entities/graph_schema.py`, `src/yagra/handlers/*_handler.py` |
+| G11-I02 | `params` のハンドラー別構造をスキーマドキュメントとして整備する | Done | `src/yagra/domain/entities/graph_schema.py`, `src/yagra/handlers/*_handler.py` |
 | G11-I03 | `WorkflowValidationIssue` に `severity` / `context` フィールドを追加する | Done | `src/yagra/application/use_cases/workflow_validation_reporter.py` |
 | G11-I04 | ノード ID 参照エラー時にファジーマッチで候補を提示する | Done | `src/yagra/domain/services/schema_validator.py` |
-| G11-I05 | `yagra explain` コマンドを実装する（実行パス・必要ハンドラー・変数フローの JSON 出力） | Done | `src/yagra/__init__.py`, `src/yagra/application/use_cases/workflow_explainer.py` |
+| G11-I05 | `yagra explain` コマンドを実装する | Done | `src/yagra/__init__.py`, `src/yagra/application/use_cases/workflow_explainer.py` |
 | G11-I06 | `yagra validate` で stdin (`--workflow -`) を受け付ける | Done | `src/yagra/__init__.py` |
 | G11-I07 | 組み込みハンドラーの params スキーマを登録・公開する仕組みを実装する | Done | `src/yagra/handlers/*_handler.py` |
 | G11-I08 | `yagra handlers --format json` コマンドを実装する | Done | `src/yagra/__init__.py` |
-| G11-I09 | エージェント統合ガイド（生成→検証→修正ループの worked example）を作成する | Done | `docs/agent-integration-guide.md` |
-| G11-I10 | MCP サーバーを実装し、`validate` / `explain` / `list_templates` / `list_handlers` をツールとして公開する | Done | `src/yagra/adapters/inbound/mcp_server.py` |
+| G11-I09 | エージェント統合ガイドを作成する | Done | `docs/agent-integration-guide.md` |
+| G11-I10 | MCP サーバーを実装し、ツールとして公開する | Done | `src/yagra/adapters/inbound/mcp_server.py` |
 
 ### G-12: ワークフロー定義を Git で管理し、CI で自動検証できる
 
@@ -189,11 +208,64 @@
 
 | Item ID | やるべきこと | 状態 | 根拠 |
 | --- | --- | --- | --- |
-| G13-I01 | multi-agent テンプレートを追加する（エージェント間連携パターン） | Done | `src/yagra/templates/multi-agent/` |
-| G13-I02 | tool-use テンプレートを追加する（外部ツール呼び出しパターン） | Done | `src/yagra/templates/tool-use/` |
-| G13-I03 | human-review テンプレートを追加する（G-09 完了後：HITL パターン） | Done | `src/yagra/templates/human-review/` |
+| G13-I01 | multi-agent テンプレートを追加する | Done | `src/yagra/templates/multi-agent/` |
+| G13-I02 | tool-use テンプレートを追加する | Done | `src/yagra/templates/tool-use/` |
+| G13-I03 | human-review テンプレートを追加する | Done | `src/yagra/templates/human-review/` |
 | G13-I04 | 各テンプレートに動作可能なサンプルコードを付属させる | Done | `examples/` |
 | G13-I05 | `yagra init --list` でテンプレート一覧にユースケース説明を追加する | Done | `src/yagra/__init__.py` |
+
+### G-14: ワークフロー実行時にノード単位の構造化ログが自動出力される
+
+| Item ID | やるべきこと | 状態 | 根拠 |
+| --- | --- | --- | --- |
+| G14-I01 | 実行トレースのドメインエンティティ（`TraceRecord`, `NodeTrace` 等）を定義する | Planned | — |
+| G14-I02 | トレース JSON フォーマット仕様を策定し、サンプル出力をドキュメント化する | Planned | — |
+| G14-I03 | `Yagra.invoke()` にトレース収集フック（`trace=True` オプション）を実装する | Planned | — |
+| G14-I04 | ノード実行の開始・終了・エラーを自動キャプチャするコールバック機構を実装する | Planned | — |
+| G14-I05 | トレース結果を `.yagra/traces/` にローカルファイル出力する機能を実装する | Planned | — |
+| G14-I06 | トレース収集の単体テスト・結合テストを整備する | Planned | — |
+
+### G-15: LLM 呼び出しのトークン消費とコストを実行ログから把握できる
+
+| Item ID | やるべきこと | 状態 | 根拠 |
+| --- | --- | --- | --- |
+| G15-I01 | 組み込み LLM ハンドラーにトークン使用量の抽出・記録を追加する | Planned | — |
+| G15-I02 | ストリーミングハンドラーのトークン使用量取得に対応する | Planned | — |
+| G15-I03 | モデル名とトークン数からコスト推定を算出する機能を実装する | Planned | — |
+| G15-I04 | トークン・コスト情報をトレースレコードに統合する | Planned | — |
+
+### G-16: コーディングエージェントが実行ログを MCP 経由で取得・分析できる
+
+| Item ID | やるべきこと | 状態 | 根拠 |
+| --- | --- | --- | --- |
+| G16-I01 | MCP サーバーに `get_traces` ツールを追加する | Planned | — |
+| G16-I02 | MCP サーバーに `analyze_traces` ツールを追加する | Planned | — |
+| G16-I03 | エージェント向けの分析ツール利用ガイドを整備する | Planned | — |
+
+### G-17: 複数回の実行結果を集約し、品質傾向を把握できる
+
+| Item ID | やるべきこと | 状態 | 根拠 |
+| --- | --- | --- | --- |
+| G17-I01 | 複数トレースファイルの読み込み・集約ロジックを実装する | Planned | — |
+| G17-I02 | ノード別の成功率・平均実行時間・トークン消費の統計サマリを生成する機能を実装する | Planned | — |
+| G17-I03 | `yagra analyze` CLI コマンドを実装する | Planned | — |
+| G17-I04 | ボトルネックノード検出と改善ヒント生成機能を実装する | Planned | — |
+
+### G-18: エージェントの改善提案に基づき YAML を安全に更新できる
+
+| Item ID | やるべきこと | 状態 | 根拠 |
+| --- | --- | --- | --- |
+| G18-I01 | MCP サーバーに `propose_update` ツールを追加する | Planned | — |
+| G18-I02 | 提案された YAML 変更の適用・ロールバック機構を実装する | Planned | — |
+| G18-I03 | 変更適用時の自動バリデーションと事後検証を実装する | Planned | — |
+
+### G-19: Build→Observe→Analyze→Update の最適化サイクルを手元環境で完結できる
+
+| Item ID | やるべきこと | 状態 | 根拠 |
+| --- | --- | --- | --- |
+| G19-I01 | 最適化サイクルの E2E 統合テストを整備する | Planned | — |
+| G19-I02 | 最適化サイクルのドキュメント（実行手順・worked example）を整備する | Planned | — |
+| G19-I03 | エージェント向け最適化サイクルプロンプト例を作成する | Planned | — |
 
 ## 運用ルール
 
@@ -201,3 +273,23 @@
 - 各マイルストーンは必ず Goal ID に紐づける。
 - 完了したマイルストーンは削除せず、状態を `Done` に更新して履歴を残す。
 - Goal 別の実装項目は、マイルストーン完了時に状態を更新する。
+
+## Phase 1 完了ノート
+
+<details>
+<summary>M-01〜M-36 の完了詳細（クリックで展開）</summary>
+
+- M-21〜M-23 は完了（G-09）。`GraphSpec` に `interrupt_before` / `interrupt_after` フィールドを追加しバリデーション統合（M-21）、`build_state_graph()` に `checkpointer` 引数を追加（M-22）、`Yagra` に `from_workflow(checkpointer=)` / `invoke(thread_id=)` / `resume()` を追加（M-23）。MemorySaver を使った中断・再開サイクルの動作を単体テスト 15 件で確認済み。G-01〜G-13 すべて Done。
+- M-35 は完了（G-12）。`.github/workflows/validate-example.yml`（yagra validate + explain を GitHub Actions で実行し PR コメントに投稿）、`scripts/pr-comment-example.sh`（PR コメント投稿スクリプト）、`docs/ci-integration-guide.md`（CI 統合ガイド）を提供。
+- M-36 は完了（G-13）。multi-agent（orchestrator/researcher/writer パターン）、tool-use（planner/tool_executor/synthesizer パターン）、human-review（generator/publisher + interrupt_before パターン）の 3 テンプレートを追加。各テンプレートに `template.yaml`（ユースケース説明）・動作サンプル（`examples/`）・README を付属。`list_templates_with_info()` で `yagra init --list` にユースケース説明を表示する機能を実装。単体テスト 15 件追加。
+- M-28〜M-34 は完了（G-11）。`GraphSpec`/`NodeSpec`/`EdgeSpec` 全フィールドに `description`/`examples` 付与（M-28）、`WorkflowValidationIssue` に `severity`/`context` とファジーマッチ修正提案を追加（M-29）、`yagra explain` コマンド実装（M-30）、`yagra validate --workflow -` で stdin 対応（M-31）、組み込みハンドラーの params スキーマ公開と `yagra handlers` コマンド追加（M-32）、エージェント統合ガイド作成（M-33）、MCP サーバー実装（M-34）。単体テスト 181 件（+約 60 件）・ruff/mypy クリア。
+- M-27 は完了。WebUI の Schema Settings テキストエリアに入力された YAML スキーマを `schema_builder.py` で Pydantic BaseModel に動的変換し、`create_structured_llm_handler(schema=None)` 時に `params.schema_yaml` から実行時解決する。単体テスト 27 件・動的ハンドラーテスト 5 件・結合テスト 3 件追加。
+- M-20 は完了。WebUI のノードプロパティパネルに Output Settings セクションを追加。G-08 DoD 達成。
+- M-19 は完了。プロンプトテンプレートの `{変数名}` を `re.findall` で自動抽出し、`input_keys` の明示指定が不要になった。3 handler すべて対応、単体テスト 5 件追加。
+- M-18 は完了（v0.4.1）。handler 入力を type セレクトに変更。
+- M-17 は完了。handler 値に応じてフォームが切り替わる。
+- M-15 は完了。`create_structured_llm_handler(schema=PydanticModel)` で型安全な構造化出力が動作。単体テスト 16 件・結合テスト 3 件追加。
+- M-16 は完了。ストリーミングレスポンス対応。単体テスト 13 件・結合テスト 3 件追加。
+- M-14 は完了。`examples/llm-basic/` で YAML 定義だけで LLM 呼び出しが動作。
+
+</details>
