@@ -693,3 +693,253 @@ def test_analyze_traces_no_traces(tmp_path):
     assert result["error"] == "No traces found"
     assert result["trace_dir"] == str(tmp_path)
     assert result["workflow_name"] == "nonexistent"
+
+
+# ---------------------------------------------------------------------------
+# _tool_propose_update
+# ---------------------------------------------------------------------------
+
+_VALID_WORKFLOW_YAML_PROPOSE = """\
+version: "1"
+start_at: node1
+end_at:
+  - node1
+nodes:
+  - id: node1
+    handler: my_handler
+edges: []
+"""
+
+_UPDATED_WORKFLOW_YAML_PROPOSE = """\
+version: "1"
+start_at: node1
+end_at:
+  - node1
+nodes:
+  - id: node1
+    handler: my_handler
+  - id: node2
+    handler: other_handler
+edges: []
+"""
+
+
+def test_tool_propose_update_valid(tmp_path):
+    """Valid candidate YAML returns is_valid=True and a non-empty diff."""
+    from yagra.adapters.inbound.mcp_server import _tool_propose_update
+
+    wf = tmp_path / "workflow.yaml"
+    wf.write_text(_VALID_WORKFLOW_YAML_PROPOSE)
+
+    result = _tool_propose_update(
+        workflow_path=str(wf),
+        candidate_yaml=_UPDATED_WORKFLOW_YAML_PROPOSE,
+        reason="add node2",
+    )
+
+    assert "error" not in result
+    assert result["is_valid"] is True
+    assert result["issues"] == []
+    assert result["diff"] != ""
+    assert result["reason"] == "add node2"
+    assert result["current_yaml"] == _VALID_WORKFLOW_YAML_PROPOSE
+    assert result["candidate_yaml"] == _UPDATED_WORKFLOW_YAML_PROPOSE
+
+
+def test_tool_propose_update_invalid_yaml(tmp_path):
+    """Malformed candidate_yaml returns an error key."""
+    from yagra.adapters.inbound.mcp_server import _tool_propose_update
+
+    wf = tmp_path / "workflow.yaml"
+    wf.write_text(_VALID_WORKFLOW_YAML_PROPOSE)
+
+    result = _tool_propose_update(
+        workflow_path=str(wf),
+        candidate_yaml="not: valid: yaml: [",
+    )
+
+    assert "error" in result
+
+
+def test_tool_propose_update_no_change(tmp_path):
+    """Same content as current file results in an empty diff string."""
+    from yagra.adapters.inbound.mcp_server import _tool_propose_update
+
+    wf = tmp_path / "workflow.yaml"
+    wf.write_text(_VALID_WORKFLOW_YAML_PROPOSE)
+
+    result = _tool_propose_update(
+        workflow_path=str(wf),
+        candidate_yaml=_VALID_WORKFLOW_YAML_PROPOSE,
+    )
+
+    assert "error" not in result
+    assert result["diff"] == ""
+
+
+def test_tool_propose_update_file_not_found():
+    """Non-existent workflow_path returns an error key."""
+    from yagra.adapters.inbound.mcp_server import _tool_propose_update
+
+    result = _tool_propose_update(
+        workflow_path="/nonexistent/path/workflow.yaml",
+        candidate_yaml=_VALID_WORKFLOW_YAML_PROPOSE,
+    )
+
+    assert "error" in result
+
+
+# ---------------------------------------------------------------------------
+# _tool_apply_update
+# ---------------------------------------------------------------------------
+
+
+def test_tool_apply_update_success(tmp_path, monkeypatch):
+    """Valid YAML is applied and success=True with backup_id is returned."""
+    from yagra.adapters.inbound import mcp_server
+    from yagra.application.use_cases.workflow_persistence import WorkflowSaveResult
+
+    wf = tmp_path / "workflow.yaml"
+    wf.write_text(_VALID_WORKFLOW_YAML_PROPOSE)
+
+    mock_result = WorkflowSaveResult(saved_revision="abc123", backup_id="bk-001")
+    monkeypatch.setattr(mcp_server, "save_workflow_with_backup", lambda *a, **k: mock_result)
+
+    result = mcp_server._tool_apply_update(
+        workflow_path=str(wf),
+        candidate_yaml=_UPDATED_WORKFLOW_YAML_PROPOSE,
+    )
+
+    assert result.get("success") is True
+    assert result["backup_id"] == "bk-001"
+    assert result["saved_revision"] == "abc123"
+
+
+def test_tool_apply_update_invalid_yaml(tmp_path):
+    """Malformed candidate_yaml returns an error key."""
+    from yagra.adapters.inbound.mcp_server import _tool_apply_update
+
+    wf = tmp_path / "workflow.yaml"
+    wf.write_text(_VALID_WORKFLOW_YAML_PROPOSE)
+
+    result = _tool_apply_update(
+        workflow_path=str(wf),
+        candidate_yaml="not: valid: yaml: [",
+    )
+
+    assert "error" in result
+
+
+def test_tool_apply_update_revision_conflict(tmp_path, monkeypatch):
+    """WorkflowRevisionConflictError is mapped to error='revision_conflict'."""
+    from yagra.adapters.inbound import mcp_server
+    from yagra.application.use_cases.workflow_persistence import WorkflowRevisionConflictError
+
+    wf = tmp_path / "workflow.yaml"
+    wf.write_text(_VALID_WORKFLOW_YAML_PROPOSE)
+
+    def raise_conflict(*args: object, **kwargs: object) -> None:
+        raise WorkflowRevisionConflictError(
+            expected_revision="expected_rev", actual_revision="actual_rev"
+        )
+
+    monkeypatch.setattr(mcp_server, "save_workflow_with_backup", raise_conflict)
+
+    result = mcp_server._tool_apply_update(
+        workflow_path=str(wf),
+        candidate_yaml=_UPDATED_WORKFLOW_YAML_PROPOSE,
+        base_revision="expected_rev",
+    )
+
+    assert result.get("error") == "revision_conflict"
+    assert "expected" in result
+    assert "actual" in result
+
+
+def test_tool_apply_update_validation_failed(tmp_path, monkeypatch):
+    """WorkflowValidationFailedError is mapped to error='validation_failed'."""
+    from yagra.adapters.inbound import mcp_server
+    from yagra.application.use_cases.workflow_persistence import WorkflowValidationFailedError
+    from yagra.application.use_cases.workflow_validation_reporter import WorkflowValidationReport
+
+    wf = tmp_path / "workflow.yaml"
+    wf.write_text(_VALID_WORKFLOW_YAML_PROPOSE)
+
+    def raise_validation(*args: object, **kwargs: object) -> None:
+        raise WorkflowValidationFailedError(WorkflowValidationReport(issues=[]))
+
+    monkeypatch.setattr(mcp_server, "save_workflow_with_backup", raise_validation)
+
+    result = mcp_server._tool_apply_update(
+        workflow_path=str(wf),
+        candidate_yaml=_UPDATED_WORKFLOW_YAML_PROPOSE,
+    )
+
+    assert result.get("error") == "validation_failed"
+    assert "issues" in result
+
+
+# ---------------------------------------------------------------------------
+# _tool_rollback_update
+# ---------------------------------------------------------------------------
+
+
+def test_tool_rollback_update_success(tmp_path, monkeypatch):
+    """Normal rollback returns success=True with expected fields."""
+    from yagra.adapters.inbound import mcp_server
+    from yagra.application.use_cases.workflow_persistence import WorkflowRollbackResult
+
+    wf = tmp_path / "workflow.yaml"
+    wf.write_text(_VALID_WORKFLOW_YAML_PROPOSE)
+
+    mock_result = WorkflowRollbackResult(
+        restored_revision="rev-old",
+        backup_id="bk-001",
+        safety_backup_id="bk-safety-001",
+    )
+    monkeypatch.setattr(mcp_server, "rollback_workflow_from_backup", lambda *a, **k: mock_result)
+
+    result = mcp_server._tool_rollback_update(
+        workflow_path=str(wf),
+        backup_id="bk-001",
+    )
+
+    assert result.get("success") is True
+    assert result["restored_revision"] == "rev-old"
+    assert result["backup_id"] == "bk-001"
+    assert result["safety_backup_id"] == "bk-safety-001"
+
+
+def test_tool_rollback_update_backup_not_found(tmp_path, monkeypatch):
+    """WorkflowBackupNotFoundError is mapped to error='backup_not_found'."""
+    from yagra.adapters.inbound import mcp_server
+    from yagra.application.services.workflow_file_store import WorkflowBackupNotFoundError
+
+    wf = tmp_path / "workflow.yaml"
+    wf.write_text(_VALID_WORKFLOW_YAML_PROPOSE)
+
+    def raise_not_found(*args: object, **kwargs: object) -> None:
+        raise WorkflowBackupNotFoundError("backup not found: bk-999")
+
+    monkeypatch.setattr(mcp_server, "rollback_workflow_from_backup", raise_not_found)
+
+    result = mcp_server._tool_rollback_update(
+        workflow_path=str(wf),
+        backup_id="bk-999",
+    )
+
+    assert result.get("error") == "backup_not_found"
+    assert "message" in result
+
+
+def test_tool_rollback_update_missing_required_field():
+    """Empty workflow_path or backup_id returns an error key."""
+    from yagra.adapters.inbound.mcp_server import _tool_rollback_update
+
+    # missing backup_id
+    result = _tool_rollback_update(workflow_path="/some/path/workflow.yaml", backup_id="")
+    assert "error" in result
+
+    # missing workflow_path
+    result2 = _tool_rollback_update(workflow_path="", backup_id="bk-001")
+    assert "error" in result2

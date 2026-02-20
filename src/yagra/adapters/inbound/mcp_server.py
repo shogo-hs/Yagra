@@ -6,6 +6,18 @@ import json
 from pathlib import Path
 from typing import Any
 
+# These imports are lifted to the module level so that tests can monkeypatch them.
+try:
+    from yagra.application.services.workflow_file_store import WorkflowBackupNotFoundError
+    from yagra.application.use_cases.workflow_persistence import (
+        WorkflowRevisionConflictError,
+        WorkflowValidationFailedError,
+        rollback_workflow_from_backup,
+        save_workflow_with_backup,
+    )
+except Exception:  # pragma: no cover – isolated import guard
+    pass
+
 
 def create_mcp_server() -> Any:
     """Creates and returns the Yagra MCP server.
@@ -166,6 +178,89 @@ def create_mcp_server() -> Any:
                 },
             ),
             Tool(
+                name="propose_update",
+                description=(
+                    "Receive a candidate YAML proposed by the agent and return the diff "
+                    "against the current workflow file together with the validation result. "
+                    "Use this to preview changes before applying them."
+                ),
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "workflow_path": {
+                            "type": "string",
+                            "description": "Path to the existing workflow YAML file",
+                        },
+                        "candidate_yaml": {
+                            "type": "string",
+                            "description": "Proposed YAML content to apply",
+                        },
+                        "reason": {
+                            "type": "string",
+                            "description": "Reason for the proposed change",
+                        },
+                    },
+                    "required": ["workflow_path", "candidate_yaml"],
+                },
+            ),
+            Tool(
+                name="apply_update",
+                description=(
+                    "Validate the candidate YAML and apply it to the workflow file with a backup. "
+                    "Returns backup_id which can be used to rollback if needed."
+                ),
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "workflow_path": {
+                            "type": "string",
+                            "description": "Path to the workflow YAML file to update",
+                        },
+                        "candidate_yaml": {
+                            "type": "string",
+                            "description": "New YAML content to apply",
+                        },
+                        "base_revision": {
+                            "type": "string",
+                            "description": (
+                                "Expected current revision (for conflict detection). "
+                                "Omit to skip conflict check."
+                            ),
+                        },
+                        "backup_dir": {
+                            "type": "string",
+                            "description": "Directory for backups (default: .yagra/backups)",
+                        },
+                    },
+                    "required": ["workflow_path", "candidate_yaml"],
+                },
+            ),
+            Tool(
+                name="rollback_update",
+                description=(
+                    "Restore the workflow file to a previous version identified by backup_id. "
+                    "The current state is saved as a safety backup before rolling back."
+                ),
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "workflow_path": {
+                            "type": "string",
+                            "description": "Path to the workflow YAML file to rollback",
+                        },
+                        "backup_id": {
+                            "type": "string",
+                            "description": "Backup ID to restore from",
+                        },
+                        "backup_dir": {
+                            "type": "string",
+                            "description": "Directory for backups (default: .yagra/backups)",
+                        },
+                    },
+                    "required": ["workflow_path", "backup_id"],
+                },
+            ),
+            Tool(
                 name="get_traces",
                 description=(
                     "Retrieve raw execution trace data from local trace files. "
@@ -248,6 +343,25 @@ def create_mcp_server() -> Any:
             result = _tool_list_handlers()
         elif name == "get_template":
             result = _tool_get_template(arguments.get("name", ""))
+        elif name == "propose_update":
+            result = _tool_propose_update(
+                workflow_path=arguments.get("workflow_path", ""),
+                candidate_yaml=arguments.get("candidate_yaml", ""),
+                reason=arguments.get("reason"),
+            )
+        elif name == "apply_update":
+            result = _tool_apply_update(
+                workflow_path=arguments.get("workflow_path", ""),
+                candidate_yaml=arguments.get("candidate_yaml", ""),
+                base_revision=arguments.get("base_revision"),
+                backup_dir=arguments.get("backup_dir", ".yagra/backups"),
+            )
+        elif name == "rollback_update":
+            result = _tool_rollback_update(
+                workflow_path=arguments.get("workflow_path", ""),
+                backup_id=arguments.get("backup_id", ""),
+                backup_dir=arguments.get("backup_dir", ".yagra/backups"),
+            )
         elif name == "get_traces":
             result = _tool_get_traces(
                 trace_dir=arguments.get("trace_dir", ".yagra/traces"),
@@ -617,6 +731,206 @@ def _tool_analyze_traces(
         return summary.to_dict()
     except Exception as exc:
         return {"error": str(exc)}
+
+
+def _tool_propose_update(
+    workflow_path: str,
+    candidate_yaml: str,
+    reason: str | None = None,
+) -> dict[str, Any]:
+    """Implementation of the propose_update tool.
+
+    Reads the current workflow file, validates the candidate YAML, and returns
+    a unified diff together with the validation report.
+
+    Args:
+        workflow_path: Path to the existing workflow YAML file.
+        candidate_yaml: Proposed YAML content to apply.
+        reason: Reason for the proposed change. Optional.
+
+    Returns:
+        Dictionary containing workflow_path, is_valid, issues, diff, reason,
+        current_yaml, and candidate_yaml.  On error, returns a dict with an
+        ``error`` key.
+    """
+    import difflib
+
+    import yaml as yaml_lib
+
+    from yagra.application.use_cases.workflow_validation_reporter import (
+        validate_workflow_payload_for_ui,
+    )
+
+    resolved = Path(workflow_path).expanduser().resolve()
+    if not resolved.exists():
+        return {"error": f"workflow file not found: {workflow_path}"}
+
+    try:
+        current_yaml = resolved.read_text(encoding="utf-8")
+    except OSError as exc:
+        return {"error": f"failed to read workflow file: {exc}"}
+
+    try:
+        candidate_payload = yaml_lib.safe_load(candidate_yaml)
+    except yaml_lib.YAMLError as exc:
+        return {"error": f"YAML parse error: {exc}"}
+
+    if not isinstance(candidate_payload, dict):
+        return {"error": "candidate_yaml must be a mapping"}
+
+    report = validate_workflow_payload_for_ui(
+        payload=candidate_payload,
+        workflow_path=resolved,
+        bundle_root=None,
+    )
+
+    diff_lines = list(
+        difflib.unified_diff(
+            current_yaml.splitlines(keepends=True),
+            candidate_yaml.splitlines(keepends=True),
+            fromfile="current",
+            tofile="proposed",
+        )
+    )
+    diff_str = "".join(diff_lines)
+
+    return {
+        "workflow_path": str(resolved),
+        "is_valid": report.is_valid,
+        "issues": [issue.to_dict() for issue in report.issues],
+        "diff": diff_str,
+        "reason": reason if reason is not None else "",
+        "current_yaml": current_yaml,
+        "candidate_yaml": candidate_yaml,
+    }
+
+
+def _tool_apply_update(
+    workflow_path: str,
+    candidate_yaml: str,
+    base_revision: str | None = None,
+    backup_dir: str = ".yagra/backups",
+) -> dict[str, Any]:
+    """Implementation of the apply_update tool.
+
+    Validates the candidate YAML and writes it to the workflow file, creating a
+    backup beforehand.  When *base_revision* is omitted the current revision is
+    computed automatically so that no conflict error is raised.
+
+    Args:
+        workflow_path: Path to the workflow YAML file to update.
+        candidate_yaml: New YAML content to apply.
+        base_revision: Expected current revision. When omitted the current
+            revision is calculated and used, skipping conflict detection.
+        backup_dir: Directory for backups.
+
+    Returns:
+        Dictionary with ``success``, ``workflow_path``, ``backup_id``, and
+        ``saved_revision`` on success.  On error, returns a dict with an
+        ``error`` key.
+    """
+    import yaml as yaml_lib
+
+    from yagra.application.use_cases.workflow_edit_session import compute_workflow_revision
+
+    try:
+        candidate_payload = yaml_lib.safe_load(candidate_yaml)
+    except yaml_lib.YAMLError as exc:
+        return {"error": f"YAML parse error: {exc}"}
+
+    if not isinstance(candidate_payload, dict):
+        return {"error": "candidate_yaml must be a mapping"}
+
+    resolved = Path(workflow_path).expanduser().resolve()
+    if not resolved.exists():
+        return {"error": f"workflow file not found: {workflow_path}"}
+
+    effective_base_revision: str
+    if base_revision is None:
+        try:
+            current_workflow = yaml_lib.safe_load(resolved.read_text(encoding="utf-8"))
+        except (OSError, yaml_lib.YAMLError) as exc:
+            return {"error": f"failed to read current workflow: {exc}"}
+        if not isinstance(current_workflow, dict):
+            return {"error": "current workflow file is not a mapping"}
+        effective_base_revision = compute_workflow_revision(current_workflow, {})
+    else:
+        effective_base_revision = base_revision
+
+    try:
+        result = save_workflow_with_backup(
+            workflow_path=resolved,
+            candidate_workflow=candidate_payload,
+            candidate_ui_state={},
+            base_revision=effective_base_revision,
+            backup_dir=backup_dir,
+        )
+    except WorkflowRevisionConflictError as exc:
+        return {
+            "error": "revision_conflict",
+            "message": str(exc),
+            "expected": exc.expected_revision,
+            "actual": exc.actual_revision,
+        }
+    except WorkflowValidationFailedError as exc:
+        return {
+            "error": "validation_failed",
+            "issues": [issue.to_dict() for issue in exc.report.issues],
+        }
+    except Exception as exc:
+        return {"error": "apply_failed", "message": str(exc)}
+
+    return {
+        "success": True,
+        "workflow_path": str(resolved),
+        "backup_id": result.backup_id,
+        "saved_revision": result.saved_revision,
+    }
+
+
+def _tool_rollback_update(
+    workflow_path: str,
+    backup_id: str,
+    backup_dir: str = ".yagra/backups",
+) -> dict[str, Any]:
+    """Implementation of the rollback_update tool.
+
+    Restores the workflow file from the specified backup.  The current state is
+    preserved as a safety backup before overwriting.
+
+    Args:
+        workflow_path: Path to the workflow YAML file to rollback.
+        backup_id: Backup ID to restore from.
+        backup_dir: Directory for backups.
+
+    Returns:
+        Dictionary with ``success``, ``workflow_path``, ``restored_revision``,
+        ``backup_id``, and ``safety_backup_id`` on success.  On error, returns a
+        dict with an ``error`` key.
+    """
+    if not workflow_path:
+        return {"error": "workflow_path is required"}
+    if not backup_id:
+        return {"error": "backup_id is required"}
+
+    try:
+        result = rollback_workflow_from_backup(
+            workflow_path=workflow_path,
+            backup_id=backup_id,
+            backup_dir=backup_dir,
+        )
+    except WorkflowBackupNotFoundError as exc:
+        return {"error": "backup_not_found", "message": str(exc)}
+    except Exception as exc:
+        return {"error": "rollback_failed", "message": str(exc)}
+
+    return {
+        "success": True,
+        "workflow_path": str(Path(workflow_path).expanduser().resolve()),
+        "restored_revision": result.restored_revision,
+        "backup_id": result.backup_id,
+        "safety_backup_id": result.safety_backup_id,
+    }
 
 
 async def run_mcp_server() -> None:
