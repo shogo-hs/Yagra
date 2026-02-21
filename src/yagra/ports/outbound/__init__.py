@@ -1,5 +1,10 @@
 """Exposes the outbound port definitions for Yagra."""
 
+from yagra.ports.outbound.golden_case_repository import (
+    GoldenCaseNotFoundError,
+    GoldenCaseRepositoryError,
+    GoldenCaseRepositoryPort,
+)
 from yagra.ports.outbound.node_registry import (
     NodeHandler,
     NodeHandlerAlreadyRegisteredError,
@@ -10,6 +15,9 @@ from yagra.ports.outbound.node_registry import (
 from yagra.ports.outbound.trace_sink import TraceSinkError, TraceSinkPort
 
 __all__ = [
+    "GoldenCaseNotFoundError",
+    "GoldenCaseRepositoryError",
+    "GoldenCaseRepositoryPort",
     "NodeHandler",
     "NodeHandlerAlreadyRegisteredError",
     "NodeHandlerNotFoundError",
