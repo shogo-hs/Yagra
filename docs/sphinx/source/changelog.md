@@ -11,6 +11,10 @@ For the canonical changelog (Japanese), see [CHANGELOG.md](https://github.com/sh
 ### Added
 - ✨ **Golden CLI: added repeatable `--strategy` to `yagra golden save`**: You can now persist per-node comparison strategy overrides at save time with `--strategy node_id:strategy` (`exact`, `structural`, `skip`, `auto`).
   - Invalid format, unknown strategy names, and duplicate `node_id` entries are rejected with clear CLI errors
+- ✨ **Added `Yagra.get_last_trace()` public API (Issue #28)**: The most recent `invoke()` trace is now available as `WorkflowRunTrace | None` when `observability=True`.
+  - In-memory trace capture now runs for every `invoke()` with observability enabled, including `trace=False`
+  - `trace=True` now controls JSON persistence only (`.yagra/traces/` or `trace_dir`)
+  - Added `TraceCollector.reset()` and removed private `yagra._trace_collector` access from golden runner/integration tests
 
 ### Fixed
 - 🐛 **Golden Test: resolved same-handler-name collisions with per-node mock dispatch**: When multiple LLM nodes shared the same handler name (for example, two nodes using `handler: "llm"`), replay could return the wrong mock response. Golden replay now resolves handlers per node via `resolve_for_node(name, node_id)`.

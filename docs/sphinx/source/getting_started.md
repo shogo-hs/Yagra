@@ -236,6 +236,24 @@ result = app.invoke({"query": "料金を教えて"})
 print(result["answer"])
 ```
 
+## Observability and `get_last_trace()`
+
+Enable `observability=True` to capture node-level traces in memory for each `invoke()`:
+
+```python
+app = Yagra.from_workflow(
+    workflow_path="workflows/support.yaml",
+    registry=registry,
+    observability=True,
+)
+
+app.invoke({"query": "料金を教えて"}, trace=False)
+last_trace = app.get_last_trace()  # WorkflowRunTrace | None
+```
+
+- Returns `None` when `observability=False` or before the first `invoke()`.
+- `trace=True` only controls JSON file persistence under `.yagra/traces/` (or `trace_dir`), while `get_last_trace()` remains available in memory.
+
 ## Next Steps
 
 - **Learn YAML Syntax**: [Workflow YAML Reference](user_guide/workflow_yaml.md)

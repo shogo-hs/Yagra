@@ -163,15 +163,9 @@ class TestGoldenTestE2EPassingCase:
         result = yagra.invoke({"input_text": "hello world"}, trace=False)
         assert result["formatted"] == "[Result] HELLO WORLD"
 
-        # Capture trace from the collector
-        from datetime import UTC, datetime
-
-        assert yagra._trace_collector is not None  # noqa: SLF001
-        trace = yagra._trace_collector.build_trace(  # noqa: SLF001
-            started_at=datetime.now(tz=UTC),
-            ended_at=datetime.now(tz=UTC),
-            total_duration_ms=1.0,
-        )
+        # Capture trace from the latest invoke()
+        trace = yagra.get_last_trace()
+        assert trace is not None
 
         # Step 2: Save golden case
         golden_dir = tmp_path / ".yagra" / "golden"
@@ -218,14 +212,8 @@ class TestGoldenTestE2EPassingCase:
             )
             yagra.invoke({"input_text": input_text}, trace=False)
 
-            from datetime import UTC, datetime
-
-            assert yagra._trace_collector is not None  # noqa: SLF001
-            trace = yagra._trace_collector.build_trace(  # noqa: SLF001
-                started_at=datetime.now(tz=UTC),
-                ended_at=datetime.now(tz=UTC),
-                total_duration_ms=1.0,
-            )
+            trace = yagra.get_last_trace()
+            assert trace is not None
             manager.save_from_trace(trace, case_name)
 
         # Run all golden tests
@@ -259,14 +247,8 @@ class TestGoldenTestE2EFailingCase:
         )
         yagra.invoke({"input_text": "hello"}, trace=False)
 
-        from datetime import UTC, datetime
-
-        assert yagra._trace_collector is not None  # noqa: SLF001
-        trace = yagra._trace_collector.build_trace(  # noqa: SLF001
-            started_at=datetime.now(tz=UTC),
-            ended_at=datetime.now(tz=UTC),
-            total_duration_ms=1.0,
-        )
+        trace = yagra.get_last_trace()
+        assert trace is not None
 
         golden_dir = tmp_path / ".yagra" / "golden"
         store = LocalGoldenCaseStore(base_dir=golden_dir)
@@ -311,14 +293,8 @@ class TestGoldenTestE2EFailingCase:
         )
         yagra.invoke({"input_text": "test"}, trace=False)
 
-        from datetime import UTC, datetime
-
-        assert yagra._trace_collector is not None  # noqa: SLF001
-        trace = yagra._trace_collector.build_trace(  # noqa: SLF001
-            started_at=datetime.now(tz=UTC),
-            ended_at=datetime.now(tz=UTC),
-            total_duration_ms=1.0,
-        )
+        trace = yagra.get_last_trace()
+        assert trace is not None
 
         golden_dir = tmp_path / ".yagra" / "golden"
         store = LocalGoldenCaseStore(base_dir=golden_dir)
@@ -364,14 +340,8 @@ class TestGoldenTestE2EResultFormat:
         )
         yagra.invoke({"input_text": "hello"}, trace=False)
 
-        from datetime import UTC, datetime
-
-        assert yagra._trace_collector is not None  # noqa: SLF001
-        trace = yagra._trace_collector.build_trace(  # noqa: SLF001
-            started_at=datetime.now(tz=UTC),
-            ended_at=datetime.now(tz=UTC),
-            total_duration_ms=1.0,
-        )
+        trace = yagra.get_last_trace()
+        assert trace is not None
 
         golden_dir = tmp_path / ".yagra" / "golden"
         store = LocalGoldenCaseStore(base_dir=golden_dir)

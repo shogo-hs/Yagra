@@ -282,6 +282,11 @@ class TraceCollector:
             filtered = dict(state)
         return {k: _safe_snapshot(v) for k, v in filtered.items()}
 
+    def reset(self) -> None:
+        """Clears accumulated node traces before the next invoke() cycle."""
+        with self._lock:
+            self._node_traces.clear()
+
     def build_trace(
         self,
         started_at: datetime,
