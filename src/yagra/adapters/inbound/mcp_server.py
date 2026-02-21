@@ -310,6 +310,48 @@ def create_mcp_server() -> Any:
                     },
                 },
             ),
+            Tool(
+                name="run_golden_tests",
+                description=(
+                    "Run golden test cases against a workflow to verify regression. "
+                    "Replays saved golden cases with LLM handlers mocked by recorded outputs, "
+                    "then compares execution paths and node snapshots. "
+                    "Use after propose_update to verify changes don't break existing behavior."
+                ),
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "workflow_path": {
+                            "type": "string",
+                            "description": "Path to the workflow YAML file to test against.",
+                        },
+                        "golden_dir": {
+                            "type": "string",
+                            "description": (
+                                "Directory containing golden case files. "
+                                "Defaults to '.yagra/golden/'."
+                            ),
+                        },
+                        "case_name": {
+                            "type": "string",
+                            "description": (
+                                "Specific golden case name to run. "
+                                "If omitted, runs all cases for the workflow."
+                            ),
+                        },
+                        "format": {
+                            "type": "string",
+                            "enum": ["json", "summary"],
+                            "description": (
+                                "Output format: 'json' for full structured results, "
+                                "'summary' for a concise human-readable summary. "
+                                "Defaults to 'json'."
+                            ),
+                        },
+                    },
+                    "required": ["workflow_path"],
+                },
+            ),
         ]
 
     @server.call_tool()
@@ -373,6 +415,13 @@ def create_mcp_server() -> Any:
                 trace_dir=arguments.get("trace_dir", ".yagra/traces"),
                 workflow_name=arguments.get("workflow_name"),
                 limit=arguments.get("limit"),
+            )
+        elif name == "run_golden_tests":
+            result = _tool_run_golden_tests(
+                workflow_path=arguments.get("workflow_path", ""),
+                golden_dir=arguments.get("golden_dir", ".yagra/golden"),
+                case_name=arguments.get("case_name"),
+                fmt=arguments.get("format", "json"),
             )
         else:
             result = {"error": f"Unknown tool: {name}"}
@@ -930,6 +979,90 @@ def _tool_rollback_update(
         "restored_revision": result.restored_revision,
         "backup_id": result.backup_id,
         "safety_backup_id": result.safety_backup_id,
+    }
+
+
+def _tool_run_golden_tests(
+    workflow_path: str,
+    golden_dir: str = ".yagra/golden",
+    case_name: str | None = None,
+    fmt: str = "json",
+) -> dict[str, Any]:
+    """Implementation of the run_golden_tests tool.
+
+    Runs golden test cases against a workflow YAML to detect regressions.
+    LLM handlers are mocked with recorded golden outputs so no external
+    API calls are made during testing.
+
+    Args:
+        workflow_path: Path to the workflow YAML file to test.
+        golden_dir: Directory containing golden case files.
+        case_name: Specific case name to run. If None, runs all cases
+            for the workflow.
+        fmt: Output format ('json' or 'summary').
+
+    Returns:
+        Dictionary containing test results. On success, includes
+        ``results`` (list of per-case results) and ``summary`` keys.
+        On error, returns a dict with an ``error`` key.
+    """
+    from yagra.adapters.outbound.local_golden_case_store import LocalGoldenCaseStore
+    from yagra.application.use_cases.golden_test_runner import GoldenTestRunner
+    from yagra.ports.outbound.golden_case_repository import (
+        GoldenCaseNotFoundError,
+        GoldenCaseRepositoryError,
+    )
+
+    resolved = Path(workflow_path).expanduser().resolve()
+    if not resolved.exists():
+        return {"error": f"workflow file not found: {workflow_path}"}
+
+    workflow_name = resolved.stem
+
+    repository = LocalGoldenCaseStore(base_dir=golden_dir)
+    runner = GoldenTestRunner(repository=repository)
+
+    try:
+        if case_name is not None:
+            golden_case = repository.load(workflow_name, case_name)
+            results = [runner.run(golden_case=golden_case, workflow_path=resolved)]
+        else:
+            results = runner.run_all(
+                workflow_name=workflow_name,
+                workflow_path=resolved,
+            )
+    except GoldenCaseNotFoundError as exc:
+        return {"error": "golden_case_not_found", "message": str(exc)}
+    except GoldenCaseRepositoryError as exc:
+        return {"error": "golden_case_repository_error", "message": str(exc)}
+    except Exception as exc:
+        return {"error": "test_execution_failed", "message": str(exc)}
+
+    total = len(results)
+    passed = sum(1 for r in results if r.passed)
+    failed = total - passed
+
+    if fmt == "summary":
+        lines = [f"Golden tests for '{workflow_name}': {passed}/{total} passed"]
+        for r in results:
+            status = "PASS" if r.passed else "FAIL"
+            lines.append(f"  [{status}] {r.case_name}: {r.summary}")
+        return {
+            "workflow_name": workflow_name,
+            "total": total,
+            "passed": passed,
+            "failed": failed,
+            "all_passed": failed == 0,
+            "summary": "\n".join(lines),
+        }
+
+    return {
+        "workflow_name": workflow_name,
+        "total": total,
+        "passed": passed,
+        "failed": failed,
+        "all_passed": failed == 0,
+        "results": [r.model_dump(mode="json") for r in results],
     }
 
 
