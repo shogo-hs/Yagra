@@ -321,13 +321,8 @@ class GoldenTestRunner:
             trace=False,
         )
 
-        collector = yagra._trace_collector  # noqa: SLF001
-        assert collector is not None, "observability=True should set trace_collector"
-        actual_trace = collector.build_trace(
-            started_at=datetime.now(tz=UTC),
-            ended_at=datetime.now(tz=UTC),
-            total_duration_ms=0.0,
-        )
+        actual_trace = yagra.get_last_trace()
+        assert actual_trace is not None, "observability=True should produce a trace"
 
         actual_path = [n.node_id for n in actual_trace.nodes]
         actual_snapshots: dict[str, tuple[dict[str, Any], dict[str, Any]]] = {

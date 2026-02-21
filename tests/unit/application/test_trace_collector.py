@@ -255,3 +255,13 @@ class TestTraceCollector:
         now = datetime.now(tz=UTC)
         trace = collector.build_trace(started_at=now, ended_at=now, total_duration_ms=10.0)
         assert trace.status == NodeStatus.ERROR
+
+    def test_reset_clears_accumulated_node_traces(self) -> None:
+        collector = self._make_collector()
+
+        collector.wrap_node("node_a", lambda s: {"ok": True}, "custom")({})
+        collector.reset()
+
+        now = datetime.now(tz=UTC)
+        trace = collector.build_trace(started_at=now, ended_at=now, total_duration_ms=1.0)
+        assert trace.nodes == []

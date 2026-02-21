@@ -290,6 +290,24 @@ result = app.invoke({"query": "料金を教えて"})
 print(result["answer"])
 ```
 
+## 🔍 Observability (Public Trace API)
+
+If you enable `observability=True`, Yagra stores the latest execution trace in memory.
+
+```python
+app = Yagra.from_workflow(
+    workflow_path="workflows/support.yaml",
+    registry=registry,
+    observability=True,
+)
+
+app.invoke({"query": "料金を教えて"}, trace=False)
+last_trace = app.get_last_trace()  # WorkflowRunTrace | None
+```
+
+- `get_last_trace()` returns `None` when `observability=False` or before the first `invoke()`.
+- `trace=True` controls JSON file output only (`.yagra/traces/` or `trace_dir`), and does not affect in-memory availability of `get_last_trace()`.
+
 ## 🛠️ CLI Tools
 
 Yagra provides CLI commands for workflow management:

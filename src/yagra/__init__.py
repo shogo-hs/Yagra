@@ -33,7 +33,7 @@ from yagra.application.use_cases import (
     validate_workflow_for_ui,
     validate_workflow_payload_for_ui,
 )
-from yagra.domain.entities import GraphSpec
+from yagra.domain.entities import GraphSpec, WorkflowRunTrace
 from yagra.domain.entities.comparison import ComparisonStrategy
 from yagra.ports.outbound import NodeHandler, NodeRegistryPort
 
@@ -54,6 +54,7 @@ class Yagra:
         """
         self._compiled_graph = compiled_graph
         self._trace_collector = trace_collector
+        self._last_trace: WorkflowRunTrace | None = None
 
     @classmethod
     def from_workflow(
@@ -79,8 +80,9 @@ class Yagra:
                 from the workflow's state_schema definition or defaults to dict.
             checkpointer: LangGraph checkpointer. Required when using `interrupt_before` / `interrupt_after`.
             observability: If True, enables execution tracing (G-14, G-15).
-                Each invoke() call will record node-level traces.
-                Traces are written to .yagra/traces/ when trace=True is passed to invoke().
+                Each invoke() call records node-level traces in memory and can be
+                read via `get_last_trace()`. Trace files are written to
+                .yagra/traces/ only when trace=True is passed to invoke().
 
         Returns:
             `Yagra` instance containing the compiled graph.
@@ -137,8 +139,9 @@ class Yagra:
                 Specify a unique string when using HITL.
                 If None, state is not saved even if a checkpointer is configured.
             trace: If True and observability=True was set in from_workflow(),
-                writes a structured JSON trace to .yagra/traces/ after execution (G-14).
-                Defaults to False to maintain backward compatibility.
+                writes a structured JSON trace to .yagra/traces/ after execution.
+                In-memory trace capture is always enabled for observability=True,
+                regardless of this flag.
             trace_dir: Override the trace output directory.
                 Defaults to .yagra/traces/ relative to cwd if not specified.
 
@@ -155,6 +158,10 @@ class Yagra:
             {"configurable": {"thread_id": thread_id}} if thread_id is not None else {}
         )
 
+        if self._trace_collector is not None:
+            self._trace_collector.reset()
+            self._last_trace = None
+
         started_at = datetime.now(tz=UTC)
         t0 = perf_counter()
         result = self._compiled_graph.invoke(dict(state), config=config)
@@ -164,26 +171,38 @@ class Yagra:
         if not isinstance(result, Mapping):
             raise TypeError("compiled graph returned non-mapping result")
 
-        if trace and self._trace_collector is not None:
-            from yagra.adapters.outbound.local_trace_sink import LocalTraceSink  # noqa: PLC0415
-
+        if self._trace_collector is not None:
             run_trace = self._trace_collector.build_trace(
                 started_at=started_at,
                 ended_at=ended_at,
                 total_duration_ms=total_ms,
             )
-            sink = LocalTraceSink(
-                base_dir=Path(trace_dir) if trace_dir else Path(".yagra/traces"),
-            )
-            trace_path = sink.write(run_trace)
-            import warnings  # noqa: PLC0415
+            self._last_trace = run_trace
 
-            warnings.warn(  # noqa: B028
-                f"[yagra] trace written to: {trace_path}",
-                stacklevel=1,
-            )
+            if trace:
+                from yagra.adapters.outbound.local_trace_sink import LocalTraceSink  # noqa: PLC0415
+
+                sink = LocalTraceSink(
+                    base_dir=Path(trace_dir) if trace_dir else Path(".yagra/traces"),
+                )
+                trace_path = sink.write(run_trace)
+                import warnings  # noqa: PLC0415
+
+                warnings.warn(  # noqa: B028
+                    f"[yagra] trace written to: {trace_path}",
+                    stacklevel=1,
+                )
 
         return dict(result)
+
+    def get_last_trace(self) -> WorkflowRunTrace | None:
+        """Returns the trace captured during the most recent invoke() call.
+
+        Returns:
+            The last WorkflowRunTrace when observability is enabled and
+            invoke() has been executed; otherwise None.
+        """
+        return self._last_trace
 
     def resume(
         self,

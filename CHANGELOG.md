@@ -11,6 +11,9 @@
   - **M-51 `yagra golden` CLI コマンド**: `yagra golden save`（トレースからゴールデンケース保存）、`yagra golden test`（回帰テスト実行）、`yagra golden list`（ケース一覧表示）を追加
     - `yagra golden save` に繰り返し指定可能な `--strategy node_id:strategy` を追加。ノード単位の比較戦略上書き（`exact` / `structural` / `skip` / `auto`）を保存時に指定可能。形式不正・未知戦略・重複 node_id はエラーで終了
   - **M-52 MCP ツール `run_golden_tests`**: MCP サーバーに `run_golden_tests` ツールを追加。`propose_update → run_golden_tests → apply_update` の最適化サイクルが MCP 経由で完結
+- ✨ **`Yagra.get_last_trace()` public API を追加（Issue #28）**: `observability=True` で実行した直近の `invoke()` トレースを `WorkflowRunTrace | None` として取得可能に。`trace=False` でも in-memory トレースは常に利用でき、`trace=True` は JSON ファイル永続化のみを制御
+  - `TraceCollector.reset()` を追加し、`invoke()` ごとにノードトレースをリセット
+  - `GoldenTestRunner` と統合テストから `yagra._trace_collector` の private 直接参照（`# noqa: SLF001`）を除去して `get_last_trace()` に統一
 
 ### Fixed
 - 🐛 **Golden Test: 同一ハンドラー名競合を修正（ノード単位モック解決）**: `handler: "llm"` など同じハンドラー名を使う複数ノードがある場合、従来はハンドラー名単位のモック解決により応答が競合することがあった。`resolve_for_node(name, node_id)` を導入し、Golden Test リプレイ時は `node_id` 単位でモックをディスパッチするよう修正
