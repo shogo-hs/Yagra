@@ -11,6 +11,12 @@
   - **M-51 `yagra golden` CLI コマンド**: `yagra golden save`（トレースからゴールデンケース保存）、`yagra golden test`（回帰テスト実行）、`yagra golden list`（ケース一覧表示）を追加
   - **M-52 MCP ツール `run_golden_tests`**: MCP サーバーに `run_golden_tests` ツールを追加。`propose_update → run_golden_tests → apply_update` の最適化サイクルが MCP 経由で完結
 
+### Fixed
+- 🐛 **Golden Test: 同一ハンドラー名競合を修正（ノード単位モック解決）**: `handler: "llm"` など同じハンドラー名を使う複数ノードがある場合、従来はハンドラー名単位のモック解決により応答が競合することがあった。`resolve_for_node(name, node_id)` を導入し、Golden Test リプレイ時は `node_id` 単位でモックをディスパッチするよう修正
+  - `build_state_graph()` は `registry.resolve_for_node(node.handler, node.id)` でハンドラーを解決
+  - Golden Test レジストリは LLM モックを `node_id -> handler` として保持し、同名ハンドラーでもノードごとの `output_snapshot` を正しく返却
+  - `tests/unit/application/test_golden_test_runner.py` に同一ハンドラー名ノードの回帰テストを追加
+
 ### v1.1 達成ゴール
 - ✅ G-20: ワークフロー変更後にゴールデンケースベースの回帰検証ができる
 

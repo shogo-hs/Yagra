@@ -510,15 +510,15 @@ class TestBuildGoldenRegistry:
 
         result_registry = build_golden_registry(golden, base_registry)
 
-        # LLM handler should be mocked
-        mock_handler = result_registry.resolve("llm")
+        # LLM handler should be mocked (per-node dispatch via resolve_for_node)
+        mock_handler = result_registry.resolve_for_node("llm", "translate")
         assert mock_handler({}, {}) == {"translated": "hola"}
 
         # Non-LLM handler should be the real one
         real_handler = result_registry.resolve("my_formatter")
         assert real_handler({"translated": "test"}, {}) == {"formatted": "test"}
 
-    def test_deduplicates_handlers(self) -> None:
+    def test_per_node_dispatch_for_same_handler(self) -> None:
         from yagra.adapters.outbound import InMemoryNodeRegistry
 
         snap1 = _make_snapshot("n1", "llm", is_llm=True, output_snap={"a": 1})
@@ -529,11 +529,13 @@ class TestBuildGoldenRegistry:
         )
 
         base_registry = InMemoryNodeRegistry()
-        # Should not raise NodeHandlerAlreadyRegisteredError
         result = build_golden_registry(golden, base_registry)
-        handler = result.resolve("llm")
-        # Uses the first encountered snapshot
-        assert handler({}, {}) is not None
+
+        # Each node gets its own mock handler via resolve_for_node
+        handler_n1 = result.resolve_for_node("llm", "n1")
+        handler_n2 = result.resolve_for_node("llm", "n2")
+        assert handler_n1({}, {}) == {"a": 1}
+        assert handler_n2({}, {}) == {"b": 2}
 
 
 # ===========================================================================
