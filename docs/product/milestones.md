@@ -82,7 +82,7 @@
 | Milestone ID | 対応 Goal ID | 到達ステップ | 完了条件 | 状態 |
 | --- | --- | --- | --- | --- |
 | M-49 | G-20 | ゴールデンケースのドメインモデルと保存機構を実装する | GoldenCase / NodeSnapshot / ComparisonStrategy のドメインエンティティが定義され、LocalGoldenCaseStore で `.yagra/golden/` に JSON 永続化できる。GoldenCaseManager で WorkflowRunTrace からゴールデンケースを生成・保存・一覧・削除できる | Done |
-| M-50 | G-20 | ゴールデンテスト実行エンジンと比較戦略を実装する | GoldenTestRunner がゴールデンケースに基づくリプレイテストを実行し、LLM ハンドラーをモック応答で差し替え、実行パス・ノード入出力の回帰を検証できる。E2E 統合テストが通過する | Done |
+| M-50 | G-20 | ゴールデンテスト実行エンジンと比較戦略を実装する | GoldenTestRunner がゴールデンケースに基づくリプレイテストを実行し、LLM ハンドラーを `node_id` 単位のモック応答で差し替え、実行パス・ノード入出力の回帰を検証できる。E2E 統合テストが通過する | Done |
 | M-51 | G-20 | `yagra golden` CLI コマンドを実装する | `yagra golden save` / `yagra golden test` / `yagra golden list` で CLI からゴールデンテストの保存・実行・一覧を操作できる | Done |
 | M-52 | G-20 | MCP ツール `run_golden_tests` と最適化サイクル統合 | MCP サーバーに `run_golden_tests` ツールを追加し、`propose_update → run_golden_tests → apply_update` のサイクルが MCP 経由で完結する | Done |
 
@@ -285,7 +285,7 @@
 | G20-I03 | LocalGoldenCaseStore（ファイルベース永続化）を実装する | Done | `src/yagra/adapters/outbound/local_golden_case_store.py` |
 | G20-I04 | GoldenCaseManager（保存・一覧・削除ユースケース）を実装する | Done | `src/yagra/application/use_cases/golden_case_manager.py` |
 | G20-I05 | GoldenTestRunner（リプレイ実行・比較ロジック）を実装する | Done | `src/yagra/application/use_cases/golden_test_runner.py` |
-| G20-I06 | モック LLM ハンドラー生成と比較戦略（exact / structural / skip / auto）を実装する | Done | `src/yagra/application/use_cases/golden_test_runner.py` |
+| G20-I06 | モック LLM ハンドラー生成と比較戦略（exact / structural / skip / auto）を実装する（同一ハンドラー名は node_id 単位で解決） | Done | `src/yagra/application/use_cases/golden_test_runner.py`, `src/yagra/ports/outbound/node_registry.py` |
 | G20-I07 | E2E 統合テスト（トレース保存 → ゴールデンケース作成 → YAML 変更 → テスト実行）を整備する | Done | `tests/integration/test_golden_test_e2e.py` |
 | G20-I08 | `yagra golden` CLI コマンド（save / test / list）を実装する | Done | `src/yagra/__init__.py` (M-51) |
 | G20-I09 | MCP ツール `run_golden_tests` を実装し最適化サイクルに統合する | Done | `src/yagra/adapters/inbound/mcp_server.py` (M-52) |

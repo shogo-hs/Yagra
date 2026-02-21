@@ -49,3 +49,24 @@ class NodeRegistryPort(ABC):
         Raises:
             NodeHandlerNotFoundError: If the specified handler name is not registered.
         """
+
+    def resolve_for_node(self, name: str, node_id: str) -> NodeHandler:
+        """Resolves the callable for a specific node instance.
+
+        When multiple nodes share the same handler name (e.g., two nodes both
+        using ``"llm"``), this method allows returning a different callable per
+        node. The default implementation delegates to :meth:`resolve`, ignoring
+        ``node_id``. Subclasses (such as golden-test mock registries) may
+        override this to provide per-node dispatch.
+
+        Args:
+            name: Handler name to resolve.
+            node_id: Unique identifier of the node requesting the handler.
+
+        Returns:
+            Callable appropriate for the given node.
+
+        Raises:
+            NodeHandlerNotFoundError: If the handler cannot be resolved.
+        """
+        return self.resolve(name)

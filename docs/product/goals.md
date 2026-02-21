@@ -47,7 +47,7 @@
 
 | Goal ID | ユーザーが到達したい状態 | 到達判定（Definition of Done） | 状態 |
 | --- | --- | --- | --- |
-| G-20 | ワークフロー変更後にゴールデンケースベースの回帰検証ができる | 既存トレースからゴールデンケースを保存し、ワークフロー YAML 変更後に `yagra golden test` で実行パス・ノード入出力の回帰を検証できる。LLM ノードはモック応答で決定論的にテストされ、API 呼び出しが不要である。コーディングエージェントが MCP 経由で `run_golden_tests` を実行し、`propose_update → run_golden_tests → apply_update` のサイクルを回せる | Done |
+| G-20 | ワークフロー変更後にゴールデンケースベースの回帰検証ができる | 既存トレースからゴールデンケースを保存し、ワークフロー YAML 変更後に `yagra golden test` で実行パス・ノード入出力の回帰を検証できる。LLM ノードは `node_id` 単位のモック解決で決定論的にテストされ、API 呼び出しが不要である。コーディングエージェントが MCP 経由で `run_golden_tests` を実行し、`propose_update → run_golden_tests → apply_update` のサイクルを回せる | Done |
 
 ## 運用ルール
 

@@ -8,6 +8,12 @@ For the canonical changelog (Japanese), see [CHANGELOG.md](https://github.com/sh
 
 ## [Unreleased]
 
+### Fixed
+- 🐛 **Golden Test: resolved same-handler-name collisions with per-node mock dispatch**: When multiple LLM nodes shared the same handler name (for example, two nodes using `handler: "llm"`), replay could return the wrong mock response. Golden replay now resolves handlers per node via `resolve_for_node(name, node_id)`.
+  - `build_state_graph()` now resolves handlers with `registry.resolve_for_node(node.handler, node.id)`
+  - Golden replay registry stores LLM mocks as `node_id -> handler`, so each node returns its own recorded `output_snapshot`
+  - Added a regression test for same-handler-name multi-node replay in `tests/unit/application/test_golden_test_runner.py`
+
 ## [1.0.0] - 2026-02-21
 
 ### Added

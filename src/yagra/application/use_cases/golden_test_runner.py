@@ -24,7 +24,6 @@ from yagra.domain.entities.golden_case import (
 from yagra.ports.outbound.golden_case_repository import GoldenCaseRepositoryPort
 from yagra.ports.outbound.node_registry import (
     NodeHandler,
-    NodeHandlerNotFoundError,
     NodeRegistryPort,
 )
 
@@ -67,61 +66,76 @@ def build_golden_registry(
 ) -> NodeRegistryPort:
     """Creates a registry with LLM handlers replaced by golden mocks.
 
-    Non-LLM handlers are resolved from the base registry. LLM handlers
-    (llm, structured_llm, streaming_llm) are replaced with mock handlers
-    that return the golden case's recorded output_snapshot.
+    Each LLM node receives its own mock handler keyed by ``node_id``,
+    so multiple nodes sharing the same handler name (e.g., two ``"llm"``
+    nodes) return their individual golden output snapshots.
+
+    Non-LLM handlers are resolved from the base registry.
 
     Args:
         golden_case: The golden case providing mock outputs.
         base_registry: The real registry for non-LLM handler resolution.
 
     Returns:
-        A new registry with LLM handlers mocked.
+        A ``_GoldenNodeRegistry`` that dispatches per-node mocks for LLM
+        handlers and falls back to *base_registry* for everything else.
     """
-    from yagra.adapters.outbound import InMemoryNodeRegistry  # noqa: PLC0415
+    node_mocks: dict[str, NodeHandler] = {}
+    non_llm_handlers: dict[str, NodeHandler] = {}
+    resolved_non_llm: set[str] = set()
 
-    handlers: dict[str, NodeHandler] = {}
-    registered_handlers: set[str] = set()
-
-    for snapshot in golden_case.node_snapshots.values():
-        handler_name = snapshot.handler
-        if handler_name in registered_handlers:
-            continue
-
+    for node_id, snapshot in golden_case.node_snapshots.items():
         if snapshot.is_llm_handler:
-            handlers[handler_name] = create_mock_llm_handler(snapshot)
+            node_mocks[node_id] = create_mock_llm_handler(snapshot)
         else:
-            handlers[handler_name] = base_registry.resolve(handler_name)
-        registered_handlers.add(handler_name)
+            handler_name = snapshot.handler
+            if handler_name not in resolved_non_llm:
+                non_llm_handlers[handler_name] = base_registry.resolve(handler_name)
+                resolved_non_llm.add(handler_name)
 
-    golden_registry = InMemoryNodeRegistry(handlers)
-    return _FallbackNodeRegistry(golden_registry, base_registry)
+    return _GoldenNodeRegistry(
+        node_mocks=node_mocks,
+        non_llm_handlers=non_llm_handlers,
+        fallback=base_registry,
+    )
 
 
-class _FallbackNodeRegistry(NodeRegistryPort):
-    """Registry that delegates to a primary registry, falling back to a base.
+class _GoldenNodeRegistry(NodeRegistryPort):
+    """Registry that dispatches per-node mocks during golden test replay.
 
-    Used during golden test replay so that handlers added to a modified
-    workflow (but absent from the golden case) are still resolvable
-    via the original base registry.
+    LLM handlers are resolved **per node_id** so that multiple nodes
+    sharing the same handler name (e.g., two ``"llm"`` nodes) each
+    return their own golden output snapshot. Non-LLM handlers and any
+    handlers absent from the golden case are resolved via the fallback
+    base registry.
 
     Args:
-        primary: Registry checked first (contains golden mocks).
-        fallback: Registry used when the primary lacks a handler.
+        node_mocks: Mapping of *node_id* to mock handler for LLM nodes.
+        non_llm_handlers: Mapping of *handler_name* to resolved handler
+            for non-LLM nodes recorded in the golden case.
+        fallback: Base registry used when a handler is not found in
+            either ``node_mocks`` or ``non_llm_handlers``.
     """
 
-    def __init__(self, primary: NodeRegistryPort, fallback: NodeRegistryPort) -> None:
-        """Initializes with primary and fallback registries.
+    def __init__(
+        self,
+        node_mocks: dict[str, NodeHandler],
+        non_llm_handlers: dict[str, NodeHandler],
+        fallback: NodeRegistryPort,
+    ) -> None:
+        """Initializes with per-node mocks, non-LLM handlers, and fallback.
 
         Args:
-            primary: Registry checked first.
-            fallback: Registry used when the primary lacks a handler.
+            node_mocks: Per-node_id mock handlers for LLM nodes.
+            non_llm_handlers: Resolved handlers for non-LLM handler names.
+            fallback: Base registry for handlers not in the golden case.
         """
-        self._primary = primary
+        self._node_mocks = node_mocks
+        self._non_llm_handlers = non_llm_handlers
         self._fallback = fallback
 
     def register(self, name: str, handler: NodeHandler) -> None:
-        """Registers a handler in the primary registry.
+        """Registers a handler in the fallback registry.
 
         Args:
             name: Handler identifier name.
@@ -130,10 +144,14 @@ class _FallbackNodeRegistry(NodeRegistryPort):
         Raises:
             NodeHandlerAlreadyRegisteredError: If already registered.
         """
-        self._primary.register(name, handler)
+        self._fallback.register(name, handler)
 
     def resolve(self, name: str) -> NodeHandler:
-        """Resolves a handler, trying the primary then fallback registry.
+        """Resolves a handler by handler name (non-node-aware fallback).
+
+        Checks non-LLM handlers first, then delegates to the fallback
+        registry. This path is used by callers that do not supply a
+        ``node_id`` (e.g., legacy code or handler-compatibility checks).
 
         Args:
             name: Handler name to resolve.
@@ -142,12 +160,33 @@ class _FallbackNodeRegistry(NodeRegistryPort):
             The resolved handler callable.
 
         Raises:
-            NodeHandlerNotFoundError: If neither registry has the handler.
+            NodeHandlerNotFoundError: If the handler cannot be resolved.
         """
-        try:
-            return self._primary.resolve(name)
-        except NodeHandlerNotFoundError:
-            return self._fallback.resolve(name)
+        if name in self._non_llm_handlers:
+            return self._non_llm_handlers[name]
+        return self._fallback.resolve(name)
+
+    def resolve_for_node(self, name: str, node_id: str) -> NodeHandler:
+        """Resolves a handler for a specific node instance.
+
+        For LLM nodes recorded in the golden case, returns the per-node
+        mock handler. For non-LLM nodes, resolves by handler name. For
+        handlers absent from the golden case, falls back to the base
+        registry.
+
+        Args:
+            name: Handler name to resolve.
+            node_id: Unique identifier of the node requesting the handler.
+
+        Returns:
+            The mock handler (LLM nodes) or real handler (non-LLM / new nodes).
+
+        Raises:
+            NodeHandlerNotFoundError: If the handler cannot be resolved.
+        """
+        if node_id in self._node_mocks:
+            return self._node_mocks[node_id]
+        return self.resolve(name)
 
 
 def compare_node(
