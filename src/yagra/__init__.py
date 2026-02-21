@@ -248,6 +248,9 @@ def main() -> None:
     if args.command == "mcp":
         exit_code = _run_mcp_command(args)
         raise SystemExit(exit_code)
+    if args.command == "golden":
+        exit_code = _run_golden_command(args)
+        raise SystemExit(exit_code)
     raise SystemExit(2)
 
 
@@ -541,6 +544,92 @@ def _build_cli_parser() -> argparse.ArgumentParser:
     )
     # mcp subcommand takes no arguments
     _ = mcp_parser
+
+    # --- golden subcommand group ---
+    golden = subparsers.add_parser(
+        "golden",
+        help="Manage golden test cases for regression testing",
+    )
+    golden_sub = golden.add_subparsers(dest="golden_command", required=True)
+
+    golden_save = golden_sub.add_parser(
+        "save",
+        help="Create a golden case from a trace file",
+    )
+    golden_save.add_argument(
+        "--trace",
+        required=True,
+        help="Path to the trace JSON file",
+    )
+    golden_save.add_argument(
+        "--name",
+        required=True,
+        help="Name for the golden case (kebab-case)",
+    )
+    golden_save.add_argument(
+        "--description",
+        default="",
+        help="Human-readable description",
+    )
+    golden_save.add_argument(
+        "--golden-dir",
+        default=".yagra/golden",
+        help="Golden case directory (default: .yagra/golden)",
+    )
+
+    golden_test = golden_sub.add_parser(
+        "test",
+        help="Run golden tests against a workflow",
+    )
+    golden_test.add_argument(
+        "--workflow",
+        required=True,
+        help="Path to the workflow YAML to test",
+    )
+    golden_test.add_argument(
+        "--name",
+        default=None,
+        help="Specific case name (runs all cases if omitted)",
+    )
+    golden_test.add_argument(
+        "--golden-dir",
+        default=".yagra/golden",
+        help="Golden case directory (default: .yagra/golden)",
+    )
+    golden_test.add_argument(
+        "--bundle-root",
+        default=None,
+        help="Base directory for resolving split references",
+    )
+    golden_test.add_argument(
+        "--format",
+        choices=["text", "json"],
+        default="text",
+        dest="output_format",
+        help="Output format (default: text)",
+    )
+
+    golden_list = golden_sub.add_parser(
+        "list",
+        help="List saved golden cases",
+    )
+    golden_list.add_argument(
+        "--workflow",
+        default=None,
+        help="Filter by workflow name",
+    )
+    golden_list.add_argument(
+        "--golden-dir",
+        default=".yagra/golden",
+        help="Golden case directory (default: .yagra/golden)",
+    )
+    golden_list.add_argument(
+        "--format",
+        choices=["text", "json"],
+        default="text",
+        dest="output_format",
+        help="Output format (default: text)",
+    )
 
     return parser
 
@@ -900,6 +989,207 @@ def _run_mcp_command(args: argparse.Namespace) -> int:
         print(str(exc), file=sys.stderr)
         return 1
     asyncio.run(run_mcp_server())
+    return 0
+
+
+def _run_golden_command(args: argparse.Namespace) -> int:
+    """Dispatches the golden subcommand to the appropriate handler.
+
+    Args:
+        args: Parsed CLI arguments including golden_command.
+
+    Returns:
+        Exit code. 0 on success.
+    """
+    if args.golden_command == "save":
+        return _run_golden_save_command(args)
+    if args.golden_command == "test":
+        return _run_golden_test_command(args)
+    if args.golden_command == "list":
+        return _run_golden_list_command(args)
+    return 2
+
+
+def _run_golden_save_command(args: argparse.Namespace) -> int:
+    """Executes the `golden save` subcommand.
+
+    Loads a trace JSON file and creates a golden case from it.
+
+    Args:
+        args: Parsed CLI arguments with trace, name, description, golden_dir.
+
+    Returns:
+        Exit code. 0 on success, 1 on failure.
+    """
+    from yagra.adapters.outbound.local_golden_case_store import (
+        LocalGoldenCaseStore,  # noqa: PLC0415
+    )
+    from yagra.application.use_cases.golden_case_manager import GoldenCaseManager  # noqa: PLC0415
+    from yagra.domain.entities.trace import WorkflowRunTrace  # noqa: PLC0415
+
+    trace_path = Path(args.trace)
+    if not trace_path.exists():
+        print(f"Error: trace file not found: {trace_path}", file=sys.stderr)
+        return 1
+
+    try:
+        raw = trace_path.read_text(encoding="utf-8")
+        data = json.loads(raw)
+        trace = WorkflowRunTrace.model_validate(data)
+    except (json.JSONDecodeError, OSError) as exc:
+        print(f"Error: failed to read trace file: {exc}", file=sys.stderr)
+        return 1
+    except Exception as exc:
+        print(f"Error: invalid trace format: {exc}", file=sys.stderr)
+        return 1
+
+    store = LocalGoldenCaseStore(base_dir=Path(args.golden_dir))
+    manager = GoldenCaseManager(store)
+
+    try:
+        golden = manager.save_from_trace(
+            trace=trace,
+            case_name=args.name,
+            description=args.description,
+        )
+    except ValueError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 1
+
+    print(
+        f"Golden case saved: {golden.workflow_name}/{golden.case_name} "
+        f"({len(golden.execution_path)} nodes)"
+    )
+    return 0
+
+
+def _run_golden_test_command(args: argparse.Namespace) -> int:
+    """Executes the `golden test` subcommand.
+
+    Runs golden test cases against a workflow YAML and reports results.
+
+    Args:
+        args: Parsed CLI arguments with workflow, name, golden_dir, format.
+
+    Returns:
+        Exit code. 0 if all tests pass, 1 if any fail or error.
+    """
+    from yagra.adapters.outbound.local_golden_case_store import (
+        LocalGoldenCaseStore,  # noqa: PLC0415
+    )
+    from yagra.application.use_cases.golden_test_runner import GoldenTestRunner  # noqa: PLC0415
+    from yagra.ports.outbound.golden_case_repository import GoldenCaseNotFoundError  # noqa: PLC0415
+
+    workflow_path = Path(args.workflow)
+    if not workflow_path.exists():
+        print(f"Error: workflow file not found: {workflow_path}", file=sys.stderr)
+        return 1
+
+    store = LocalGoldenCaseStore(base_dir=Path(args.golden_dir))
+    runner = GoldenTestRunner(store)
+    workflow_name = workflow_path.stem
+
+    try:
+        if args.name is not None:
+            try:
+                golden_case = store.load(workflow_name, args.name)
+            except GoldenCaseNotFoundError:
+                print(
+                    f"Error: golden case not found: {workflow_name}/{args.name}",
+                    file=sys.stderr,
+                )
+                return 1
+            results = [
+                runner.run(
+                    golden_case=golden_case,
+                    workflow_path=workflow_path,
+                    bundle_root=args.bundle_root,
+                )
+            ]
+        else:
+            results = runner.run_all(
+                workflow_name=workflow_name,
+                workflow_path=workflow_path,
+                bundle_root=args.bundle_root,
+            )
+    except Exception as exc:
+        print(f"Error: golden test execution failed: {exc}", file=sys.stderr)
+        return 1
+
+    if not results:
+        print(f"No golden cases found for workflow '{workflow_name}'.", file=sys.stderr)
+        return 1
+
+    if args.output_format == "json":
+        output = [r.model_dump(mode="json") for r in results]
+        print(json.dumps(output, indent=2, ensure_ascii=False))
+    else:
+        _print_golden_test_results(results)
+
+    all_passed = all(r.passed for r in results)
+    return 0 if all_passed else 1
+
+
+def _print_golden_test_results(results: list[Any]) -> None:
+    """Prints golden test results in human-readable text format.
+
+    Displays a summary line per case and per-node details for failures.
+
+    Args:
+        results: List of GoldenTestResult instances.
+    """
+    total = len(results)
+    passed_count = sum(1 for r in results if r.passed)
+    failed_count = total - passed_count
+
+    for result in results:
+        status = "PASS" if result.passed else "FAIL"
+        print(f"  [{status}] {result.case_name}: {result.summary}")
+
+        if not result.passed:
+            if not result.execution_path_match:
+                print(f"    expected path: {result.expected_path}")
+                print(f"    actual path:   {result.actual_path}")
+            for nr in result.node_results:
+                if nr.status not in ("pass", "skip"):
+                    print(f"    node '{nr.node_id}': {nr.status} - {nr.message}")
+
+    print()
+    print(f"Results: {passed_count} passed, {failed_count} failed, {total} total")
+
+
+def _run_golden_list_command(args: argparse.Namespace) -> int:
+    """Executes the `golden list` subcommand.
+
+    Lists saved golden cases, optionally filtered by workflow name.
+
+    Args:
+        args: Parsed CLI arguments with workflow, golden_dir, format.
+
+    Returns:
+        Exit code. 0 on success.
+    """
+    from yagra.adapters.outbound.local_golden_case_store import (
+        LocalGoldenCaseStore,  # noqa: PLC0415
+    )
+    from yagra.application.use_cases.golden_case_manager import GoldenCaseManager  # noqa: PLC0415
+
+    store = LocalGoldenCaseStore(base_dir=Path(args.golden_dir))
+    manager = GoldenCaseManager(store)
+    cases = manager.list_cases(workflow_name=args.workflow)
+
+    if args.output_format == "json":
+        output = [c.model_dump(mode="json") for c in cases]
+        print(json.dumps(output, indent=2, ensure_ascii=False))
+    else:
+        if not cases:
+            print("No golden cases found.")
+        else:
+            for case in cases:
+                desc = f" - {case.description}" if case.description else ""
+                print(f"  {case.workflow_name}/{case.case_name}{desc}")
+                print(f"    created: {case.created_at.isoformat()}")
+                print(f"    nodes: {len(case.execution_path)}")
     return 0
 
 
