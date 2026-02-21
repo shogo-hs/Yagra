@@ -249,3 +249,75 @@ yagra mcp
 | `explain_workflow` | YAML 文字列を解析して実行情報を返す |
 | `list_templates` | 利用可能なテンプレート名を返す |
 | `list_handlers` | 組み込みハンドラーの params スキーマを返す |
+| `get_traces` | 実行トレースを取得する |
+| `analyze_traces` | 複数トレースの集約サマリを生成する |
+| `propose_update` | YAML 修正差分を生成しプレビューする |
+| `apply_update` | 提案された YAML 変更を適用する |
+| `rollback_update` | 適用済み変更をロールバックする |
+| `run_golden_tests` | ゴールデンケースに基づく回帰テストを実行する |
+
+## ゴールデンテスト（回帰検証）
+
+ゴールデンテストは、ワークフロー YAML の変更後に既存の動作が壊れていないかを検証する仕組みです。LLM ノードはモック応答で差し替えるため、API 呼び出しなしで決定論的にテストできます。
+
+### CLI によるゴールデンテスト
+
+```bash
+# 成功したトレースからゴールデンケースを保存
+yagra golden save --trace .yagra/traces/translate/translate_20260221T120000_a1b2c3d4.json --name happy-path
+
+# 保存済みゴールデンケースの一覧を表示
+yagra golden list
+
+# 特定のワークフローに対してゴールデンテストを実行
+yagra golden test --workflow workflows/translate.yaml
+
+# 特定のケースのみ実行
+yagra golden test --workflow workflows/translate.yaml --name happy-path
+
+# JSON 形式で結果を出力
+yagra golden test --workflow workflows/translate.yaml --format json
+```
+
+### MCP ツール `run_golden_tests` によるエージェント統合
+
+エージェントは `run_golden_tests` MCP ツールを使って、ワークフロー変更提案の回帰テストを自動実行できます。
+
+**最適化サイクルでの利用フロー**:
+
+```
+1. propose_update    → YAML 修正差分をプレビュー
+2. run_golden_tests  → ゴールデンケースで回帰テスト
+3. (全件 passed なら) apply_update → 変更を適用
+   (失敗があれば) 提案を修正して 1 に戻る
+```
+
+**`run_golden_tests` の入力パラメータ**:
+
+| パラメータ | 型 | 必須 | 説明 |
+|---|---|---|---|
+| `workflow_path` | string | Yes | ワークフロー YAML のパス |
+| `case_name` | string | No | 特定のケース名（省略時は全ケース実行） |
+| `golden_dir` | string | No | ゴールデンケースのディレクトリ（デフォルト: `.yagra/golden/`） |
+
+**レスポンス例**（全件パス時）:
+
+```json
+{
+  "results": [
+    {
+      "case_name": "happy-path",
+      "passed": true,
+      "execution_path_match": true,
+      "node_results": [
+        {"node_id": "translate_node", "status": "pass", "strategy_used": "structural"},
+        {"node_id": "format_node", "status": "pass", "strategy_used": "exact"}
+      ],
+      "summary": "All 2 nodes passed"
+    }
+  ],
+  "total": 1,
+  "passed": 1,
+  "failed": 0
+}
+```
