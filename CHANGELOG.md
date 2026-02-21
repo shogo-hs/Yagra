@@ -9,6 +9,7 @@
   - **M-49 ドメインモデルと保存機構**: `GoldenCase` / `NodeSnapshot` / `ComparisonStrategy` のドメインエンティティを定義。`LocalGoldenCaseStore` で `.yagra/golden/` に JSON 永続化。`GoldenCaseManager` でトレースからのゴールデンケース生成・保存・一覧・削除を提供
   - **M-50 テスト実行エンジンと比較戦略**: `GoldenTestRunner` がゴールデンケースに基づくリプレイテストを実行。LLM ハンドラーをモック応答で差し替え、実行パス・ノード入出力の回帰を検証。比較戦略（exact / structural / skip / auto）に対応
   - **M-51 `yagra golden` CLI コマンド**: `yagra golden save`（トレースからゴールデンケース保存）、`yagra golden test`（回帰テスト実行）、`yagra golden list`（ケース一覧表示）を追加
+    - `yagra golden save` に繰り返し指定可能な `--strategy node_id:strategy` を追加。ノード単位の比較戦略上書き（`exact` / `structural` / `skip` / `auto`）を保存時に指定可能。形式不正・未知戦略・重複 node_id はエラーで終了
   - **M-52 MCP ツール `run_golden_tests`**: MCP サーバーに `run_golden_tests` ツールを追加。`propose_update → run_golden_tests → apply_update` の最適化サイクルが MCP 経由で完結
 
 ### Fixed

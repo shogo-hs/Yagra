@@ -264,7 +264,11 @@ yagra mcp
 
 ```bash
 # 成功したトレースからゴールデンケースを保存
-yagra golden save --trace .yagra/traces/translate/translate_20260221T120000_a1b2c3d4.json --name happy-path
+yagra golden save \
+  --trace .yagra/traces/translate/translate_20260221T120000_a1b2c3d4.json \
+  --name happy-path \
+  --strategy translate:structural \
+  --strategy format:exact
 
 # 保存済みゴールデンケースの一覧を表示
 yagra golden list
@@ -278,6 +282,8 @@ yagra golden test --workflow workflows/translate.yaml --name happy-path
 # JSON 形式で結果を出力
 yagra golden test --workflow workflows/translate.yaml --format json
 ```
+
+`--strategy` は繰り返し指定可能で、`node_id:strategy` 形式（`exact` / `structural` / `skip` / `auto`）を受け付けます。
 
 ### MCP ツール `run_golden_tests` によるエージェント統合
 

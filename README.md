@@ -29,7 +29,7 @@ Built with **AI-Native principles**: JSON Schema export and validation CLI enabl
 - **Advanced Patterns**: Fan-out/fan-in (parallel map-reduce via Send API) and subgraph nesting for composable workflows
 - **Visual Workflow Editor**: Launch Studio WebUI for visual editing, drag-and-drop node/edge management, and diff preview
 - **Template Library**: Quick-start templates for common patterns (branching, loops, RAG, parallel, subgraph, and more)
-- **Golden Test (Regression Testing)**: Save execution traces as golden cases, then replay with mocked LLM responses to verify workflow structure after YAML changes — no API calls needed. Mock dispatch is resolved per node, so multiple nodes sharing the same handler name are replayed correctly. Available via CLI (`yagra golden`) and MCP tool (`run_golden_tests`)
+- **Golden Test (Regression Testing)**: Save execution traces as golden cases, then replay with mocked LLM responses to verify workflow structure after YAML changes — no API calls needed. Mock dispatch is resolved per node, so multiple nodes sharing the same handler name are replayed correctly. `yagra golden save` supports repeatable `--strategy node_id:strategy` overrides (`exact`/`structural`/`skip`/`auto`) to persist per-node comparison behavior. Available via CLI (`yagra golden`) and MCP tool (`run_golden_tests`)
 - **MCP Server**: Expose Yagra tools to AI agents via [Model Context Protocol](https://modelcontextprotocol.io/) (`yagra[mcp]`)
 - **AI-Ready**: JSON Schema export (`yagra schema`) and structured validation for coding agents
 
