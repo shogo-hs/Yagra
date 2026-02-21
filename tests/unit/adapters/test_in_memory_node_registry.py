@@ -48,3 +48,11 @@ def test_constructor_registers_initial_handlers() -> None:
     resolved = registry.resolve("tool_handler")
 
     assert resolved is _tool_handler
+
+
+def test_resolve_for_node_delegates_to_resolve_by_default() -> None:
+    registry = InMemoryNodeRegistry({"tool_handler": _tool_handler})
+
+    resolved = registry.resolve_for_node("tool_handler", "node_a")
+
+    assert resolved is _tool_handler

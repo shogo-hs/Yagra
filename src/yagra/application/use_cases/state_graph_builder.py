@@ -162,7 +162,7 @@ def build_state_graph(
             )
             state_graph.add_node(node.id, compiled_subgraph)
         else:
-            handler = registry.resolve(node.handler)
+            handler = registry.resolve_for_node(node.handler, node.id)
             node_runner = _build_node_runner(
                 handler=handler,
                 node_params=node.params,

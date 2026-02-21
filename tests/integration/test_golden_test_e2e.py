@@ -45,6 +45,14 @@ def _validator_handler(state: dict[str, Any], params: dict[str, Any]) -> dict[st
     return {"is_valid": len(formatted) > 0}
 
 
+def _dual_formatter_handler(state: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
+    """Combines outputs from two LLM nodes to validate per-node dispatch."""
+    _ = params
+    translated = state.get("translated", "")
+    summary = state.get("summary", "")
+    return {"combined": f"{translated}|{summary}"}
+
+
 # ---------------------------------------------------------------------------
 # Workflow YAML helpers
 # ---------------------------------------------------------------------------
@@ -124,6 +132,37 @@ def _three_node_workflow() -> dict[str, Any]:
     }
 
 
+def _two_llm_nodes_workflow() -> dict[str, Any]:
+    """Workflow: llm(translate) -> llm(summarize) -> dual_formatter."""
+    return {
+        "version": "1.0",
+        "start_at": "translate",
+        "end_at": ["combine"],
+        "nodes": [
+            {
+                "id": "translate",
+                "handler": "llm",
+                "params": {"output_key": "translated"},
+            },
+            {
+                "id": "summarize",
+                "handler": "llm",
+                "params": {"output_key": "summary"},
+            },
+            {
+                "id": "combine",
+                "handler": "dual_formatter",
+                "params": {},
+            },
+        ],
+        "edges": [
+            {"source": "translate", "target": "summarize"},
+            {"source": "summarize", "target": "combine"},
+        ],
+        "params": {},
+    }
+
+
 def _build_registry() -> InMemoryNodeRegistry:
     """Creates a registry with test handlers."""
     return InMemoryNodeRegistry(
@@ -131,6 +170,7 @@ def _build_registry() -> InMemoryNodeRegistry:
             "llm": _llm_handler,
             "formatter": _formatter_handler,
             "validator": _validator_handler,
+            "dual_formatter": _dual_formatter_handler,
         }
     )
 
@@ -238,6 +278,50 @@ class TestGoldenTestE2EPassingCase:
 
         assert len(results) == 2
         assert all(r.passed for r in results)
+
+    def test_multiple_nodes_sharing_llm_handler_use_per_node_golden_outputs(
+        self, tmp_path: Path
+    ) -> None:
+        """Two nodes with handler='llm' should replay with distinct node snapshots."""
+        workflow_path = _write_workflow(
+            tmp_path / "workflow.yaml",
+            _two_llm_nodes_workflow(),
+        )
+        registry = _build_registry()
+
+        yagra = Yagra.from_workflow(
+            workflow_path=workflow_path,
+            registry=registry,
+            observability=True,
+        )
+        result = yagra.invoke({"input_text": "hello"}, trace=False)
+        assert result["combined"] == "HELLO|HELLO"
+
+        from datetime import UTC, datetime
+
+        assert yagra._trace_collector is not None  # noqa: SLF001
+        trace = yagra._trace_collector.build_trace(  # noqa: SLF001
+            started_at=datetime.now(tz=UTC),
+            ended_at=datetime.now(tz=UTC),
+            total_duration_ms=1.0,
+        )
+
+        golden_dir = tmp_path / ".yagra" / "golden"
+        store = LocalGoldenCaseStore(base_dir=golden_dir)
+        manager = GoldenCaseManager(store)
+        golden = manager.save_from_trace(trace, "two-llm-nodes")
+
+        runner = GoldenTestRunner(store)
+        test_result = runner.run(
+            golden_case=golden,
+            workflow_path=workflow_path,
+            registry=registry,
+        )
+
+        assert test_result.passed is True
+        assert test_result.execution_path_match is True
+        assert test_result.actual_path == ["translate", "summarize", "combine"]
+        assert all(r.status in ("pass", "skip") for r in test_result.node_results)
 
 
 class TestGoldenTestE2EFailingCase:

@@ -49,3 +49,23 @@ class NodeRegistryPort(ABC):
         Raises:
             NodeHandlerNotFoundError: If the specified handler name is not registered.
         """
+
+    def resolve_for_node(self, handler_name: str, node_id: str) -> NodeHandler:
+        """Resolves a handler for a specific node context.
+
+        The default implementation ignores the node identifier and delegates
+        to `resolve(handler_name)` for backward compatibility. Registries that
+        need node-aware dispatch can override this method.
+
+        Args:
+            handler_name: Handler name to resolve.
+            node_id: Node identifier requesting the handler.
+
+        Returns:
+            Callable registered for the specified handler.
+
+        Raises:
+            NodeHandlerNotFoundError: If the specified handler name is not registered.
+        """
+        _ = node_id
+        return self.resolve(handler_name)

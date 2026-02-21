@@ -24,7 +24,6 @@ from yagra.domain.entities.golden_case import (
 from yagra.ports.outbound.golden_case_repository import GoldenCaseRepositoryPort
 from yagra.ports.outbound.node_registry import (
     NodeHandler,
-    NodeHandlerNotFoundError,
     NodeRegistryPort,
 )
 
@@ -65,63 +64,71 @@ def build_golden_registry(
     golden_case: GoldenCase,
     base_registry: NodeRegistryPort,
 ) -> NodeRegistryPort:
-    """Creates a registry with LLM handlers replaced by golden mocks.
+    """Creates a registry with LLM handlers replaced by per-node golden mocks.
 
-    Non-LLM handlers are resolved from the base registry. LLM handlers
-    (llm, structured_llm, streaming_llm) are replaced with mock handlers
-    that return the golden case's recorded output_snapshot.
+    Each LLM node gets its own mock handler that returns that node's
+    output snapshot recorded in the golden case. This preserves correctness
+    even when multiple nodes share the same handler name (for example, "llm").
+    Non-LLM handlers are always resolved from the base registry.
 
     Args:
         golden_case: The golden case providing mock outputs.
         base_registry: The real registry for non-LLM handler resolution.
 
     Returns:
-        A new registry with LLM handlers mocked.
+        A registry that supports per-node LLM mock dispatch.
     """
-    from yagra.adapters.outbound import InMemoryNodeRegistry  # noqa: PLC0415
-
-    handlers: dict[str, NodeHandler] = {}
-    registered_handlers: set[str] = set()
+    per_node_mocks: dict[str, tuple[str, NodeHandler]] = {}
+    default_mocks_by_handler: dict[str, NodeHandler] = {}
 
     for snapshot in golden_case.node_snapshots.values():
-        handler_name = snapshot.handler
-        if handler_name in registered_handlers:
+        if not snapshot.is_llm_handler:
             continue
 
-        if snapshot.is_llm_handler:
-            handlers[handler_name] = create_mock_llm_handler(snapshot)
-        else:
-            handlers[handler_name] = base_registry.resolve(handler_name)
-        registered_handlers.add(handler_name)
+        mock_handler = create_mock_llm_handler(snapshot)
+        per_node_mocks[snapshot.node_id] = (snapshot.handler, mock_handler)
+        default_mocks_by_handler.setdefault(snapshot.handler, mock_handler)
 
-    golden_registry = InMemoryNodeRegistry(handlers)
-    return _FallbackNodeRegistry(golden_registry, base_registry)
+    return _GoldenNodeRegistry(
+        per_node_mocks=per_node_mocks,
+        default_mocks_by_handler=default_mocks_by_handler,
+        base_registry=base_registry,
+    )
 
 
-class _FallbackNodeRegistry(NodeRegistryPort):
-    """Registry that delegates to a primary registry, falling back to a base.
+class _GoldenNodeRegistry(NodeRegistryPort):
+    """Registry that dispatches LLM mocks by node_id during golden replay.
 
-    Used during golden test replay so that handlers added to a modified
-    workflow (but absent from the golden case) are still resolvable
-    via the original base registry.
+    For LLM nodes present in the golden case, `resolve_for_node()` returns
+    node-specific mock handlers. For other nodes (or handler mismatches),
+    resolution falls back to the base registry.
 
     Args:
-        primary: Registry checked first (contains golden mocks).
-        fallback: Registry used when the primary lacks a handler.
+        per_node_mocks: Mapping of node_id to tuple(handler_name, mock_handler).
+        default_mocks_by_handler: Representative mock per LLM handler name for
+            backward-compatible `resolve(name)` callers.
+        base_registry: Registry used for non-LLM handlers and fallbacks.
     """
 
-    def __init__(self, primary: NodeRegistryPort, fallback: NodeRegistryPort) -> None:
-        """Initializes with primary and fallback registries.
+    def __init__(
+        self,
+        per_node_mocks: dict[str, tuple[str, NodeHandler]],
+        default_mocks_by_handler: dict[str, NodeHandler],
+        base_registry: NodeRegistryPort,
+    ) -> None:
+        """Initializes golden replay registry mappings.
 
         Args:
-            primary: Registry checked first.
-            fallback: Registry used when the primary lacks a handler.
+            per_node_mocks: Mapping of node_id to tuple(handler_name, mock_handler).
+            default_mocks_by_handler: Representative mock per LLM handler name.
+            base_registry: Registry used for non-LLM handlers and fallbacks.
         """
-        self._primary = primary
-        self._fallback = fallback
+        self._per_node_mocks = per_node_mocks
+        self._default_mocks_by_handler = default_mocks_by_handler
+        self._base_registry = base_registry
 
     def register(self, name: str, handler: NodeHandler) -> None:
-        """Registers a handler in the primary registry.
+        """Registers a handler in the base registry.
 
         Args:
             name: Handler identifier name.
@@ -130,24 +137,40 @@ class _FallbackNodeRegistry(NodeRegistryPort):
         Raises:
             NodeHandlerAlreadyRegisteredError: If already registered.
         """
-        self._primary.register(name, handler)
+        self._base_registry.register(name, handler)
 
     def resolve(self, name: str) -> NodeHandler:
-        """Resolves a handler, trying the primary then fallback registry.
+        """Resolves a handler name without node context.
 
         Args:
             name: Handler name to resolve.
 
         Returns:
-            The resolved handler callable.
-
-        Raises:
-            NodeHandlerNotFoundError: If neither registry has the handler.
+            Representative LLM mock (if available for the handler name),
+            otherwise the base registry's handler.
         """
-        try:
-            return self._primary.resolve(name)
-        except NodeHandlerNotFoundError:
-            return self._fallback.resolve(name)
+        mock_handler = self._default_mocks_by_handler.get(name)
+        if mock_handler is not None:
+            return mock_handler
+        return self._base_registry.resolve(name)
+
+    def resolve_for_node(self, handler_name: str, node_id: str) -> NodeHandler:
+        """Resolves a handler for a specific node.
+
+        Args:
+            handler_name: Handler name requested by the node.
+            node_id: Node identifier requesting the handler.
+
+        Returns:
+            Node-specific LLM mock when `(node_id, handler_name)` matches the
+            golden snapshot; otherwise the base registry's handler.
+        """
+        mock_entry = self._per_node_mocks.get(node_id)
+        if mock_entry is not None:
+            expected_handler_name, mock_handler = mock_entry
+            if expected_handler_name == handler_name:
+                return mock_handler
+        return self._base_registry.resolve(handler_name)
 
 
 def compare_node(

@@ -511,29 +511,95 @@ class TestBuildGoldenRegistry:
         result_registry = build_golden_registry(golden, base_registry)
 
         # LLM handler should be mocked
-        mock_handler = result_registry.resolve("llm")
+        mock_handler = result_registry.resolve_for_node("llm", "translate")
         assert mock_handler({}, {}) == {"translated": "hola"}
 
         # Non-LLM handler should be the real one
-        real_handler = result_registry.resolve("my_formatter")
+        real_handler = result_registry.resolve_for_node("my_formatter", "format")
         assert real_handler({"translated": "test"}, {}) == {"formatted": "test"}
 
-    def test_deduplicates_handlers(self) -> None:
+    def test_dispatches_per_node_mocks_for_same_handler_name(self) -> None:
         from yagra.adapters.outbound import InMemoryNodeRegistry
 
-        snap1 = _make_snapshot("n1", "llm", is_llm=True, output_snap={"a": 1})
-        snap2 = _make_snapshot("n2", "llm", is_llm=True, output_snap={"b": 2})
+        snap_translate = _make_snapshot(
+            "translate",
+            "llm",
+            is_llm=True,
+            output_snap={"translation": "hello-ja"},
+        )
+        snap_summarize = _make_snapshot(
+            "summarize",
+            "llm",
+            is_llm=True,
+            output_snap={"summary": "translation-summary"},
+        )
 
         golden = _make_golden_case(
-            node_snapshots={"n1": snap1, "n2": snap2},
+            node_snapshots={
+                "translate": snap_translate,
+                "summarize": snap_summarize,
+            },
         )
 
         base_registry = InMemoryNodeRegistry()
-        # Should not raise NodeHandlerAlreadyRegisteredError
+
         result = build_golden_registry(golden, base_registry)
-        handler = result.resolve("llm")
-        # Uses the first encountered snapshot
-        assert handler({}, {}) is not None
+        translate_handler = result.resolve_for_node("llm", "translate")
+        summarize_handler = result.resolve_for_node("llm", "summarize")
+
+        assert translate_handler({}, {}) == {"translation": "hello-ja"}
+        assert summarize_handler({}, {}) == {"summary": "translation-summary"}
+
+    def test_resolve_without_node_context_is_handler_specific(self) -> None:
+        from yagra.adapters.outbound import InMemoryNodeRegistry
+
+        llm_snapshot = _make_snapshot(
+            "translate",
+            "llm",
+            is_llm=True,
+            output_snap={"translation": "hola"},
+        )
+        structured_snapshot = _make_snapshot(
+            "extract",
+            "structured_llm",
+            is_llm=True,
+            output_snap={"fields": {"name": "Alice"}},
+        )
+        golden = _make_golden_case(
+            node_snapshots={
+                "translate": llm_snapshot,
+                "extract": structured_snapshot,
+            }
+        )
+
+        result = build_golden_registry(golden, InMemoryNodeRegistry())
+
+        llm_handler = result.resolve("llm")
+        structured_handler = result.resolve("structured_llm")
+
+        assert llm_handler({}, {}) == {"translation": "hola"}
+        assert structured_handler({}, {}) == {"fields": {"name": "Alice"}}
+
+    def test_falls_back_to_base_when_handler_name_does_not_match_node(self) -> None:
+        from yagra.adapters.outbound import InMemoryNodeRegistry
+
+        llm_snapshot = _make_snapshot(
+            "translate",
+            "llm",
+            is_llm=True,
+            output_snap={"translation": "hola"},
+        )
+        golden = _make_golden_case(node_snapshots={"translate": llm_snapshot})
+
+        def custom_handler(state: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
+            _ = params
+            return {"custom": state.get("x", 0)}
+
+        base_registry = InMemoryNodeRegistry({"custom": custom_handler})
+        result = build_golden_registry(golden, base_registry)
+
+        handler = result.resolve_for_node("custom", "translate")
+        assert handler({"x": 7}, {}) == {"custom": 7}
 
 
 # ===========================================================================

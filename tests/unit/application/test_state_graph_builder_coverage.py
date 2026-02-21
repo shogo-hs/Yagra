@@ -17,6 +17,7 @@ from yagra.application.use_cases.state_graph_builder import (
 )
 from yagra.domain.entities import GraphSpec
 from yagra.domain.entities.graph_schema import StateFieldSpec
+from yagra.ports.outbound import NodeRegistryPort
 
 
 def _make_spec(payload: dict[str, Any]) -> GraphSpec:
@@ -90,6 +91,45 @@ def test_build_state_graph_wraps_nodes_with_trace_collector() -> None:
 
     assert "node_a" in wrapped_log
     assert "executed" in call_log
+
+
+def test_build_state_graph_uses_resolve_for_node() -> None:
+    """build_state_graph should resolve handlers with node-aware API."""
+    payload = {
+        "version": "1.0",
+        "start_at": "node_a",
+        "end_at": ["node_a"],
+        "nodes": [{"id": "node_a", "handler": "my_handler"}],
+        "edges": [],
+    }
+    spec = _make_spec(payload)
+
+    class _NodeAwareRegistry(NodeRegistryPort):
+        def __init__(self) -> None:
+            self.calls: list[tuple[str, str]] = []
+
+        def register(self, name: str, handler: Any) -> None:
+            _ = name, handler
+
+        def resolve(self, name: str) -> Any:
+            raise AssertionError(f"resolve() should not be called: {name}")
+
+        def resolve_for_node(self, handler_name: str, node_id: str) -> Any:
+            self.calls.append((handler_name, node_id))
+
+            def _handler(state: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
+                _ = params
+                return {"resolved_for": node_id, **state}
+
+            return _handler
+
+    registry = _NodeAwareRegistry()
+    compiled = build_state_graph(spec, registry)
+
+    result = compiled.invoke({})
+
+    assert registry.calls == [("my_handler", "node_a")]
+    assert result["resolved_for"] == "node_a"
 
 
 # ---------------------------------------------------------------------------
