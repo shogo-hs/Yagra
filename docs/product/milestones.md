@@ -1,10 +1,11 @@
 # 到達ステップ
 
-最終更新: 2026-02-20 <!-- M-37〜M-41 を Done に更新、M-44 を削除（分析はエージェントに委ねる方針）、M-45〜M-47 を Done に更新 -->
+最終更新: 2026-02-21 <!-- M-49・M-50 を追加（G-20: ゴールデンテスト）、M-37〜M-41 を Done に更新、M-44 を削除（分析はエージェントに委ねる方針）、M-45〜M-47 を Done に更新 -->
 
 補足:
 - M-01〜M-36 は Phase 1（Declarative LangGraph Builder）として全て完了済み。各マイルストーンの完了詳細は本ファイル末尾の「Phase 1 完了ノート」を参照。
 - M-37〜M-48 は AgentOps ビジョンに基づく v1.0 目標。Phase 2→3→4 の順に依存関係がある。
+- M-49〜M-52 は Phase 5（回帰検証）として G-20 に紐づく。Phase 2 のトレース基盤に依存する。
 - M-44（ボトルネック検出・改善ヒント生成）は削除。分析・提案はコーディングエージェントに委ねる方針とし、Yagra はデータ収集と構造化出力に徹する。
 
 ## ステップ一覧
@@ -75,6 +76,15 @@
 | M-46 | G-18 | 提案された YAML 変更の適用・ロールバック機構を実装する | ユーザー承認後に YAML 変更を適用し、自動バックアップと `yagra validate` による事後検証を行う。問題があればロールバックできる | Done |
 | M-47 | G-19 | 最適化サイクルの E2E 統合テストを整備する | Build→Run & Observe→Analyze & Propose→Approve & Update の全工程を通したテストシナリオが動作し、サイクル完結を検証できる | Done |
 | M-48 | G-19 | 最適化サイクルのドキュメントとサンプルを整備する | 最適化サイクルの実行手順・エージェント向けプロンプト例・worked example を文書化し、ユーザーが 30 分以内に初回サイクルを完了できる | Planned |
+
+### Phase 5: 回帰検証（Regression Test） — v1.1 目標
+
+| Milestone ID | 対応 Goal ID | 到達ステップ | 完了条件 | 状態 |
+| --- | --- | --- | --- | --- |
+| M-49 | G-20 | ゴールデンケースのドメインモデルと保存機構を実装する | GoldenCase / NodeSnapshot / ComparisonStrategy のドメインエンティティが定義され、LocalGoldenCaseStore で `.yagra/golden/` に JSON 永続化できる。GoldenCaseManager で WorkflowRunTrace からゴールデンケースを生成・保存・一覧・削除できる | Done |
+| M-50 | G-20 | ゴールデンテスト実行エンジンと比較戦略を実装する | GoldenTestRunner がゴールデンケースに基づくリプレイテストを実行し、LLM ハンドラーをモック応答で差し替え、実行パス・ノード入出力の回帰を検証できる。E2E 統合テストが通過する | Done |
+| M-51 | G-20 | `yagra golden` CLI コマンドを実装する | `yagra golden save` / `yagra golden test` / `yagra golden list` で CLI からゴールデンテストの保存・実行・一覧を操作できる | Planned |
+| M-52 | G-20 | MCP ツール `run_golden_tests` と最適化サイクル統合 | MCP サーバーに `run_golden_tests` ツールを追加し、`propose_update → run_golden_tests → apply_update` のサイクルが MCP 経由で完結する | Planned |
 
 ## Goal 別の実装項目
 
@@ -265,6 +275,20 @@
 | G19-I01 | 最適化サイクルの E2E 統合テストを整備する | Done | `tests/integration/test_optimization_cycle_e2e.py` |
 | G19-I02 | 最適化サイクルのドキュメント（実行手順・worked example）を整備する | Planned | — |
 | G19-I03 | エージェント向け最適化サイクルプロンプト例を作成する | Planned | — |
+
+### G-20: ワークフロー変更後にゴールデンケースベースの回帰検証ができる
+
+| Item ID | やるべきこと | 状態 | 根拠 |
+| --- | --- | --- | --- |
+| G20-I01 | GoldenCase / NodeSnapshot / ComparisonStrategy のドメインエンティティを定義する | Done | `src/yagra/domain/entities/golden_case.py`, `src/yagra/domain/entities/comparison.py` |
+| G20-I02 | GoldenCaseRepositoryPort インターフェースを定義する | Done | `src/yagra/ports/outbound/golden_case_repository.py` |
+| G20-I03 | LocalGoldenCaseStore（ファイルベース永続化）を実装する | Done | `src/yagra/adapters/outbound/local_golden_case_store.py` |
+| G20-I04 | GoldenCaseManager（保存・一覧・削除ユースケース）を実装する | Done | `src/yagra/application/use_cases/golden_case_manager.py` |
+| G20-I05 | GoldenTestRunner（リプレイ実行・比較ロジック）を実装する | Done | `src/yagra/application/use_cases/golden_test_runner.py` |
+| G20-I06 | モック LLM ハンドラー生成と比較戦略（exact / structural / skip / auto）を実装する | Done | `src/yagra/application/use_cases/golden_test_runner.py` |
+| G20-I07 | E2E 統合テスト（トレース保存 → ゴールデンケース作成 → YAML 変更 → テスト実行）を整備する | Done | `tests/integration/test_golden_test_e2e.py` |
+| G20-I08 | `yagra golden` CLI コマンド（save / test / list）を実装する | Planned | — |
+| G20-I09 | MCP ツール `run_golden_tests` を実装し最適化サイクルに統合する | Planned | — |
 
 ## 運用ルール
 
