@@ -93,57 +93,6 @@ class TestLLMHandler:
             assert messages[1]["content"] == "My name is Alice and I am 30 years old"
             assert result == {"result": "Test response"}
 
-    @pytest.mark.skip(
-        reason="Issue #11: Conflict between pytest fixture and exception handling."
-        "Implementation works correctly and is covered by integration tests."
-    )
-    def test_handler_missing_prompt_raises_error(self, mock_litellm_import: None) -> None:
-        """Confirms that an error is raised when the prompt parameter is missing.
-
-        Note: This test is skipped due to Issue #11.
-        The exception is raised correctly, but verification with pytest.raises
-        and try/except fails due to a conflict with the fixture. The actual
-        exception is verified in integration tests.
-        """
-        handler = create_llm_handler()
-
-        state: dict[str, Any] = {}
-        params = {
-            "model": {"provider": "openai", "name": "gpt-4"},
-        }
-
-        with pytest.raises(LLMHandlerConfigError, match="'prompt' must be a dict"):
-            handler(state, params)
-
-    @pytest.mark.skip(reason="Issue #11: Conflict between fixture and exception handling")
-    def test_handler_missing_model_raises_error(self, mock_litellm_import: None) -> None:
-        """Confirms that an error is raised when the model parameter is missing."""
-        handler = create_llm_handler()
-
-        state: dict[str, Any] = {}
-        params = {
-            "prompt": {"system": "Test", "user": "Test"},
-        }
-
-        with pytest.raises(LLMHandlerConfigError, match="'model' must be a dict"):
-            handler(state, params)
-
-    @pytest.mark.skip(reason="Issue #11: Conflict between fixture and exception handling")
-    def test_handler_missing_model_provider_raises_error(self, mock_litellm_import: None) -> None:
-        """Confirms that an error is raised when model.provider is missing."""
-        handler = create_llm_handler()
-
-        state: dict[str, Any] = {}
-        params = {
-            "prompt": {"system": "Test", "user": "Test"},
-            "model": {"name": "gpt-4"},
-        }
-
-        with pytest.raises(
-            LLMHandlerConfigError, match="'model' must have 'provider' and 'name' keys"
-        ):
-            handler(state, params)
-
     def test_handler_retry_on_failure(self, mock_litellm_import: None) -> None:
         """Confirms that retry is executed on failure."""
         handler = create_llm_handler(retry=3, timeout=10)
@@ -171,25 +120,6 @@ class TestLLMHandler:
 
                 assert result == {"output": "Success"}
                 assert mock_litellm.completion.call_count == 3
-
-    @pytest.mark.skip(reason="Issue #11: Conflict between fixture and exception handling")
-    def test_handler_fails_after_max_retry(self, mock_litellm_import: None) -> None:
-        """Confirms that an error is raised when the maximum retry count is reached."""
-        handler = create_llm_handler(retry=2, timeout=10)
-
-        with patch("yagra.handlers.llm_handler.litellm") as mock_litellm:
-            mock_litellm.completion.side_effect = Exception("Persistent error")
-
-            with patch("yagra.handlers.llm_handler.time.sleep"):
-                state = {"query": "test"}
-                params = {
-                    "prompt": {"system": "Test", "user": "{query}"},
-                    "model": {"provider": "openai", "name": "gpt-4"},
-                    "output_key": "output",
-                }
-
-                with pytest.raises(LLMHandlerCallError, match="LLM call failed after 2 attempts"):
-                    handler(state, params)
 
     def test_handler_with_model_kwargs(self, mock_litellm_import: None) -> None:
         """Confirms that model.kwargs are correctly passed to litellm."""
@@ -238,46 +168,6 @@ class TestLLMHandler:
 
             assert "output" in result
             assert result["output"] == "Default output"
-
-    @pytest.mark.skip(reason="Issue #11: Conflict between fixture and exception handling")
-    def test_handler_empty_response_raises_error(self, mock_litellm_import: None) -> None:
-        """Confirms that an error is raised when the LLM returns an empty response."""
-        handler = create_llm_handler(retry=1, timeout=10)
-
-        mock_response = MagicMock()
-        mock_response.choices = []
-
-        with patch("yagra.handlers.llm_handler.litellm") as mock_litellm:
-            mock_litellm.completion.return_value = mock_response
-
-            state = {"query": "test"}
-            params = {
-                "prompt": {"system": "Test", "user": "{query}"},
-                "model": {"provider": "openai", "name": "gpt-4"},
-            }
-
-            with pytest.raises(LLMHandlerCallError, match="LLM returned empty response"):
-                handler(state, params)
-
-    @pytest.mark.skip(reason="Issue #11: Conflict between fixture and exception handling")
-    def test_handler_none_content_raises_error(self, mock_litellm_import: None) -> None:
-        """Confirms that an error is raised when the LLM returns None content."""
-        handler = create_llm_handler(retry=1, timeout=10)
-
-        mock_response = MagicMock()
-        mock_response.choices = [MagicMock(message=MagicMock(content=None))]
-
-        with patch("yagra.handlers.llm_handler.litellm") as mock_litellm:
-            mock_litellm.completion.return_value = mock_response
-
-            state = {"query": "test"}
-            params = {
-                "prompt": {"system": "Test", "user": "{query}"},
-                "model": {"provider": "openai", "name": "gpt-4"},
-            }
-
-            with pytest.raises(LLMHandlerCallError, match="LLM returned None content"):
-                handler(state, params)
 
 
 class TestLLMHandlerSystemPromptInterpolation:
