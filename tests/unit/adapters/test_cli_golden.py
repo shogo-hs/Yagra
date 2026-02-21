@@ -349,6 +349,215 @@ class TestGoldenSaveCommand:
         assert exc.value.code == 0
         assert (tmp_path / ".yagra" / "golden" / "test-wf" / "default-dir-test.json").exists()
 
+    def test_save_with_single_strategy_override(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        """Should save a golden case with one explicit node strategy override."""
+        trace_path = _write_trace(tmp_path / "trace.json")
+        golden_dir = tmp_path / "golden"
+
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "yagra",
+                "golden",
+                "save",
+                "--trace",
+                str(trace_path),
+                "--name",
+                "single-strategy",
+                "--golden-dir",
+                str(golden_dir),
+                "--strategy",
+                "node_b:skip",
+            ],
+        )
+
+        with pytest.raises(SystemExit) as exc:
+            main()
+
+        assert exc.value.code == 0
+
+        golden_file = golden_dir / "test-wf" / "single-strategy.json"
+        payload = json.loads(golden_file.read_text(encoding="utf-8"))
+        assert payload["node_snapshots"]["node_b"]["comparison_strategy"] == "skip"
+        assert payload["node_snapshots"]["node_a"]["comparison_strategy"] == "auto"
+
+    def test_save_with_multiple_strategy_overrides(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        """Should save a golden case with multiple per-node strategy overrides."""
+        trace_path = _write_trace(tmp_path / "trace.json")
+        golden_dir = tmp_path / "golden"
+
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "yagra",
+                "golden",
+                "save",
+                "--trace",
+                str(trace_path),
+                "--name",
+                "multi-strategy",
+                "--golden-dir",
+                str(golden_dir),
+                "--strategy",
+                "node_a:structural",
+                "--strategy",
+                "node_b:exact",
+            ],
+        )
+
+        with pytest.raises(SystemExit) as exc:
+            main()
+
+        assert exc.value.code == 0
+
+        golden_file = golden_dir / "test-wf" / "multi-strategy.json"
+        payload = json.loads(golden_file.read_text(encoding="utf-8"))
+        assert payload["node_snapshots"]["node_a"]["comparison_strategy"] == "structural"
+        assert payload["node_snapshots"]["node_b"]["comparison_strategy"] == "exact"
+
+    def test_save_strategy_invalid_format(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Should return exit code 1 when --strategy format is invalid."""
+        trace_path = _write_trace(tmp_path / "trace.json")
+
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "yagra",
+                "golden",
+                "save",
+                "--trace",
+                str(trace_path),
+                "--name",
+                "invalid-format",
+                "--strategy",
+                "invalid_format",
+            ],
+        )
+
+        with pytest.raises(SystemExit) as exc:
+            main()
+
+        assert exc.value.code == 1
+        captured = capsys.readouterr()
+        assert "Invalid --strategy format" in captured.err
+        assert "node_id:strategy" in captured.err
+
+    def test_save_strategy_unknown_strategy(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Should return exit code 1 when --strategy uses an unknown value."""
+        trace_path = _write_trace(tmp_path / "trace.json")
+
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "yagra",
+                "golden",
+                "save",
+                "--trace",
+                str(trace_path),
+                "--name",
+                "unknown-strategy",
+                "--strategy",
+                "node_a:unknown",
+            ],
+        )
+
+        with pytest.raises(SystemExit) as exc:
+            main()
+
+        assert exc.value.code == 1
+        captured = capsys.readouterr()
+        assert "Unknown strategy 'unknown'" in captured.err
+        assert "Valid strategies:" in captured.err
+
+    def test_save_strategy_empty_node_id(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Should return exit code 1 when --strategy node_id is empty."""
+        trace_path = _write_trace(tmp_path / "trace.json")
+
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "yagra",
+                "golden",
+                "save",
+                "--trace",
+                str(trace_path),
+                "--name",
+                "empty-node-id",
+                "--strategy",
+                ":exact",
+            ],
+        )
+
+        with pytest.raises(SystemExit) as exc:
+            main()
+
+        assert exc.value.code == 1
+        captured = capsys.readouterr()
+        assert "Invalid --strategy format" in captured.err
+        assert "node_id must not be empty" in captured.err
+
+    def test_save_strategy_duplicate_node_id(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Should return exit code 1 when duplicate --strategy node_id is provided."""
+        trace_path = _write_trace(tmp_path / "trace.json")
+
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "yagra",
+                "golden",
+                "save",
+                "--trace",
+                str(trace_path),
+                "--name",
+                "duplicate-node-id",
+                "--strategy",
+                "node_a:exact",
+                "--strategy",
+                "node_a:skip",
+            ],
+        )
+
+        with pytest.raises(SystemExit) as exc:
+            main()
+
+        assert exc.value.code == 1
+        captured = capsys.readouterr()
+        assert "Duplicate --strategy for node 'node_a'" in captured.err
+
 
 # ---------------------------------------------------------------------------
 # golden test

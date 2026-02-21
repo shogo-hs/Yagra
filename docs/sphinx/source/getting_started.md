@@ -45,7 +45,7 @@ Then start the server with:
 yagra mcp
 ```
 
-See [`yagra mcp`](cli_reference.md#yagra-mcp) in the CLI reference for integration examples.
+See the [`yagra mcp` section in the CLI reference](cli_reference.md) for integration examples.
 
 ### Verify Installation
 
@@ -53,7 +53,7 @@ See [`yagra mcp`](cli_reference.md#yagra-mcp) in the CLI reference for integrati
 yagra --help
 ```
 
-You should see available commands: `init`, `schema`, `validate`, `visualize`, `studio`, `handlers`, `explain`, `mcp`.
+You should see available commands: `init`, `schema`, `validate`, `visualize`, `golden`, `studio`, `handlers`, `explain`, `mcp`.
 
 ## Your First Workflow
 

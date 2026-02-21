@@ -8,6 +8,10 @@ For the canonical changelog (Japanese), see [CHANGELOG.md](https://github.com/sh
 
 ## [Unreleased]
 
+### Added
+- ✨ **Golden CLI: added repeatable `--strategy` to `yagra golden save`**: You can now persist per-node comparison strategy overrides at save time with `--strategy node_id:strategy` (`exact`, `structural`, `skip`, `auto`).
+  - Invalid format, unknown strategy names, and duplicate `node_id` entries are rejected with clear CLI errors
+
 ### Fixed
 - 🐛 **Golden Test: resolved same-handler-name collisions with per-node mock dispatch**: When multiple LLM nodes shared the same handler name (for example, two nodes using `handler: "llm"`), replay could return the wrong mock response. Golden replay now resolves handlers per node via `resolve_for_node(name, node_id)`.
   - `build_state_graph()` now resolves handlers with `registry.resolve_for_node(node.handler, node.id)`

@@ -13,6 +13,7 @@ yagra <command> [options]
 - `schema`: Export JSON Schema
 - `validate`: Validate workflow YAML
 - `visualize`: Generate visualization HTML
+- `golden`: Manage golden regression test cases
 - `studio`: Launch visual editor WebUI
 - `handlers`: Display params schema for built-in handlers
 - `explain`: Statically analyze workflow YAML
@@ -263,6 +264,93 @@ yagra visualize --workflow workflows/loop.yaml --title "Loop Workflow" --output 
 - Nodes: Boxes
 - Edges: Arrows
 - Conditional edges: Labeled arrows
+
+## `yagra golden`
+
+Manage golden cases for workflow regression testing.
+
+### Usage
+
+```bash
+yagra golden save --trace <trace.json> --name <case-name> [--description <text>] \
+  [--strategy <node_id:strategy>]... [--golden-dir <dir>]
+yagra golden test --workflow <workflow.yaml> [--name <case-name>] [--golden-dir <dir>] \
+  [--bundle-root <dir>] [--format <text|json>]
+yagra golden list [--workflow <workflow-name>] [--golden-dir <dir>] [--format <text|json>]
+```
+
+### `yagra golden save`
+
+Create a golden case from a trace JSON file.
+
+#### Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--trace` | Path to trace JSON file | Required |
+| `--name` | Golden case name (kebab-case) | Required |
+| `--description` | Human-readable case description | `""` |
+| `--strategy` | Per-node comparison override. Repeatable. Format: `node_id:strategy` (`exact`, `structural`, `skip`, `auto`) | None |
+| `--golden-dir` | Golden case base directory | `.yagra/golden` |
+
+#### Examples
+
+```bash
+# Basic save
+yagra golden save --trace .yagra/traces/translate/run.json --name happy-path
+
+# Save with per-node strategy overrides
+yagra golden save \
+  --trace .yagra/traces/translate/run.json \
+  --name strict-format-check \
+  --strategy translate:structural \
+  --strategy format:exact
+```
+
+### `yagra golden test`
+
+Run saved golden cases against a workflow YAML.
+
+#### Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--workflow` | Path to workflow YAML file | Required |
+| `--name` | Specific case name (runs all cases if omitted) | None |
+| `--golden-dir` | Golden case base directory | `.yagra/golden` |
+| `--bundle-root` | Base directory for split-reference resolution | Workflow parent |
+| `--format` | Output format (`text` or `json`) | `text` |
+
+#### Examples
+
+```bash
+# Run all cases for a workflow
+yagra golden test --workflow workflows/translate.yaml
+
+# Run one case
+yagra golden test --workflow workflows/translate.yaml --name happy-path
+
+# Machine-readable output
+yagra golden test --workflow workflows/translate.yaml --format json
+```
+
+### `yagra golden list`
+
+List saved golden cases.
+
+#### Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--workflow` | Filter by workflow name | None |
+| `--golden-dir` | Golden case base directory | `.yagra/golden` |
+| `--format` | Output format (`text` or `json`) | `text` |
+
+#### Example
+
+```bash
+yagra golden list
+```
 
 ## `yagra studio`
 
@@ -568,6 +656,7 @@ yagra explain --workflow workflows/support.yaml | jq '.execution_paths'
 | `required_handlers` | Distinct handler names referenced by the workflow |
 | `variable_flow` | Per-node mapping of input and output variable names |
 
+(yagra-mcp)=
 ## `yagra mcp`
 
 Start a Model Context Protocol (MCP) server in stdio mode, allowing AI agents and editors to interact with Yagra programmatically.

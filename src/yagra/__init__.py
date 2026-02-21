@@ -34,6 +34,7 @@ from yagra.application.use_cases import (
     validate_workflow_payload_for_ui,
 )
 from yagra.domain.entities import GraphSpec
+from yagra.domain.entities.comparison import ComparisonStrategy
 from yagra.ports.outbound import NodeHandler, NodeRegistryPort
 
 
@@ -572,6 +573,18 @@ def _build_cli_parser() -> argparse.ArgumentParser:
         help="Human-readable description",
     )
     golden_save.add_argument(
+        "--strategy",
+        action="append",
+        default=None,
+        metavar="NODE_ID:STRATEGY",
+        help=(
+            "Per-node comparison strategy override (repeatable). "
+            "Format: node_id:strategy. "
+            "Valid strategies: exact, structural, skip, auto. "
+            "Example: --strategy node_a:structural --strategy node_b:skip"
+        ),
+    )
+    golden_save.add_argument(
         "--golden-dir",
         default=".yagra/golden",
         help="Golden case directory (default: .yagra/golden)",
@@ -1010,13 +1023,64 @@ def _run_golden_command(args: argparse.Namespace) -> int:
     return 2
 
 
+def _parse_strategy_overrides(
+    raw: list[str] | None,
+) -> dict[str, ComparisonStrategy] | None:
+    """Parses ``--strategy`` CLI arguments into comparison overrides.
+
+    Args:
+        raw: List of ``node_id:strategy`` entries from argparse, or None.
+
+    Returns:
+        Mapping of node_id to ComparisonStrategy, or None if not specified.
+
+    Raises:
+        ValueError: If an entry format is invalid, strategy is unknown,
+            or duplicate node_id is provided.
+    """
+    if raw is None:
+        return None
+
+    valid_strategies = {strategy.value for strategy in ComparisonStrategy}
+    overrides: dict[str, ComparisonStrategy] = {}
+
+    for entry in raw:
+        if ":" not in entry:
+            msg = (
+                f"Invalid --strategy format: '{entry}'. "
+                "Expected 'node_id:strategy' (e.g. 'node_a:structural')."
+            )
+            raise ValueError(msg)
+
+        node_id, _, strategy_name = entry.partition(":")
+        if not node_id:
+            msg = f"Invalid --strategy format: '{entry}'. node_id must not be empty."
+            raise ValueError(msg)
+
+        if strategy_name not in valid_strategies:
+            valid = ", ".join(sorted(valid_strategies))
+            msg = (
+                f"Unknown strategy '{strategy_name}' for node '{node_id}'. "
+                f"Valid strategies: {valid}."
+            )
+            raise ValueError(msg)
+
+        if node_id in overrides:
+            msg = f"Duplicate --strategy for node '{node_id}'."
+            raise ValueError(msg)
+
+        overrides[node_id] = ComparisonStrategy(strategy_name)
+
+    return overrides
+
+
 def _run_golden_save_command(args: argparse.Namespace) -> int:
     """Executes the `golden save` subcommand.
 
     Loads a trace JSON file and creates a golden case from it.
 
     Args:
-        args: Parsed CLI arguments with trace, name, description, golden_dir.
+        args: Parsed CLI arguments with trace, name, description, strategy, golden_dir.
 
     Returns:
         Exit code. 0 on success, 1 on failure.
@@ -1047,10 +1111,17 @@ def _run_golden_save_command(args: argparse.Namespace) -> int:
     manager = GoldenCaseManager(store)
 
     try:
+        comparison_overrides = _parse_strategy_overrides(args.strategy)
+    except ValueError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 1
+
+    try:
         golden = manager.save_from_trace(
             trace=trace,
             case_name=args.name,
             description=args.description,
+            comparison_overrides=comparison_overrides,
         )
     except ValueError as exc:
         print(f"Error: {exc}", file=sys.stderr)
