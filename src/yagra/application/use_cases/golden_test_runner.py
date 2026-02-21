@@ -24,7 +24,6 @@ from yagra.domain.entities.golden_case import (
 from yagra.ports.outbound.golden_case_repository import GoldenCaseRepositoryPort
 from yagra.ports.outbound.node_registry import (
     NodeHandler,
-    NodeHandlerNotFoundError,
     NodeRegistryPort,
 )
 
