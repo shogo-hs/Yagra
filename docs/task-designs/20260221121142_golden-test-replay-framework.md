@@ -1,7 +1,7 @@
 # タスク設計書: ワークフロー回帰テスト・リプレイフレームワーク（Golden Test）
 
 最終更新: 2026-02-21
-- ステータス: 実装中(in-progress)
+- ステータス: 完了(done)
 - 作成者: Claude Code
 - レビュー: shogohasegawa
 - 対象コンポーネント: backend
@@ -502,28 +502,28 @@ class GoldenTestResult(BaseModel):
 
 ### M-51: `yagra golden` CLI コマンドを実装する
 
-- [ ] `src/yagra/__init__.py` に `golden` サブコマンド（save / test / list）を追加
-- [ ] `golden save`: トレースファイル → ゴールデンケース保存
-- [ ] `golden test`: ワークフロー YAML に対するゴールデンテスト実行
-- [ ] `golden list`: 保存済みケース一覧表示
-- [ ] `tests/unit/test_cli.py` にゴールデンテスト CLI のテストを追加
-- [ ] `tests/integration/test_golden_test_e2e.py` を新規作成（E2E フロー）
-- [ ] `ruff` / `mypy` / `pytest` クリア確認
+- [x] `src/yagra/__init__.py` に `golden` サブコマンド（save / test / list）を追加
+- [x] `golden save`: トレースファイル → ゴールデンケース保存
+- [x] `golden test`: ワークフロー YAML に対するゴールデンテスト実行
+- [x] `golden list`: 保存済みケース一覧表示
+- [x] `tests/unit/test_cli.py` にゴールデンテスト CLI のテストを追加
+- [x] `tests/integration/test_golden_test_e2e.py` を新規作成（E2E フロー）
+- [x] `ruff` / `mypy` / `pytest` クリア確認
 
 ### M-52: MCP ツール `run_golden_tests` と最適化サイクル統合
 
-- [ ] `src/yagra/adapters/inbound/mcp_server.py` に `run_golden_tests` ツールを追加
-- [ ] `propose_update → run_golden_tests → apply_update` サイクルの動作確認
-- [ ] MCP ツールのテスト追加
-- [ ] `ruff` / `mypy` / `pytest` クリア確認
+- [x] `src/yagra/adapters/inbound/mcp_server.py` に `run_golden_tests` ツールを追加
+- [x] `propose_update → run_golden_tests → apply_update` サイクルの動作確認
+- [x] MCP ツールのテスト追加
+- [x] `ruff` / `mypy` / `pytest` クリア確認
 
 ## 12. ドキュメント更新
 
-- [ ] `docs/product/goals.md` に G-20 を追加
-- [ ] `docs/product/milestones.md` に M-49〜M-52 を追加
-- [ ] `docs/agent-integration-guide.md` にゴールデンテスト MCP ツールの利用方法を追記
-- [ ] `README.md` にゴールデンテスト機能の概要を追記（必要に応じて）
-- [ ] `CHANGELOG.md` に変更履歴を追記
+- [x] `docs/product/goals.md` に G-20 を追加
+- [x] `docs/product/milestones.md` に M-49〜M-52 を追加
+- [x] `docs/agent-integration-guide.md` にゴールデンテスト MCP ツールの利用方法を追記
+- [x] `README.md` にゴールデンテスト機能の概要を追記（必要に応じて）
+- [x] `CHANGELOG.md` に変更履歴を追記
 
 ## 13. 承認ログ
 
