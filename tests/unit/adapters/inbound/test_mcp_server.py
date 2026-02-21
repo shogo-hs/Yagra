@@ -1225,7 +1225,7 @@ def test_tool_analyze_traces_exception(monkeypatch):
 
 
 def test_list_tools_contains_all_tools():
-    """All 12 expected tool names are returned by list_tools via create_mcp_server."""
+    """All 13 expected tool names are returned by list_tools via create_mcp_server."""
     import asyncio
 
     expected_tool_names = {
@@ -1241,6 +1241,7 @@ def test_list_tools_contains_all_tools():
         "propose_update",
         "apply_update",
         "rollback_update",
+        "run_golden_tests",
     }
 
     try:
@@ -1383,7 +1384,7 @@ def _create_with_mock_server(MockServer, mock_types, mcp_module):
 
 
 def test_create_mcp_server_list_tools_with_mock(monkeypatch):
-    """list_tools closure returns 12 Tool dicts when mcp is mocked."""
+    """list_tools closure returns 13 Tool dicts when mcp is mocked."""
     import asyncio
     import importlib
     import sys
@@ -1444,7 +1445,7 @@ def test_create_mcp_server_list_tools_with_mock(monkeypatch):
 
         with ThreadPoolExecutor(max_workers=1) as ex:
             tools = ex.submit(asyncio.run, server._list_tools_fn()).result()
-        assert len(tools) == 12
+        assert len(tools) == 13
         tool_names = {t["name"] for t in tools}
         assert "validate_workflow" in tool_names
         assert "get_template" in tool_names
@@ -1453,6 +1454,7 @@ def test_create_mcp_server_list_tools_with_mock(monkeypatch):
         assert "rollback_update" in tool_names
         assert "get_traces" in tool_names
         assert "analyze_traces" in tool_names
+        assert "run_golden_tests" in tool_names
     finally:
         for k, v in original.items():
             if v is None:
