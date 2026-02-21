@@ -28,8 +28,6 @@ from yagra.ports.outbound.node_registry import (
     NodeRegistryPort,
 )
 
-_LLM_HANDLERS = frozenset({"llm", "structured_llm", "streaming_llm"})
-
 
 def create_mock_llm_handler(snapshot: NodeSnapshot) -> NodeHandler:
     """Creates a mock handler that returns the golden output snapshot.

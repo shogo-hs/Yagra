@@ -13,6 +13,14 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from yagra.domain.entities.comparison import ComparisonStrategy
 
+LLM_HANDLER_NAMES: frozenset[str] = frozenset({"llm", "structured_llm", "streaming_llm"})
+"""Handler names recognised as LLM handlers for golden test comparison.
+
+Used to decide whether a node's output should be mocked during replay
+(LLM handlers return their golden snapshot) and whether comparison
+defaults to STRUCTURAL (LLM) or EXACT (non-LLM) under the AUTO strategy.
+"""
+
 
 class NodeSnapshot(BaseModel):
     """Captured input/output for a single node execution in a golden case.

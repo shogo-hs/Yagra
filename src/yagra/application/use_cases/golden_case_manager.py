@@ -11,11 +11,10 @@ import re
 from typing import Any
 
 from yagra.domain.entities.comparison import ComparisonStrategy
-from yagra.domain.entities.golden_case import GoldenCase, NodeSnapshot
+from yagra.domain.entities.golden_case import LLM_HANDLER_NAMES, GoldenCase, NodeSnapshot
 from yagra.domain.entities.trace import NodeStatus, WorkflowRunTrace
 from yagra.ports.outbound.golden_case_repository import GoldenCaseRepositoryPort
 
-_LLM_HANDLERS = frozenset({"llm", "structured_llm", "streaming_llm"})
 _KEBAB_CASE_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 
 
@@ -85,7 +84,7 @@ class GoldenCaseManager:
                 continue
             execution_path.append(node_trace.node_id)
 
-            is_llm = node_trace.handler in _LLM_HANDLERS
+            is_llm = node_trace.handler in LLM_HANDLER_NAMES
             strategy = overrides.get(node_trace.node_id, ComparisonStrategy.AUTO)
 
             node_snapshots[node_trace.node_id] = NodeSnapshot(

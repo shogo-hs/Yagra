@@ -166,6 +166,7 @@ class TestGoldenTestE2EPassingCase:
         # Capture trace from the collector
         from datetime import UTC, datetime
 
+        assert yagra._trace_collector is not None  # noqa: SLF001
         trace = yagra._trace_collector.build_trace(  # noqa: SLF001
             started_at=datetime.now(tz=UTC),
             ended_at=datetime.now(tz=UTC),
@@ -219,6 +220,7 @@ class TestGoldenTestE2EPassingCase:
 
             from datetime import UTC, datetime
 
+            assert yagra._trace_collector is not None  # noqa: SLF001
             trace = yagra._trace_collector.build_trace(  # noqa: SLF001
                 started_at=datetime.now(tz=UTC),
                 ended_at=datetime.now(tz=UTC),
@@ -259,6 +261,7 @@ class TestGoldenTestE2EFailingCase:
 
         from datetime import UTC, datetime
 
+        assert yagra._trace_collector is not None  # noqa: SLF001
         trace = yagra._trace_collector.build_trace(  # noqa: SLF001
             started_at=datetime.now(tz=UTC),
             ended_at=datetime.now(tz=UTC),
@@ -310,6 +313,7 @@ class TestGoldenTestE2EFailingCase:
 
         from datetime import UTC, datetime
 
+        assert yagra._trace_collector is not None  # noqa: SLF001
         trace = yagra._trace_collector.build_trace(  # noqa: SLF001
             started_at=datetime.now(tz=UTC),
             ended_at=datetime.now(tz=UTC),
@@ -362,6 +366,7 @@ class TestGoldenTestE2EResultFormat:
 
         from datetime import UTC, datetime
 
+        assert yagra._trace_collector is not None  # noqa: SLF001
         trace = yagra._trace_collector.build_trace(  # noqa: SLF001
             started_at=datetime.now(tz=UTC),
             ended_at=datetime.now(tz=UTC),

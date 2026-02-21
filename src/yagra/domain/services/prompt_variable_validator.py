@@ -5,8 +5,6 @@ from __future__ import annotations
 import re
 from typing import Any
 
-_LLM_HANDLERS = frozenset({"llm", "streaming_llm", "structured_llm"})
-
 
 def _extract_required_vars(params: dict[str, Any]) -> list[str]:
     """Returns a list of variable names required by the prompt from the node params.
