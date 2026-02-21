@@ -29,8 +29,24 @@ jobs:
       - name: Sync dependencies
         run: uv sync --locked --dev
 
+      - name: Get Playwright version
+        id: pw-version
+        run: echo "version=$(uv run python -c 'import playwright; print(playwright.__version__)')" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browsers
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw-version.outputs.version }}
+
       - name: Install Playwright browsers
+        if: steps.pw-cache.outputs.cache-hit != 'true'
         run: uv run playwright install chromium --with-deps
+
+      - name: Install Playwright system deps (cache hit)
+        if: steps.pw-cache.outputs.cache-hit == 'true'
+        run: uv run playwright install-deps chromium
 
       - name: Ruff format check
         run: uv run ruff format --check .
