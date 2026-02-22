@@ -8,23 +8,30 @@ For the canonical changelog (Japanese), see [CHANGELOG.md](https://github.com/sh
 
 ## [Unreleased]
 
-### Added
-- ✨ **Golden CLI: added repeatable `--strategy` to `yagra golden save`**: You can now persist per-node comparison strategy overrides at save time with `--strategy node_id:strategy` (`exact`, `structural`, `skip`, `auto`).
-  - Invalid format, unknown strategy names, and duplicate `node_id` entries are rejected with clear CLI errors
-- ✨ **Added `Yagra.get_last_trace()` public API (Issue #28)**: The most recent `invoke()` trace is now available as `WorkflowRunTrace | None` when `observability=True`.
-  - In-memory trace capture now runs for every `invoke()` with observability enabled, including `trace=False`
-  - `trace=True` now controls JSON persistence only (`.yagra/traces/` or `trace_dir`)
-  - Added `TraceCollector.reset()` and removed private `yagra._trace_collector` access from golden runner/integration tests
+## [1.1.0] - 2026-02-22
 
+### Added
+- ✨ **Phase 5: Workflow regression testing — Golden Test (G-20, M-49–M-52)**: Added golden-case-based regression verification after workflow YAML changes. LLM nodes are replaced with mock responses, enabling deterministic, API-free validation of workflow structure correctness
+  - **M-49 Domain model and persistence**: Defined `GoldenCase` / `NodeSnapshot` / `ComparisonStrategy` domain entities. `LocalGoldenCaseStore` persists cases as JSON under `.yagra/golden/`. `GoldenCaseManager` provides golden case generation from traces, save, list, and delete operations
+  - **M-50 Test execution engine and comparison strategies**: `GoldenTestRunner` executes replay tests based on golden cases. LLM handlers are replaced with mock responses to verify execution path and node I/O regression. Supports comparison strategies: `exact`, `structural`, `skip`, `auto`
+  - **M-51 `yagra golden` CLI commands**: Added `yagra golden save` (save golden case from trace), `yagra golden test` (run regression tests), `yagra golden list` (list cases)
+    - Added repeatable `--strategy node_id:strategy` to `yagra golden save`. Per-node comparison strategy overrides (`exact` / `structural` / `skip` / `auto`) can now be persisted at save time. Invalid format, unknown strategy names, and duplicate `node_id` entries are rejected with clear CLI errors
+  - **M-52 MCP tool `run_golden_tests`**: Added `run_golden_tests` to the MCP server. The `propose_update → run_golden_tests → apply_update` optimization cycle is now fully available via MCP
+- ✨ **Added `Yagra.get_last_trace()` public API (Issue #28)**: The most recent `invoke()` trace is now available as `WorkflowRunTrace | None` when `observability=True`. In-memory trace capture runs for every `invoke()` even with `trace=False`; `trace=True` now controls JSON persistence only
+  - Added `TraceCollector.reset()` and removed private `yagra._trace_collector` access from golden runner/integration tests, unified to `get_last_trace()`
 - ✨ **M-48: Optimization cycle documentation and samples (G-19, G19-I02, G19-I03)**: Added a tutorial that enables users to complete the full Build → Run → Analyze → Update cycle within 30 minutes
   - New `docs/sphinx/source/user_guide/optimization_cycle.md` (G19-I02): covers Overview, Prerequisites, step-by-step guide (Build / Run & Observe / Analyze / Propose & Review / Regression Test / Apply or Rollback), and a worked example improving a translation workflow end-to-end
   - Added "Autonomous Optimization Cycle" section to `docs/agent-integration-guide.md` (G19-I03): includes system prompt template, MCP tool call sequence, handling for missing traces / golden cases, and a full E2E example from the agent's perspective
 
 ### Fixed
-- 🐛 **Golden Test: resolved same-handler-name collisions with per-node mock dispatch**: When multiple LLM nodes shared the same handler name (for example, two nodes using `handler: "llm"`), replay could return the wrong mock response. Golden replay now resolves handlers per node via `resolve_for_node(name, node_id)`.
+- 🐛 **Golden Test: resolved same-handler-name collisions with per-node mock dispatch**: When multiple LLM nodes shared the same handler name (e.g., two nodes with `handler: "llm"`), replay could return the wrong mock response. Golden replay now resolves handlers per node via `resolve_for_node(name, node_id)`
   - `build_state_graph()` now resolves handlers with `registry.resolve_for_node(node.handler, node.id)`
   - Golden replay registry stores LLM mocks as `node_id -> handler`, so each node returns its own recorded `output_snapshot`
   - Added a regression test for same-handler-name multi-node replay in `tests/unit/application/test_golden_test_runner.py`
+
+### v1.1.0 Goals Achieved
+- ✅ G-20: Golden-case-based regression verification available after workflow YAML changes
+- ✅ G-19 (M-48): Optimization cycle documentation and samples ready; users can complete the first cycle within 30 minutes
 
 ## [1.0.0] - 2026-02-21
 

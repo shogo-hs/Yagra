@@ -4,6 +4,8 @@
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-02-22
+
 ### Added
 - ✨ **Phase 5: ワークフロー回帰テスト — Golden Test（G-20, M-49–M-52）**: ワークフロー YAML 変更後にゴールデンケースベースの回帰検証ができる機能を実装。LLM ノードをモック応答で差し替えることで、API 呼び出しなし・決定論的にワークフロー構造の正当性を検証する
   - **M-49 ドメインモデルと保存機構**: `GoldenCase` / `NodeSnapshot` / `ComparisonStrategy` のドメインエンティティを定義。`LocalGoldenCaseStore` で `.yagra/golden/` に JSON 永続化。`GoldenCaseManager` でトレースからのゴールデンケース生成・保存・一覧・削除を提供
@@ -14,6 +16,9 @@
 - ✨ **`Yagra.get_last_trace()` public API を追加（Issue #28）**: `observability=True` で実行した直近の `invoke()` トレースを `WorkflowRunTrace | None` として取得可能に。`trace=False` でも in-memory トレースは常に利用でき、`trace=True` は JSON ファイル永続化のみを制御
   - `TraceCollector.reset()` を追加し、`invoke()` ごとにノードトレースをリセット
   - `GoldenTestRunner` と統合テストから `yagra._trace_collector` の private 直接参照（`# noqa: SLF001`）を除去して `get_last_trace()` に統一
+- ✨ **M-48 最適化サイクルのドキュメント・サンプルを整備（G-19, G19-I02, G19-I03）**: Build → Run → Analyze → Update の全工程を 30 分以内に完走できるチュートリアルドキュメントを追加
+  - `docs/sphinx/source/user_guide/optimization_cycle.md` を新規作成（G19-I02）: Overview・Prerequisites・各ステップ（Build / Run & Observe / Analyze / Propose & Review / Regression Test / Apply or Rollback）・翻訳ワークフロー改善の worked example を収録
+  - `docs/agent-integration-guide.md` に「最適化サイクルの自律実行」セクションを追記（G19-I03）: エージェント向けシステムプロンプト例・MCP ツール呼び出し順序・トレース未蓄積時/ゴールデンケース未作成時の対応・完全な E2E 実行例を提供
 
 ### Fixed
 - 🐛 **Golden Test: 同一ハンドラー名競合を修正（ノード単位モック解決）**: `handler: "llm"` など同じハンドラー名を使う複数ノードがある場合、従来はハンドラー名単位のモック解決により応答が競合することがあった。`resolve_for_node(name, node_id)` を導入し、Golden Test リプレイ時は `node_id` 単位でモックをディスパッチするよう修正
@@ -21,11 +26,7 @@
   - Golden Test レジストリは LLM モックを `node_id -> handler` として保持し、同名ハンドラーでもノードごとの `output_snapshot` を正しく返却
   - `tests/unit/application/test_golden_test_runner.py` に同一ハンドラー名ノードの回帰テストを追加
 
-- ✨ **M-48 最適化サイクルのドキュメント・サンプルを整備（G-19, G19-I02, G19-I03）**: Build → Run → Analyze → Update の全工程を 30 分以内に完走できるチュートリアルドキュメントを追加
-  - `docs/sphinx/source/user_guide/optimization_cycle.md` を新規作成（G19-I02）: Overview・Prerequisites・各ステップ（Build / Run & Observe / Analyze / Propose & Review / Regression Test / Apply or Rollback）・翻訳ワークフロー改善の worked example を収録
-  - `docs/agent-integration-guide.md` に「最適化サイクルの自律実行」セクションを追記（G19-I03）: エージェント向けシステムプロンプト例・MCP ツール呼び出し順序・トレース未蓄積時/ゴールデンケース未作成時の対応・完全な E2E 実行例を提供
-
-### v1.1 達成ゴール
+### v1.1.0 達成ゴール
 - ✅ G-20: ワークフロー変更後にゴールデンケースベースの回帰検証ができる
 - ✅ G-19（M-48）: 最適化サイクルのドキュメントとサンプルが整備され、ユーザーが 30 分以内に初回サイクルを完了できる
 
