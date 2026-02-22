@@ -223,8 +223,14 @@ yagra init --template branch --output ./my_workflow/
 | テンプレート名 | 説明 |
 |---|---|
 | `branch` | 条件分岐パターン |
+| `chat` | MessagesState と add_messages reducer を使ったシングルノードチャット |
 | `loop` | Planner → Evaluator ループパターン |
+| `parallel` | Send API を使った Fan-out/Fan-in マップリデュースパターン |
 | `rag` | Retrieve → Rerank → Generate の RAG パターン |
+| `subgraph` | 複数ワークフローを組み合わせるネストサブグラフパターン |
+| `tool-use` | LLM が外部ツールを呼び出すかどうかを判断して実行するパターン |
+| `multi-agent` | オーケストレーター・リサーチャー・ライターが協調するマルチエージェントパターン |
+| `human-review` | `interrupt_before` によるヒューマン・イン・ザ・ループパターン |
 
 ## MCP サーバーを使った統合
 

@@ -49,6 +49,48 @@ pip install yagra
 pip install 'yagra[llm]'
 ```
 
+### 🤖 Using with Claude Code (Recommended)
+
+This repository includes a `.mcp.json` configuration file, so Claude Code automatically recognizes the Yagra MCP server when you open the project. No additional setup is required beyond installing the MCP extra.
+
+```bash
+# Install with MCP support
+pip install "yagra[mcp]"
+# or
+uv add "yagra[mcp]"
+```
+
+Once installed, start a conversation with Claude Code in this project and try:
+
+- *"Create a customer support FAQ routing workflow"*
+- *"Analyze the traces and suggest improvements to my workflow"*
+- *"Generate a RAG workflow for document Q&A"*
+
+For a complete walkthrough, see the **[Agent Integration Guide](docs/agent-integration-guide.md)**.
+
+---
+
+### 🔄 Optimization Cycle
+
+Yagra is designed for an iterative improvement loop driven by AI agents:
+
+```
+┌─────────┐    ┌──────────────┐    ┌──────────────────┐    ┌────────────────┐
+│  Build  │───▶│ Run & Observe│───▶│ Analyze & Propose│───▶│ Approve & Apply│
+└─────────┘    └──────────────┘    └──────────────────┘    └───────┬────────┘
+     ▲                                                              │
+     └──────────────────────────────────────────────────────────────┘
+```
+
+| Phase | Description |
+|---|---|
+| **Build** | Start from a template with `yagra init`, or ask Claude to generate a workflow YAML from a description. |
+| **Run & Observe** | Execute your workflow with `observability=True` to collect execution traces automatically. |
+| **Analyze & Propose** | Use the `analyze_traces` MCP tool to identify bottlenecks or failures, then `propose_update` to preview a diff before any changes are applied. |
+| **Approve & Apply** | Review the diff and confirm with `apply_update`. If something goes wrong, `rollback_update` restores the previous version instantly. |
+
+---
+
 ### LLM Handler Utilities (Beta)
 
 Yagra provides handler utilities to reduce boilerplate code for LLM nodes:
@@ -439,6 +481,7 @@ Full documentation is available at **[shogo-hs.github.io/Yagra](https://shogo-hs
 - **[User Guide](https://shogo-hs.github.io/Yagra/)**: Installation, YAML syntax, CLI tools
 - **[API Reference](https://shogo-hs.github.io/Yagra/api.html)**: Python API documentation
 - **[Examples](https://shogo-hs.github.io/Yagra/examples.html)**: Practical use cases
+- **[Agent Integration Guide](docs/agent-integration-guide.md)**: Step-by-step guide for using Claude Code with Yagra MCP
 
 You can also build documentation locally:
 

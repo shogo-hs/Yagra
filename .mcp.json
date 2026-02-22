@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "yagra": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": ["yagra[mcp]", "mcp"]
+    }
+  }
+}
