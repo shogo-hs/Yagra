@@ -11,10 +11,10 @@ Yagra is a Python library that lets you define LLM agent workflows declaratively
 ### Key Benefits
 
 - **Faster iteration**: Adjust workflows by editing YAML, not Python
-- **Non-engineer friendly**: Prompt engineers and domain experts can modify workflows
+- **Collaborative**: Prompt engineers and domain experts can participate via WebUI
 - **Validation by design**: Pydantic-based schema catches errors before runtime
 - **Visual editing**: Studio WebUI for drag-and-drop workflow construction
-- **AI-ready**: JSON Schema export enables coding agents to generate workflows
+- **AI-ready**: MCP server enables coding agents to build and optimize workflows directly
 
 ## Quick Links
 
@@ -67,7 +67,7 @@ Dependency rule: Outer layers depend on inner layers, never the reverse.
 ## Use Cases
 
 - **Prototyping LLM agent flows**: Rapidly test different workflow variations
-- **Collaborative workflow development**: Enable non-engineers to adjust prompts and branching
+- **Collaborative workflow development**: Enable domain experts to participate in workflow tuning via WebUI
 - **AI-assisted workflow generation**: Let coding agents generate and validate workflows
 - **Reducing boilerplate**: Build complex LangGraph applications with less code
 

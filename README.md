@@ -16,9 +16,11 @@
 
 Yagra enables you to build [LangGraph](https://langchain-ai.github.io/langgraph/)'s `StateGraph` from YAML definitions, separating workflow logic from Python implementation. Define nodes, edges, and branching conditions in YAML files—swap configurations without touching code.
 
-Designed for **LLM agent developers**, **prompt engineers**, and **non-technical stakeholders** who want to iterate on workflows quickly without diving into Python code every time.
+Designed for **LangGraph developers** and **coding agents** (Claude Code, Cursor, Copilot, etc.) who want to build, execute, analyze, and iteratively improve LLM workflows — all from the IDE.
 
-Built with **AI-Native principles**: JSON Schema export and validation CLI enable coding agents (Claude Code, Codex, etc.) to generate and validate workflows automatically.
+Prompt engineers and domain experts can participate via the **WebUI (Workflow Studio)** for visual editing and review.
+
+Built with **AI-Native principles**: MCP server integration, JSON Schema export, and structured validation enable coding agents to generate, validate, and optimize workflows autonomously.
 
 ## ✨ Key Features
 
@@ -49,24 +51,15 @@ pip install yagra
 pip install 'yagra[llm]'
 ```
 
-### 🤖 Using with Claude Code (Recommended)
-
-This repository includes a `.mcp.json` configuration file, so Claude Code automatically recognizes the Yagra MCP server when you open the project. No additional setup is required beyond installing the MCP extra.
+### MCP Support (for AI Agents)
 
 ```bash
-# Install with MCP support
-pip install "yagra[mcp]"
-# or
 uv add "yagra[mcp]"
+# or
+pip install "yagra[mcp]"
 ```
 
-Once installed, start a conversation with Claude Code in this project and try:
-
-- *"Create a customer support FAQ routing workflow"*
-- *"Analyze the traces and suggest improvements to my workflow"*
-- *"Generate a RAG workflow for document Q&A"*
-
-For a complete walkthrough, see the **[Agent Integration Guide](docs/agent-integration-guide.md)**.
+See [Quick Start: Path 1 — Agent-Driven via MCP](#path-1-agent-driven-via-mcp-recommended) for setup and usage.
 
 ---
 
@@ -212,9 +205,28 @@ full_text = "".join(result["response"])
 
 ## 🚀 Quick Start
 
-### Option 1: From Template (Recommended)
+### Path 1: Agent-Driven via MCP (Recommended)
 
-Yagra provides ready-to-use templates for common workflow patterns.
+The fastest way to get started. If you use Claude Code, Cursor, or another MCP-compatible coding agent, Yagra works as an integrated tool — no CLI needed.
+
+1. Install with MCP support:
+
+```bash
+uv add "yagra[mcp]"
+```
+
+2. Open your project in Claude Code. The included `.mcp.json` auto-registers the Yagra MCP server.
+
+3. Start building:
+   - *"Create a customer support FAQ routing workflow"*
+   - *"Analyze the traces and suggest improvements to my workflow"*
+   - *"Generate a RAG workflow for document Q&A"*
+
+The agent uses `list_templates`, `validate_workflow`, and `explain_workflow` tools to generate valid YAML autonomously. For the full optimization cycle walkthrough, see the **[Agent Integration Guide](docs/agent-integration-guide.md)**.
+
+### Path 2: Template-Based (CLI)
+
+Use the CLI to scaffold from a template and iterate manually.
 
 ```bash
 # List available templates
@@ -238,7 +250,7 @@ Available templates:
 - **multi-agent**: Orchestrator, researcher, and writer agents collaborate in a multi-agent pattern
 - **human-review**: Human-in-the-loop pattern that pauses for review and approval via `interrupt_before`
 
-### Option 2: From Scratch
+### Path 3: From Scratch
 
 #### 1. Define State and Handler Functions
 
@@ -492,7 +504,7 @@ uv run sphinx-build -b html docs/sphinx/source docs/sphinx/_build/html
 ## 🎯 Use Cases
 
 - Prototype LLM agent flows and iterate rapidly by swapping YAML files
-- Enable non-engineers to adjust workflows (prompts, models, branching) without code changes
+- Enable prompt engineers and domain experts to participate in workflow tuning via WebUI
 - Integrate with coding agents for automated workflow generation and validation
 - Reduce boilerplate code when building LangGraph applications with complex control flow
 

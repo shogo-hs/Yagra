@@ -57,9 +57,43 @@ You should see available commands: `init`, `schema`, `validate`, `visualize`, `a
 
 ## Your First Workflow
 
-### Option 1: Quick Start with Templates
+### Recommended: Agent-Driven via MCP
 
-Yagra provides templates for common patterns. This is the fastest way to get started.
+If you use an MCP-compatible coding agent (Claude Code, Cursor, etc.), you can build your first workflow interactively — the agent calls Yagra tools directly.
+
+**Setup:**
+
+1. Install Yagra with MCP support:
+
+```bash
+uv add "yagra[mcp]"
+```
+
+2. Configure your agent to use the Yagra MCP server. For Claude Code, add to your project's `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "yagra": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": ["yagra[mcp]", "mcp"]
+    }
+  }
+}
+```
+
+3. Ask your agent to create a workflow:
+   - *"Create a branching workflow that classifies user queries and routes to FAQ or general responses"*
+   - *"Generate a RAG workflow for document Q&A"*
+
+The agent will use `list_templates`, `validate_workflow`, and `explain_workflow` tools to generate a valid YAML autonomously.
+
+For the full optimization cycle (build, run, analyze, improve), see [Optimization Cycle](user_guide/optimization_cycle.md). For a comprehensive agent integration reference, see the [Agent Integration Guide](https://github.com/shogo-hs/Yagra/blob/main/docs/agent-integration-guide.md).
+
+### Alternative: Template-Based (CLI)
+
+Yagra provides templates for common patterns. This is the fastest way to get started with manual editing.
 
 #### 1. List Available Templates
 
@@ -111,7 +145,7 @@ yagra visualize --workflow workflow.yaml --output workflow.html
 
 Open `workflow.html` in your browser to see a visual representation.
 
-### Option 2: Build from Scratch
+### Alternative: Build from Scratch
 
 If you prefer to understand each component, follow this step-by-step guide.
 
@@ -256,6 +290,7 @@ last_trace = app.get_last_trace()  # WorkflowRunTrace | None
 
 ## Next Steps
 
+- **Optimization Cycle**: [Build → Run → Analyze → Update loop with MCP tools](user_guide/optimization_cycle.md)
 - **Learn YAML Syntax**: [Workflow YAML Reference](user_guide/workflow_yaml.md)
 - **Explore CLI Tools**: [CLI Reference](cli_reference.md)
 - **Try Visual Editor**: Run `yagra studio --port 8787` to launch the WebUI
