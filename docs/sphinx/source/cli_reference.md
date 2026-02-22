@@ -656,6 +656,81 @@ yagra explain --workflow workflows/support.yaml | jq '.execution_paths'
 | `required_handlers` | Distinct handler names referenced by the workflow |
 | `variable_flow` | Per-node mapping of input and output variable names |
 
+(yagra-analyze)=
+## `yagra analyze`
+
+Aggregate and summarize execution traces stored under `.yagra/traces/`. Useful for identifying slow nodes, high error rates, or patterns across multiple runs.
+
+### Usage
+
+```bash
+yagra analyze [--trace-dir <dir>] [--workflow <name>] [--limit <n>] [--format <text|json>]
+```
+
+### Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--trace-dir` | Root trace directory | `.yagra/traces` |
+| `--workflow` | Filter by workflow name | All workflows |
+| `--limit` | Limit to N most recent traces | No limit |
+| `--format` | Output format (`text` or `json`) | `text` |
+
+### Examples
+
+**Summarize all traces**:
+
+```bash
+yagra analyze
+```
+
+**Filter by workflow name**:
+
+```bash
+yagra analyze --workflow my-workflow
+```
+
+**Show the 10 most recent traces as JSON**:
+
+```bash
+yagra analyze --workflow my-workflow --limit 10 --format json
+```
+
+**Pipe JSON output to `jq`**:
+
+```bash
+yagra analyze --format json | jq '.node_summaries[] | select(.error_rate > 0)'
+```
+
+### JSON Output Structure
+
+```json
+{
+  "workflow_name": "my-workflow",
+  "total_traces": 20,
+  "node_summaries": [
+    {
+      "node_id": "classifier",
+      "avg_latency_ms": 342,
+      "error_rate": 0.0
+    },
+    {
+      "node_id": "answer_faq",
+      "avg_latency_ms": 1820,
+      "error_rate": 0.05
+    }
+  ],
+  "suggestions": [
+    "answer_faq: high latency detected — consider prompt optimization"
+  ]
+}
+```
+
+### See Also
+
+- Use `yagra mcp` and the `analyze_traces` MCP tool for agent-driven trace analysis
+- Use `get_traces` MCP tool to inspect individual trace records
+
 (yagra-mcp)=
 ## `yagra mcp`
 

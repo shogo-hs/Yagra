@@ -157,29 +157,39 @@ To inspect individual traces, call `get_traces`:
 
 ## Step 4: Propose & Review — Generate a YAML Diff
 
-Ask an agent (or call the MCP tool directly) to propose a YAML improvement:
+The `propose_update` tool takes the **full candidate YAML** you want to apply, not a natural-language instruction. The agent is responsible for generating the improved YAML first (e.g., by editing the prompt file or modifying the workflow), then submitting it for preview.
 
 ```json
 {
   "tool": "propose_update",
   "arguments": {
     "workflow_path": "workflow.yaml",
-    "instruction": "Add a fallback instruction to answer_faq's system prompt when no relevant FAQ entry is found."
+    "candidate_yaml": "version: \"1.0\"\nstart_at: classifier\n...",
+    "reason": "Add fallback instruction to answer_faq's system prompt"
   }
 }
 ```
+
+Parameters:
+- `workflow_path` (required): path to the current workflow YAML
+- `candidate_yaml` (required): full YAML content to apply
+- `reason` (optional): human-readable explanation of the change
 
 Example response:
 
 ```json
 {
-  "session_id": "sess_abc123",
+  "workflow_path": "workflow.yaml",
+  "is_valid": true,
+  "issues": [],
   "diff": "--- a/workflow.yaml\n+++ b/workflow.yaml\n@@ -12,6 +12,8 @@\n     params:\n       prompt_ref: \"../prompts/support_prompts.yaml#faq\"\n+      fallback_message: \"I'm sorry, I don't have information on that topic. Please contact support.\"\n       model:\n         provider: openai",
-  "preview_yaml": "version: \"1.0\"\n..."
+  "reason": "Add fallback instruction to answer_faq's system prompt",
+  "current_yaml": "...",
+  "candidate_yaml": "..."
 }
 ```
 
-Review the `diff` field before applying. Keep the `session_id` — you'll need it for `apply_update` or `rollback_update`.
+Review the `diff` and `is_valid` fields before applying. If `is_valid` is `false`, fix the candidate YAML and call `propose_update` again.
 
 ## Step 5: Regression Test — Validate with Golden Cases
 
@@ -247,33 +257,57 @@ If any test fails, revise the proposal before applying.
 
 ### Apply the proposal
 
-Once golden tests pass, apply the change:
+Once golden tests pass, apply the change by passing the same `candidate_yaml` you previewed:
 
 ```json
 {
   "tool": "apply_update",
   "arguments": {
-    "session_id": "sess_abc123"
+    "workflow_path": "workflow.yaml",
+    "candidate_yaml": "version: \"1.0\"\nstart_at: classifier\n..."
   }
 }
 ```
 
-The workflow YAML is updated in place. A backup of the previous version is kept automatically.
+Parameters:
+- `workflow_path` (required): path to the workflow YAML to update
+- `candidate_yaml` (required): the new YAML content to write
+- `base_revision` (optional): expected current revision for conflict detection
+- `backup_dir` (optional): backup directory (default: `.yagra/backups`)
+
+The workflow YAML is updated in place. A backup is created automatically and a `backup_id` is returned.
+
+Example response:
+
+```json
+{
+  "success": true,
+  "workflow_path": "workflow.yaml",
+  "backup_id": "workflow_20260222T130000_a1b2c3d4",
+  "saved_revision": "sha256:abcd1234..."
+}
+```
 
 ### Rollback if needed
 
-If the applied change causes issues, roll back:
+If the applied change causes issues, roll back using the `backup_id` from the `apply_update` response:
 
 ```json
 {
   "tool": "rollback_update",
   "arguments": {
-    "session_id": "sess_abc123"
+    "workflow_path": "workflow.yaml",
+    "backup_id": "workflow_20260222T130000_a1b2c3d4"
   }
 }
 ```
 
-The workflow YAML is restored to the version before `apply_update` was called.
+Parameters:
+- `workflow_path` (required): path to the workflow YAML to restore
+- `backup_id` (required): backup ID returned by `apply_update`
+- `backup_dir` (optional): backup directory (default: `.yagra/backups`)
+
+The workflow YAML is restored to the backed-up version. The current state is saved as a safety backup before overwriting.
 
 ---
 
@@ -306,7 +340,7 @@ nodes:
         provider: openai
         name: gpt-4.1-mini
   - id: finish
-    handler: passthrough
+    handler: passthrough  # user-defined no-op handler (see handlers.py below)
 edges:
   - source: translate
     target: finish
@@ -412,17 +446,7 @@ yagra golden save \
 
 ### Propose an Update
 
-```json
-{
-  "tool": "propose_update",
-  "arguments": {
-    "workflow_path": "workflow.yaml",
-    "instruction": "Update the translate node's system prompt to handle empty input gracefully by returning an empty string without error."
-  }
-}
-```
-
-The agent updates `prompts/translate_prompts.yaml`:
+The agent first edits `prompts/translate_prompts.yaml` to improve the system prompt:
 
 ```yaml
 translate:
@@ -432,7 +456,20 @@ translate:
   user: "Translate the following text to English:\n\n{text}"
 ```
 
-Note the `session_id` from the response (e.g., `sess_xyz789`).
+Then submits the updated `workflow.yaml` (which references the prompt file) to `propose_update` for preview:
+
+```json
+{
+  "tool": "propose_update",
+  "arguments": {
+    "workflow_path": "workflow.yaml",
+    "candidate_yaml": "version: \"1.0\"\nstart_at: translate\nend_at:\n  - finish\nnodes:\n  - id: translate\n    handler: llm\n    params:\n      prompt_ref: \"prompts/translate_prompts.yaml#translate\"\n      output_key: translation\n      model:\n        provider: openai\n        name: gpt-4.1-mini\n  - id: finish\n    handler: passthrough\nedges:\n  - source: translate\n    target: finish\n",
+    "reason": "Update translate node's system prompt to handle empty input gracefully"
+  }
+}
+```
+
+Review the `diff` in the response and confirm `is_valid: true`. Note the `candidate_yaml` — you'll pass it to `apply_update` after golden tests pass.
 
 ### Run Golden Tests
 
@@ -448,11 +485,14 @@ All tests pass.
 ```json
 {
   "tool": "apply_update",
-  "arguments": {"session_id": "sess_xyz789"}
+  "arguments": {
+    "workflow_path": "workflow.yaml",
+    "candidate_yaml": "version: \"1.0\"\nstart_at: translate\n..."
+  }
 }
 ```
 
-The improved workflow is now live. Run more test cases and repeat the cycle as needed.
+The improved workflow is now live. The response includes a `backup_id` you can use with `rollback_update` if needed. Run more test cases and repeat the cycle as needed.
 
 ---
 

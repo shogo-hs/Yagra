@@ -19,6 +19,7 @@
 | `yagra validate --workflow - --format json` | stdin から YAML を検証（パイプ対応）| 一時ファイルなしで検証する |
 | `yagra explain --workflow <path> --format json` | ワークフローの実行パス・変数フローを静的解析して出力 | 生成した YAML の実行経路・依存変数を把握する |
 | `yagra visualize --workflow <path>` | ワークフローを HTML で可視化 | 生成した YAML の構造を把握する |
+| `yagra analyze [--workflow <name>] [--limit <n>]` | 実行トレースを集約してサマリを出力 | ノード別の遅延・エラー率を確認し改善点を発見する |
 
 ## ワークフロー生成→検証→修正ループ
 
@@ -347,25 +348,28 @@ yagra golden test --workflow workflows/translate.yaml --format json
    - 注目点: error_rate が高いノード, avg_latency が大きいノード, suggestions フィールド
 
 【ステップ 2: 改善提案】
-2. 分析結果をもとに `propose_update` ツールで YAML 差分を生成する
-   - 引数: workflow_path（YAML パス）, instruction（改善指示を具体的に記述）
-   - 必ず diff フィールドを確認し、変更内容を人間に説明してから次へ進む
-   - session_id を記録しておく
+2. 改善後の YAML を自ら生成し、`propose_update` ツールで差分をプレビューする
+   - 引数: workflow_path（YAML パス）, candidate_yaml（改善後の YAML 全文）, reason（変更理由、任意）
+   - `propose_update` は自然言語指示ではなく完成形の YAML を受け取る点に注意
+   - 必ず diff・is_valid フィールドを確認し、変更内容を人間に説明してから次へ進む
+   - candidate_yaml を手元に保持しておく（apply_update でそのまま使う）
 
 【ステップ 3: 回帰テスト】
 3. `run_golden_tests` ツールでゴールデンケースを実行する
    - 引数: workflow_path（同上）
-   - passed が total と一致しない場合は propose_update をやり直す
+   - passed が total と一致しない場合は candidate_yaml を修正して propose_update をやり直す
 
 【ステップ 4: 適用またはロールバック】
 4a. 全件 passed の場合: `apply_update` ツールで変更を適用する
-    - 引数: session_id（ステップ 2 で取得したもの）
-4b. テスト失敗が解消できない場合: ユーザーに報告し、`rollback_update` でセッションを破棄する
+    - 引数: workflow_path（YAML パス）, candidate_yaml（ステップ 2 で使った YAML）
+    - レスポンスの backup_id を記録しておく（ロールバック時に必要）
+4b. apply 後に問題が発覚した場合: `rollback_update` で元に戻す
+    - 引数: workflow_path, backup_id（apply_update レスポンスより）
 
 【重要な制約】
 - apply_update を実行する前に必ず run_golden_tests を実行する
-- diff の内容をユーザーに確認なしに apply しない（ユーザーに diff を提示して承認を得る）
-- rollback_update は apply_update 後に問題が発覚した場合にも使用できる
+- candidate_yaml の diff をユーザーに確認なしに apply しない（ユーザーに diff を提示して承認を得る）
+- rollback_update は apply_update 後に問題が発覚した場合に使用する（テスト失敗時は apply 前に candidate_yaml を修正する）
 ```
 
 ### MCP ツール呼び出し順序（最小フロー）
@@ -373,12 +377,14 @@ yagra golden test --workflow workflows/translate.yaml --format json
 ```
 1. analyze_traces(workflow_name, limit=20)
       ↓ 問題ノードと改善点を特定
-2. propose_update(workflow_path, instruction)
-      ↓ session_id を取得・diff をユーザーに提示
+2. [エージェントが改善後の YAML を生成]
+      ↓
+   propose_update(workflow_path, candidate_yaml, reason)
+      ↓ diff・is_valid を確認・ユーザーに提示
 3. run_golden_tests(workflow_path)
       ↓ 全件 passed を確認
-4. apply_update(session_id)
-      ↓ ワークフロー YAML を更新
+4. apply_update(workflow_path, candidate_yaml)
+      ↓ ワークフロー YAML を更新（backup_id を受け取る）
 ```
 
 テストが失敗した場合のフロー:
@@ -386,11 +392,13 @@ yagra golden test --workflow workflows/translate.yaml --format json
 ```
 3. run_golden_tests → 失敗
       ↓
-   propose_update(instruction を修正して再提案)
+   [candidate_yaml を修正]
+      ↓
+   propose_update(workflow_path, candidate_yaml_v2, reason)
       ↓
 3. run_golden_tests → 再実行
       ↓ 全件 passed を確認
-4. apply_update
+4. apply_update(workflow_path, candidate_yaml_v2)
 ```
 
 ### トレースがない場合の対応
@@ -426,23 +434,31 @@ yagra golden save \
 
 エージェントの実行手順:
 1. analyze_traces(workflow_name="translate", limit=20)
-   → answer_translate ノードで空文字列が返るケースを発見
+   → translate ノードで空文字列が返るケースを発見
 
-2. propose_update(
+2. [エージェントが改善後の YAML を生成]
+   system prompt に空入力ハンドリングの指示を追加した candidate_yaml を作成
+
+3. propose_update(
      workflow_path="workflow.yaml",
-     instruction="translate ノードのシステムプロンプトに、空入力の場合は空文字列を返すよう指示を追加する"
+     candidate_yaml="version: \"1.0\"\n...",
+     reason="translate ノードのシステムプロンプトに空入力ハンドリングを追加"
    )
-   → session_id: "sess_abc123", diff を取得
+   → is_valid: true, diff を取得
 
-3. ユーザーに diff を提示:
+4. ユーザーに diff を提示:
    「以下の変更を提案します:
     - system prompt に 'If the input text is empty, return an empty string.' を追加
     適用しますか?」
 
-4. ユーザー承認後:
+5. ユーザー承認後:
    run_golden_tests(workflow_path="workflow.yaml")
    → 1 passed, 0 failed
 
-5. apply_update(session_id="sess_abc123")
+6. apply_update(
+     workflow_path="workflow.yaml",
+     candidate_yaml="version: \"1.0\"\n..."
+   )
+   → success: true, backup_id: "workflow_20260222T130000_a1b2c3d4"
    → ワークフロー YAML が更新されました
 ```
