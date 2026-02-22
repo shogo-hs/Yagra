@@ -393,7 +393,7 @@ uv add "yagra[mcp]"
 yagra mcp
 ```
 
-Available MCP tools: `validate_workflow`, `explain_workflow`, `list_templates`, `list_handlers`, `get_traces`, `analyze_traces`, `propose_update`, `apply_update`, `rollback_update`, `run_golden_tests`
+Available MCP tools: `validate_workflow`, `validate_workflow_file`, `explain_workflow`, `explain_workflow_file`, `list_templates`, `list_handlers`, `get_template`, `get_traces`, `analyze_traces`, `propose_update`, `apply_update`, `rollback_update`, `run_golden_tests`
 
 ### `yagra visualize`
 

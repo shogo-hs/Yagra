@@ -754,12 +754,21 @@ The server communicates over stdin/stdout using the MCP protocol. No additional 
 
 ### Provided Tools
 
-| Tool | Description |
-|------|-------------|
-| `validate_workflow` | Validate a workflow YAML and return structured issues |
-| `explain_workflow` | Statically analyze a workflow and return structure report |
-| `list_templates` | List available `yagra init` templates with name, description, and use_case |
-| `list_handlers` | List built-in handlers with their params schema |
+| Tool | Required params | Description |
+|------|----------------|-------------|
+| `validate_workflow` | `yaml_content` | Validate a workflow YAML string and return structured issues. Pass `base_dir` to resolve relative `prompt_ref` paths. |
+| `validate_workflow_file` | `workflow_path` | Validate a workflow YAML file by path (more convenient than `validate_workflow` when the file is accessible). |
+| `explain_workflow` | `yaml_content` | Statically analyze a workflow YAML string and return execution paths, required handlers, and variable flow. |
+| `explain_workflow_file` | `workflow_path` | Statically analyze a workflow YAML file by path. |
+| `list_templates` | — | List available `yagra init` templates with name, description, and use_case. |
+| `list_handlers` | — | List built-in handlers and their params schemas. |
+| `get_template` | `name` | Return the file contents of a template (workflow.yaml + prompt files). Use `list_templates` first to get the name. |
+| `get_traces` | — | Retrieve raw execution trace records from `.yagra/traces/`. Optional: `workflow_name`, `limit`, `trace_dir`. |
+| `analyze_traces` | — | Aggregate execution traces and return per-node statistics (success rate, latency, token usage, cost). Optional: `workflow_name`, `limit`, `trace_dir`. |
+| `propose_update` | `workflow_path`, `candidate_yaml` | Preview a YAML change as a diff with validation result. Optional: `reason`. |
+| `apply_update` | `workflow_path`, `candidate_yaml` | Apply the candidate YAML with an automatic backup. Returns `backup_id`. Optional: `base_revision`, `backup_dir`. |
+| `rollback_update` | `workflow_path`, `backup_id` | Restore the workflow to a previous backup. Optional: `backup_dir`. |
+| `run_golden_tests` | `workflow_path` | Run golden regression tests against the workflow. Optional: `golden_dir`, `case_name`, `format`. |
 
 ### Example: Claude Desktop Integration
 
@@ -791,7 +800,7 @@ Add the following to your `claude_desktop_config.json`:
 }
 ```
 
-Once connected, the agent can call `validate_workflow`, `explain_workflow`, `list_templates`, and `list_handlers` directly as tools.
+Once connected, the agent has access to all 13 tools listed in the table above. See the [Optimization Cycle guide](user_guide/optimization_cycle.md) for end-to-end usage examples.
 
 ## Environment Variables
 
