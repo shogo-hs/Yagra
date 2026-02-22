@@ -8,7 +8,7 @@ For the canonical changelog (Japanese), see [CHANGELOG.md](https://github.com/sh
 
 ## [Unreleased]
 
-## [1.1.0] - 2026-02-22
+## [1.0.1] - 2026-02-22
 
 ### Added
 - ✨ **Phase 5: Workflow regression testing — Golden Test (G-20, M-49–M-52)**: Added golden-case-based regression verification after workflow YAML changes. LLM nodes are replaced with mock responses, enabling deterministic, API-free validation of workflow structure correctness
@@ -29,7 +29,7 @@ For the canonical changelog (Japanese), see [CHANGELOG.md](https://github.com/sh
   - Golden replay registry stores LLM mocks as `node_id -> handler`, so each node returns its own recorded `output_snapshot`
   - Added a regression test for same-handler-name multi-node replay in `tests/unit/application/test_golden_test_runner.py`
 
-### v1.1.0 Goals Achieved
+### v1.0.1 Goals Achieved
 - ✅ G-20: Golden-case-based regression verification available after workflow YAML changes
 - ✅ G-19 (M-48): Optimization cycle documentation and samples ready; users can complete the first cycle within 30 minutes
 
