@@ -33,6 +33,7 @@ user_guide/workflow_yaml
 user_guide/prompt_model
 user_guide/branching_loops
 user_guide/templates
+user_guide/optimization_cycle
 ```
 
 ```{toctree}

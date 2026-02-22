@@ -327,3 +327,122 @@ yagra golden test --workflow workflows/translate.yaml --format json
   "failed": 0
 }
 ```
+
+## 最適化サイクルの自律実行
+
+コーディングエージェント（Claude Code、Cursor、Copilot 等）が Yagra の最適化サイクル（Build → Run → Analyze → Update）を自律的に実行するためのプロンプト例と MCP ツール呼び出し手順です。
+
+### エージェント向けシステムプロンプト例
+
+以下のプロンプトをシステムプロンプトに追加することで、エージェントが最適化サイクルを自律実行できます:
+
+```
+あなたは Yagra ワークフローの最適化エキスパートです。
+
+ユーザーから最適化の依頼を受けたら、以下の手順に従って自律的にサイクルを実行してください:
+
+【ステップ 1: トレース分析】
+1. `analyze_traces` ツールでトレースを集約分析する
+   - 引数: workflow_name（ワークフロー名）, limit（直近 N 件）
+   - 注目点: error_rate が高いノード, avg_latency が大きいノード, suggestions フィールド
+
+【ステップ 2: 改善提案】
+2. 分析結果をもとに `propose_update` ツールで YAML 差分を生成する
+   - 引数: workflow_path（YAML パス）, instruction（改善指示を具体的に記述）
+   - 必ず diff フィールドを確認し、変更内容を人間に説明してから次へ進む
+   - session_id を記録しておく
+
+【ステップ 3: 回帰テスト】
+3. `run_golden_tests` ツールでゴールデンケースを実行する
+   - 引数: workflow_path（同上）
+   - passed が total と一致しない場合は propose_update をやり直す
+
+【ステップ 4: 適用またはロールバック】
+4a. 全件 passed の場合: `apply_update` ツールで変更を適用する
+    - 引数: session_id（ステップ 2 で取得したもの）
+4b. テスト失敗が解消できない場合: ユーザーに報告し、`rollback_update` でセッションを破棄する
+
+【重要な制約】
+- apply_update を実行する前に必ず run_golden_tests を実行する
+- diff の内容をユーザーに確認なしに apply しない（ユーザーに diff を提示して承認を得る）
+- rollback_update は apply_update 後に問題が発覚した場合にも使用できる
+```
+
+### MCP ツール呼び出し順序（最小フロー）
+
+```
+1. analyze_traces(workflow_name, limit=20)
+      ↓ 問題ノードと改善点を特定
+2. propose_update(workflow_path, instruction)
+      ↓ session_id を取得・diff をユーザーに提示
+3. run_golden_tests(workflow_path)
+      ↓ 全件 passed を確認
+4. apply_update(session_id)
+      ↓ ワークフロー YAML を更新
+```
+
+テストが失敗した場合のフロー:
+
+```
+3. run_golden_tests → 失敗
+      ↓
+   propose_update(instruction を修正して再提案)
+      ↓
+3. run_golden_tests → 再実行
+      ↓ 全件 passed を確認
+4. apply_update
+```
+
+### トレースがない場合の対応
+
+初回実行でトレースが蓄積されていない場合は、`get_traces` でトレースファイルが存在するか確認してください。存在しない場合はまずワークフローを実行してトレースを生成します:
+
+```python
+app = Yagra.from_workflow("workflow.yaml", registry, observability=True)
+app.invoke({"query": "テスト入力"}, trace=True)
+# → .yagra/traces/ 以下に JSON ファイルが生成される
+```
+
+### ゴールデンケースがない場合の対応
+
+`run_golden_tests` を実行する前に、少なくとも 1 件のゴールデンケースを保存してください:
+
+```bash
+# 最新のトレースファイルを確認
+ls -lt .yagra/traces/<workflow_name>/
+
+# ゴールデンケースとして保存
+yagra golden save \
+  --trace .yagra/traces/<workflow_name>/<trace_file>.json \
+  --name happy-path
+```
+
+または `yagra golden list` でケースが登録済みかどうかを確認できます。
+
+### 完全なエンドツーエンドの例（エージェント視点）
+
+```
+ユーザー: 「translate ワークフローのプロンプトを改善して」
+
+エージェントの実行手順:
+1. analyze_traces(workflow_name="translate", limit=20)
+   → answer_translate ノードで空文字列が返るケースを発見
+
+2. propose_update(
+     workflow_path="workflow.yaml",
+     instruction="translate ノードのシステムプロンプトに、空入力の場合は空文字列を返すよう指示を追加する"
+   )
+   → session_id: "sess_abc123", diff を取得
+
+3. ユーザーに diff を提示:
+   「以下の変更を提案します:
+    - system prompt に 'If the input text is empty, return an empty string.' を追加
+    適用しますか?」
+
+4. ユーザー承認後:
+   run_golden_tests(workflow_path="workflow.yaml")
+   → 1 passed, 0 failed
+
+5. apply_update(session_id="sess_abc123")
+   → ワークフロー YAML が更新されました
+```

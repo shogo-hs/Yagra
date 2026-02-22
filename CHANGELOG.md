@@ -21,8 +21,13 @@
   - Golden Test レジストリは LLM モックを `node_id -> handler` として保持し、同名ハンドラーでもノードごとの `output_snapshot` を正しく返却
   - `tests/unit/application/test_golden_test_runner.py` に同一ハンドラー名ノードの回帰テストを追加
 
+- ✨ **M-48 最適化サイクルのドキュメント・サンプルを整備（G-19, G19-I02, G19-I03）**: Build → Run → Analyze → Update の全工程を 30 分以内に完走できるチュートリアルドキュメントを追加
+  - `docs/sphinx/source/user_guide/optimization_cycle.md` を新規作成（G19-I02）: Overview・Prerequisites・各ステップ（Build / Run & Observe / Analyze / Propose & Review / Regression Test / Apply or Rollback）・翻訳ワークフロー改善の worked example を収録
+  - `docs/agent-integration-guide.md` に「最適化サイクルの自律実行」セクションを追記（G19-I03）: エージェント向けシステムプロンプト例・MCP ツール呼び出し順序・トレース未蓄積時/ゴールデンケース未作成時の対応・完全な E2E 実行例を提供
+
 ### v1.1 達成ゴール
 - ✅ G-20: ワークフロー変更後にゴールデンケースベースの回帰検証ができる
+- ✅ G-19（M-48）: 最適化サイクルのドキュメントとサンプルが整備され、ユーザーが 30 分以内に初回サイクルを完了できる
 
 ## [1.0.0] - 2026-02-21
 
