@@ -19,6 +19,7 @@
 | `yagra validate --workflow - --format json` | stdin から YAML を検証（パイプ対応）| 一時ファイルなしで検証する |
 | `yagra explain --workflow <path> --format json` | ワークフローの実行パス・変数フローを静的解析して出力 | 生成した YAML の実行経路・依存変数を把握する |
 | `yagra visualize --workflow <path>` | ワークフローを HTML で可視化 | 生成した YAML の構造を把握する |
+| `yagra analyze [--workflow <name>] [--limit <n>]` | 実行トレースを集約してサマリを出力 | ノード別の遅延・エラー率を確認し改善点を発見する |
 
 ## ワークフロー生成→検証→修正ループ
 
@@ -326,4 +327,138 @@ yagra golden test --workflow workflows/translate.yaml --format json
   "passed": 1,
   "failed": 0
 }
+```
+
+## 最適化サイクルの自律実行
+
+コーディングエージェント（Claude Code、Cursor、Copilot 等）が Yagra の最適化サイクル（Build → Run → Analyze → Update）を自律的に実行するためのプロンプト例と MCP ツール呼び出し手順です。
+
+### エージェント向けシステムプロンプト例
+
+以下のプロンプトをシステムプロンプトに追加することで、エージェントが最適化サイクルを自律実行できます:
+
+```
+あなたは Yagra ワークフローの最適化エキスパートです。
+
+ユーザーから最適化の依頼を受けたら、以下の手順に従って自律的にサイクルを実行してください:
+
+【ステップ 1: トレース分析】
+1. `analyze_traces` ツールでトレースを集約分析する
+   - 引数: workflow_name（ワークフロー名）, limit（直近 N 件）
+   - 注目点: error_rate が高いノード, avg_latency が大きいノード, suggestions フィールド
+
+【ステップ 2: 改善提案】
+2. 改善後の YAML を自ら生成し、`propose_update` ツールで差分をプレビューする
+   - 引数: workflow_path（YAML パス）, candidate_yaml（改善後の YAML 全文）, reason（変更理由、任意）
+   - `propose_update` は自然言語指示ではなく完成形の YAML を受け取る点に注意
+   - 必ず diff・is_valid フィールドを確認し、変更内容を人間に説明してから次へ進む
+   - candidate_yaml を手元に保持しておく（apply_update でそのまま使う）
+
+【ステップ 3: 回帰テスト】
+3. `run_golden_tests` ツールでゴールデンケースを実行する
+   - 引数: workflow_path（同上）
+   - passed が total と一致しない場合は candidate_yaml を修正して propose_update をやり直す
+
+【ステップ 4: 適用またはロールバック】
+4a. 全件 passed の場合: `apply_update` ツールで変更を適用する
+    - 引数: workflow_path（YAML パス）, candidate_yaml（ステップ 2 で使った YAML）
+    - レスポンスの backup_id を記録しておく（ロールバック時に必要）
+4b. apply 後に問題が発覚した場合: `rollback_update` で元に戻す
+    - 引数: workflow_path, backup_id（apply_update レスポンスより）
+
+【重要な制約】
+- apply_update を実行する前に必ず run_golden_tests を実行する
+- candidate_yaml の diff をユーザーに確認なしに apply しない（ユーザーに diff を提示して承認を得る）
+- rollback_update は apply_update 後に問題が発覚した場合に使用する（テスト失敗時は apply 前に candidate_yaml を修正する）
+```
+
+### MCP ツール呼び出し順序（最小フロー）
+
+```
+1. analyze_traces(workflow_name, limit=20)
+      ↓ 問題ノードと改善点を特定
+2. [エージェントが改善後の YAML を生成]
+      ↓
+   propose_update(workflow_path, candidate_yaml, reason)
+      ↓ diff・is_valid を確認・ユーザーに提示
+3. run_golden_tests(workflow_path)
+      ↓ 全件 passed を確認
+4. apply_update(workflow_path, candidate_yaml)
+      ↓ ワークフロー YAML を更新（backup_id を受け取る）
+```
+
+テストが失敗した場合のフロー:
+
+```
+3. run_golden_tests → 失敗
+      ↓
+   [candidate_yaml を修正]
+      ↓
+   propose_update(workflow_path, candidate_yaml_v2, reason)
+      ↓
+3. run_golden_tests → 再実行
+      ↓ 全件 passed を確認
+4. apply_update(workflow_path, candidate_yaml_v2)
+```
+
+### トレースがない場合の対応
+
+初回実行でトレースが蓄積されていない場合は、`get_traces` でトレースファイルが存在するか確認してください。存在しない場合はまずワークフローを実行してトレースを生成します:
+
+```python
+app = Yagra.from_workflow("workflow.yaml", registry, observability=True)
+app.invoke({"query": "テスト入力"}, trace=True)
+# → .yagra/traces/ 以下に JSON ファイルが生成される
+```
+
+### ゴールデンケースがない場合の対応
+
+`run_golden_tests` を実行する前に、少なくとも 1 件のゴールデンケースを保存してください:
+
+```bash
+# 最新のトレースファイルを確認
+ls -lt .yagra/traces/<workflow_name>/
+
+# ゴールデンケースとして保存
+yagra golden save \
+  --trace .yagra/traces/<workflow_name>/<trace_file>.json \
+  --name happy-path
+```
+
+または `yagra golden list` でケースが登録済みかどうかを確認できます。
+
+### 完全なエンドツーエンドの例（エージェント視点）
+
+```
+ユーザー: 「translate ワークフローのプロンプトを改善して」
+
+エージェントの実行手順:
+1. analyze_traces(workflow_name="translate", limit=20)
+   → translate ノードで空文字列が返るケースを発見
+
+2. [エージェントが改善後の YAML を生成]
+   system prompt に空入力ハンドリングの指示を追加した candidate_yaml を作成
+
+3. propose_update(
+     workflow_path="workflow.yaml",
+     candidate_yaml="version: \"1.0\"\n...",
+     reason="translate ノードのシステムプロンプトに空入力ハンドリングを追加"
+   )
+   → is_valid: true, diff を取得
+
+4. ユーザーに diff を提示:
+   「以下の変更を提案します:
+    - system prompt に 'If the input text is empty, return an empty string.' を追加
+    適用しますか?」
+
+5. ユーザー承認後:
+   run_golden_tests(workflow_path="workflow.yaml")
+   → 1 passed, 0 failed
+
+6. apply_update(
+     workflow_path="workflow.yaml",
+     candidate_yaml="version: \"1.0\"\n..."
+   )
+   → success: true, backup_id: "workflow_20260222T130000_a1b2c3d4"
+   → ワークフロー YAML が更新されました
 ```

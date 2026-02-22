@@ -53,7 +53,7 @@ See the [`yagra mcp` section in the CLI reference](cli_reference.md) for integra
 yagra --help
 ```
 
-You should see available commands: `init`, `schema`, `validate`, `visualize`, `golden`, `studio`, `handlers`, `explain`, `mcp`.
+You should see available commands: `init`, `schema`, `validate`, `visualize`, `analyze`, `golden`, `studio`, `handlers`, `explain`, `mcp`.
 
 ## Your First Workflow
 

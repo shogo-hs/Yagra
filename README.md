@@ -364,6 +364,21 @@ yagra handlers
 yagra handlers --format json
 ```
 
+### `yagra analyze`
+
+Aggregate and summarize execution traces from `.yagra/traces/`.
+
+```bash
+# Summarize all traces
+yagra analyze
+
+# Filter by workflow name, show 10 most recent traces
+yagra analyze --workflow my-workflow --limit 10
+
+# JSON output for agent consumption
+yagra analyze --format json
+```
+
 ### `yagra mcp`
 
 Launch Yagra as an [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server. Requires `yagra[mcp]` extra.

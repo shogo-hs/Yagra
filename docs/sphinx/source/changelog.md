@@ -16,6 +16,10 @@ For the canonical changelog (Japanese), see [CHANGELOG.md](https://github.com/sh
   - `trace=True` now controls JSON persistence only (`.yagra/traces/` or `trace_dir`)
   - Added `TraceCollector.reset()` and removed private `yagra._trace_collector` access from golden runner/integration tests
 
+- ✨ **M-48: Optimization cycle documentation and samples (G-19, G19-I02, G19-I03)**: Added a tutorial that enables users to complete the full Build → Run → Analyze → Update cycle within 30 minutes
+  - New `docs/sphinx/source/user_guide/optimization_cycle.md` (G19-I02): covers Overview, Prerequisites, step-by-step guide (Build / Run & Observe / Analyze / Propose & Review / Regression Test / Apply or Rollback), and a worked example improving a translation workflow end-to-end
+  - Added "Autonomous Optimization Cycle" section to `docs/agent-integration-guide.md` (G19-I03): includes system prompt template, MCP tool call sequence, handling for missing traces / golden cases, and a full E2E example from the agent's perspective
+
 ### Fixed
 - 🐛 **Golden Test: resolved same-handler-name collisions with per-node mock dispatch**: When multiple LLM nodes shared the same handler name (for example, two nodes using `handler: "llm"`), replay could return the wrong mock response. Golden replay now resolves handlers per node via `resolve_for_node(name, node_id)`.
   - `build_state_graph()` now resolves handlers with `registry.resolve_for_node(node.handler, node.id)`
