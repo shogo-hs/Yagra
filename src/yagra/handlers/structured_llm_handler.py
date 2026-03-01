@@ -195,9 +195,12 @@ def create_structured_llm_handler(
 
         litellm_model = f"{provider}/{model_name}"
 
+        # Allow YAML-level retry to suppress handler-internal retry
+        effective_retry: int = params.get("_retry_override", retry)
+
         # 5. LLM invocation (with retry)
         last_error = None
-        for attempt in range(retry):
+        for attempt in range(effective_retry):
             try:
                 response = litellm.completion(
                     model=litellm_model,
@@ -245,13 +248,13 @@ def create_structured_llm_handler(
                 raise
             except Exception as e:
                 last_error = e
-                if attempt < retry - 1:
+                if attempt < effective_retry - 1:
                     wait_time = 2**attempt
                     time.sleep(wait_time)
                     continue
                 break
 
-        msg = f"LLM call failed after {retry} attempts: {last_error}"
+        msg = f"LLM call failed after {effective_retry} attempts: {last_error}"
         raise LLMHandlerCallError(msg) from last_error
 
     return handler

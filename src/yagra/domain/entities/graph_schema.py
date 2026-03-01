@@ -2,9 +2,47 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
+
+
+class RetrySpec(BaseModel):
+    """Retry configuration for a node.
+
+    When specified on a node, the node handler is wrapped with retry logic.
+    On failure, the handler is re-invoked up to ``max_attempts`` times with
+    the configured backoff strategy.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    max_attempts: int = Field(
+        default=3,
+        ge=1,
+        le=10,
+        description=(
+            "Maximum number of attempts including the first try. "
+            "Must be between 1 and 10."
+        ),
+        examples=[3, 5],
+    )
+    backoff: Literal["exponential", "fixed"] = Field(
+        default="exponential",
+        description=(
+            "Backoff strategy between retries. "
+            "'exponential': delay = base_delay_seconds * 2^attempt. "
+            "'fixed': delay = base_delay_seconds."
+        ),
+        examples=["exponential", "fixed"],
+    )
+    base_delay_seconds: float = Field(
+        default=2.0,
+        ge=0.0,
+        le=60.0,
+        description="Base delay in seconds between retries.",
+        examples=[1.0, 2.0, 5.0],
+    )
 
 
 class NodeSpec(BaseModel):
@@ -36,6 +74,35 @@ class NodeSpec(BaseModel):
                 "model": "gpt-4o-mini",
             },
         ],
+    )
+    retry: RetrySpec | None = Field(
+        default=None,
+        description=(
+            "Retry configuration. When specified, the node handler is wrapped "
+            "with retry logic using the given backoff strategy. If omitted, "
+            "uses the handler's built-in defaults (e.g. llm handler retries 3 times)."
+        ),
+        examples=[None, {"max_attempts": 3, "backoff": "exponential", "base_delay_seconds": 2}],
+    )
+    timeout_seconds: int | None = Field(
+        default=None,
+        ge=1,
+        le=600,
+        description=(
+            "Maximum execution time in seconds for this node. "
+            "If the handler does not complete within this time, a TimeoutError is raised. "
+            "If omitted, uses the handler's built-in default."
+        ),
+        examples=[None, 30, 60, 120],
+    )
+    fallback: str | None = Field(
+        default=None,
+        description=(
+            "Node ID to route to when this node fails after all retries are exhausted. "
+            "Must reference a valid node ID in the workflow. "
+            "On failure, state['__error__'] is set with the error message."
+        ),
+        examples=[None, "fallback_handler"],
     )
 
 

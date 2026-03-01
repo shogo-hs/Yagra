@@ -130,6 +130,29 @@ def collect_graph_structure_issues(spec: GraphSpec) -> list[GraphStructureIssue]
                 )
             )
 
+    for index, node in enumerate(spec.nodes):
+        if node.fallback is not None:
+            if node.fallback == node.id:
+                issues.append(
+                    GraphStructureIssue(
+                        message=f"node '{node.id}' fallback cannot reference itself",
+                        location=("nodes", index, "fallback"),
+                    )
+                )
+            elif node.fallback not in node_id_set:
+                candidates = _fuzzy_candidates(node.fallback, node_id_set)
+                issues.append(
+                    GraphStructureIssue(
+                        message=f"node '{node.id}' fallback references an undefined node: {node.fallback}",
+                        location=("nodes", index, "fallback"),
+                        context={
+                            "actual_value": node.fallback,
+                            "available_values": sorted(node_id_set),
+                            "suggestion": candidates[0] if candidates else None,
+                        },
+                    )
+                )
+
     for index, edge in enumerate(spec.edges):
         if edge.source not in node_id_set:
             candidates = _fuzzy_candidates(edge.source, node_id_set)

@@ -185,6 +185,116 @@ def test_collect_graph_structure_issues_detects_unknown_edge_source() -> None:
     assert "ghost_node" in source_issues[0].message
 
 
+# ---------------------------------------------------------------------------
+# Fallback validation
+# ---------------------------------------------------------------------------
+
+
+def test_collect_graph_structure_issues_accepts_valid_fallback() -> None:
+    payload = deepcopy(_base_payload())
+    payload["nodes"][0]["fallback"] = "planner"
+    spec = GraphSpec.model_validate(payload)
+
+    issues = collect_graph_structure_issues(spec)
+    fallback_issues = [i for i in issues if "fallback" in i.message]
+    assert fallback_issues == []
+
+
+def test_collect_graph_structure_issues_detects_undefined_fallback() -> None:
+    payload = deepcopy(_base_payload())
+    payload["nodes"][0]["fallback"] = "nonexistent"
+    spec = GraphSpec.model_validate(payload)
+
+    issues = collect_graph_structure_issues(spec)
+    fallback_issues = [i for i in issues if "fallback" in i.message]
+    assert len(fallback_issues) == 1
+    assert fallback_issues[0].location == ("nodes", 0, "fallback")
+    assert "nonexistent" in fallback_issues[0].message
+
+
+def test_collect_graph_structure_issues_detects_self_referencing_fallback() -> None:
+    payload = deepcopy(_base_payload())
+    payload["nodes"][0]["fallback"] = "router"  # self-reference
+    spec = GraphSpec.model_validate(payload)
+
+    issues = collect_graph_structure_issues(spec)
+    fallback_issues = [i for i in issues if "fallback" in i.message]
+    assert len(fallback_issues) == 1
+    assert "cannot reference itself" in fallback_issues[0].message
+
+
+def test_collect_graph_structure_issues_fallback_fuzzy_suggestion() -> None:
+    payload = deepcopy(_base_payload())
+    payload["nodes"][0]["fallback"] = "planr"  # close to "planner"
+    spec = GraphSpec.model_validate(payload)
+
+    issues = collect_graph_structure_issues(spec)
+    fallback_issues = [i for i in issues if "fallback" in i.message]
+    assert len(fallback_issues) == 1
+    assert fallback_issues[0].context is not None
+    assert fallback_issues[0].context["suggestion"] == "planner"
+
+
+# ---------------------------------------------------------------------------
+# RetrySpec validation
+# ---------------------------------------------------------------------------
+
+
+def test_retry_spec_accepts_valid_config() -> None:
+    from yagra.domain.entities.graph_schema import RetrySpec
+
+    retry = RetrySpec(max_attempts=5, backoff="fixed", base_delay_seconds=1.0)
+    assert retry.max_attempts == 5
+    assert retry.backoff == "fixed"
+
+
+def test_retry_spec_rejects_out_of_range_attempts() -> None:
+    import pytest
+
+    from yagra.domain.entities.graph_schema import RetrySpec
+
+    with pytest.raises(Exception):
+        RetrySpec(max_attempts=0)
+    with pytest.raises(Exception):
+        RetrySpec(max_attempts=11)
+
+
+def test_retry_spec_rejects_invalid_backoff() -> None:
+    import pytest
+
+    from yagra.domain.entities.graph_schema import RetrySpec
+
+    with pytest.raises(Exception):
+        RetrySpec(backoff="random")  # type: ignore[arg-type]
+
+
+def test_node_spec_accepts_retry_and_timeout() -> None:
+    from yagra.domain.entities.graph_schema import NodeSpec
+
+    node = NodeSpec.model_validate(
+        {
+            "id": "test",
+            "handler": "llm",
+            "retry": {"max_attempts": 5, "backoff": "fixed"},
+            "timeout_seconds": 120,
+            "fallback": "other_node",
+        }
+    )
+    assert node.retry is not None
+    assert node.retry.max_attempts == 5
+    assert node.timeout_seconds == 120
+    assert node.fallback == "other_node"
+
+
+def test_node_spec_defaults_retry_to_none() -> None:
+    from yagra.domain.entities.graph_schema import NodeSpec
+
+    node = NodeSpec.model_validate({"id": "test", "handler": "llm"})
+    assert node.retry is None
+    assert node.timeout_seconds is None
+    assert node.fallback is None
+
+
 def test_collect_graph_structure_issues_edge_source_with_suggestion() -> None:
     """Lines 135-136: edge.source with a close match provides suggestion in context."""
     payload = deepcopy(_base_payload())

@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import operator
+import threading
+import time
 from collections.abc import Hashable, Mapping
 from copy import deepcopy
 from os import PathLike
@@ -17,7 +19,7 @@ from langgraph.types import Send
 
 from yagra.application.use_cases.workflow_loader import load_graph_spec_from_workflow
 from yagra.domain.entities import GraphSpec
-from yagra.domain.entities.graph_schema import NodeSpec, StateFieldSpec
+from yagra.domain.entities.graph_schema import NodeSpec, RetrySpec, StateFieldSpec
 from yagra.ports.outbound import NodeRegistryPort
 from yagra.ports.outbound.node_registry import NodeHandler
 
@@ -167,6 +169,9 @@ def build_state_graph(
                 handler=handler,
                 node_params=node.params,
                 is_cond_source=node.id in cond_source_ids,
+                retry_spec=node.retry,
+                timeout_seconds=node.timeout_seconds,
+                fallback_node_id=node.fallback,
             )
             if trace_collector is not None:
                 node_runner = trace_collector.wrap_node(
@@ -176,7 +181,14 @@ def build_state_graph(
                 )
             state_graph.add_node(node.id, node_runner)
 
+    # Collect node IDs that have fallback configured
+    fallback_node_ids = frozenset(node.id for node in spec.nodes if node.fallback is not None)
+
     for source, targets in unconditional_by_source.items():
+        if source in fallback_node_ids:
+            # Skip unconditional edges for fallback nodes — they will be
+            # replaced by conditional edges with fallback routing below.
+            continue
         for target in targets:
             state_graph.add_edge(source, target)
 
@@ -193,6 +205,30 @@ def build_state_graph(
             source,
             _build_fan_out_dispatcher(fanout=fanout),
         )
+
+    # Auto-generate conditional edges for nodes with fallback targets.
+    # A fallback node's runner wraps the handler in try-except and sets
+    # state["__next__"] = "__fallback__" on failure, routing to the fallback node.
+    for node in spec.nodes:
+        if node.fallback is not None and node.id not in conditional_by_source:
+            # Determine the "continue" target: the original unconditional edge target(s)
+            continue_targets = unconditional_by_source.get(node.id, [])
+            if len(continue_targets) == 1:
+                continue_target = continue_targets[0]
+            else:
+                # If no unconditional edges or multiple, route back to self
+                # (will be handled by downstream edges)
+                continue_target = node.id
+
+            hashable_map = cast(
+                dict[Hashable, str],
+                {"__fallback__": node.fallback, "__continue__": continue_target},
+            )
+            state_graph.add_conditional_edges(
+                node.id,
+                _build_fallback_router(node.id),
+                hashable_map,
+            )
 
     for end_node in spec.end_at:
         state_graph.set_finish_point(end_node)
@@ -426,6 +462,9 @@ def _build_node_runner(
     handler: NodeHandler,
     node_params: Mapping[str, Any],
     is_cond_source: bool = False,
+    retry_spec: RetrySpec | None = None,
+    timeout_seconds: int | None = None,
+    fallback_node_id: str | None = None,
 ) -> NodeHandler:
     """Returns a wrapper callable for node execution.
 
@@ -434,8 +473,13 @@ def _build_node_runner(
         node_params: Node params dictionary.
         is_cond_source: Whether this node is the source of a conditional edge.
             If True and ``output_key`` is not specified, ``"__next__"`` is set automatically.
+        retry_spec: Optional retry configuration from NodeSpec.
+        timeout_seconds: Optional timeout in seconds from NodeSpec.
+        fallback_node_id: Optional fallback node ID from NodeSpec.
     """
-    frozen_params = _normalize_runtime_params(node_params, is_cond_source=is_cond_source)
+    frozen_params = _normalize_runtime_params(
+        node_params, is_cond_source=is_cond_source, retry_spec=retry_spec
+    )
 
     def _run(state: Mapping[str, Any]) -> dict[str, Any]:
         result = _invoke_handler(handler=handler, state=state, node_params=frozen_params)
@@ -445,12 +489,24 @@ def _build_node_runner(
         merged_state.update(dict(result))
         return merged_state
 
-    return _run
+    runner = _run
+
+    if timeout_seconds is not None:
+        runner = _wrap_with_timeout(runner, timeout_seconds)
+
+    if retry_spec is not None:
+        runner = _wrap_with_retry(runner, retry_spec)
+
+    if fallback_node_id is not None:
+        runner = _wrap_with_fallback(runner, fallback_node_id)
+
+    return runner
 
 
 def _normalize_runtime_params(
     node_params: Mapping[str, Any],
     is_cond_source: bool = False,
+    retry_spec: RetrySpec | None = None,
 ) -> dict[str, Any]:
     """Normalizes node params passed to the handler at execution time.
 
@@ -458,14 +514,20 @@ def _normalize_runtime_params(
     ``"__next__"`` is set automatically. The LLM handler writes this value to state,
     and the router reads ``state["__next__"]`` to determine the next branch.
 
+    When ``retry_spec`` is provided, ``_retry_override`` is injected to suppress
+    the handler's built-in retry logic (avoiding double retry).
+
     Args:
         node_params: Node params dictionary.
         is_cond_source: True if this node is the source of a conditional edge.
+        retry_spec: If provided, overrides handler-level retry.
     """
     normalized = deepcopy(dict(node_params))
     normalized.pop("prompt_ref", None)
     if is_cond_source and "output_key" not in normalized:
         normalized["output_key"] = "__next__"
+    if retry_spec is not None:
+        normalized["_retry_override"] = 1
     return normalized
 
 
@@ -506,3 +568,125 @@ def _build_router(source: str, route_map: Mapping[str, str]) -> NodeHandler:
         return label
 
     return _route
+
+
+def _build_fallback_router(node_id: str) -> NodeHandler:
+    """Returns a router for fallback-enabled nodes.
+
+    Checks ``state["__next__"]`` for ``"__fallback__"`` to route to the fallback
+    node, otherwise returns ``"__continue__"`` for normal downstream processing.
+
+    Args:
+        node_id: Node ID (for error messages).
+
+    Returns:
+        Router callable.
+    """
+
+    def _route(state: Mapping[str, Any]) -> str:
+        label = state.get("__next__")
+        if label == "__fallback__":
+            return "__fallback__"
+        return "__continue__"
+
+    return _route
+
+
+def _wrap_with_retry(runner: NodeHandler, retry_spec: RetrySpec) -> NodeHandler:
+    """Wraps a node runner with retry logic.
+
+    On failure, the runner is re-invoked up to ``retry_spec.max_attempts`` times
+    with the configured backoff strategy.
+
+    Args:
+        runner: Node runner callable to wrap.
+        retry_spec: Retry configuration.
+
+    Returns:
+        Wrapped runner with retry logic.
+    """
+
+    def _retrying_run(state: Mapping[str, Any]) -> dict[str, Any]:
+        last_error: Exception | None = None
+        for attempt in range(retry_spec.max_attempts):
+            try:
+                return cast(dict[str, Any], runner(state))
+            except Exception as exc:
+                last_error = exc
+                if attempt < retry_spec.max_attempts - 1:
+                    if retry_spec.backoff == "exponential":
+                        delay = retry_spec.base_delay_seconds * (2**attempt)
+                    else:
+                        delay = retry_spec.base_delay_seconds
+                    time.sleep(delay)
+        raise last_error  # type: ignore[misc]
+
+    return _retrying_run
+
+
+def _wrap_with_timeout(runner: NodeHandler, timeout_seconds: int) -> NodeHandler:
+    """Wraps a node runner with a timeout.
+
+    Uses a background thread to execute the runner. If execution exceeds
+    ``timeout_seconds``, raises a ``TimeoutError``.
+
+    Args:
+        runner: Node runner callable to wrap.
+        timeout_seconds: Maximum execution time in seconds.
+
+    Returns:
+        Wrapped runner with timeout enforcement.
+    """
+
+    def _timed_run(state: Mapping[str, Any]) -> dict[str, Any]:
+        result_box: list[dict[str, Any]] = []
+        error_box: list[Exception] = []
+
+        def _target() -> None:
+            try:
+                result_box.append(runner(state))
+            except Exception as exc:
+                error_box.append(exc)
+
+        thread = threading.Thread(target=_target, daemon=True)
+        thread.start()
+        thread.join(timeout=timeout_seconds)
+        if thread.is_alive():
+            raise TimeoutError(
+                f"node execution timed out after {timeout_seconds} seconds"
+            )
+        if error_box:
+            raise error_box[0]
+        return result_box[0]
+
+    return _timed_run
+
+
+def _wrap_with_fallback(runner: NodeHandler, fallback_node_id: str) -> NodeHandler:
+    """Wraps a node runner with fallback routing on failure.
+
+    On exception, sets ``state["__error__"]`` with the error message and
+    ``state["__next__"]`` to ``"__fallback__"`` to route to the fallback node.
+
+    Args:
+        runner: Node runner callable to wrap.
+        fallback_node_id: Target fallback node ID (for documentation; routing
+            is handled by ``_build_fallback_router``).
+
+    Returns:
+        Wrapped runner with fallback logic.
+    """
+
+    def _fallback_run(state: Mapping[str, Any]) -> dict[str, Any]:
+        try:
+            result = cast(dict[str, Any], runner(state))
+            # On success, mark for normal continuation
+            result["__next__"] = "__continue__"
+            return result
+        except Exception as exc:
+            merged = dict(state)
+            merged["__error__"] = str(exc)
+            merged["__next__"] = "__fallback__"
+            return merged
+
+    return _fallback_run
