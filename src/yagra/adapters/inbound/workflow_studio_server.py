@@ -580,12 +580,32 @@ def _studio_html() -> str:
       gap: var(--spacing-md);
     }
     .flow-shell {
+      position: relative;
       border: 1px solid var(--line);
       border-radius: var(--border-radius-md);
       overflow: hidden;
       min-height: 620px;
       background: linear-gradient(180deg, #fcfeff 0%, #f2f8ff 100%);
       transition: border-color 0.15s;
+    }
+    .empty-canvas-guidance {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--spacing-sm);
+      color: var(--muted);
+      pointer-events: none;
+      z-index: 1;
+      text-align: center;
+      font-size: var(--font-size-sm);
+    }
+    .empty-canvas-icon {
+      font-size: 2.2em;
+      opacity: 0.45;
     }
     .flow-shell-dragover {
       border-color: var(--primary);
@@ -1090,6 +1110,12 @@ def _studio_html() -> str:
       width: auto;
       min-width: 110px;
     }
+    .shortcut-help {
+      font-size: 1.15em;
+      color: var(--muted);
+      cursor: help;
+      user-select: none;
+    }
   </style>
 </head>
 <body>
@@ -1206,6 +1232,7 @@ def _studio_html() -> str:
                   <option value="TB">Top→Bottom</option>
                 </select>
                 <button type="button" class="secondary" @click="applyAutoLayout">Auto Layout</button>
+                <span class="shortcut-help" title="Del &mdash; delete node/edge&#10;Ctrl+D &mdash; duplicate node&#10;Ctrl+S &mdash; save&#10;Esc &mdash; deselect">&#x2328;</span>
               </div>
             </div>
           </div>
@@ -1255,6 +1282,10 @@ def _studio_html() -> str:
               <flow-controls></flow-controls>
               <flow-background pattern-color="#d5e1f0" :gap="18" :size="1"></flow-background>
             </vue-flow>
+            <div v-if="nodes.length === 0" class="empty-canvas-guidance">
+              <div class="empty-canvas-icon">&larr;</div>
+              <div>Drag a node from the left panel to get started</div>
+            </div>
           </div>
         </article>
 
@@ -1397,18 +1428,7 @@ def _studio_html() -> str:
               <span class="palette-icon">+</span>
               <span>Drag to Canvas</span>
             </div>
-            <div class="inline-row">
-              <div class="field">
-                <label for="newNodeId">node id</label>
-                <input id="newNodeId" v-model.trim="newNode.id" type="text" placeholder="review" />
-              </div>
-              <div class="field">
-                <label for="newNodeHandler">handler</label>
-                <input id="newNodeHandler" v-model.trim="newNode.handler" type="text" placeholder="review_handler" />
-              </div>
-            </div>
-            <button type="button" class="secondary" @click="addNode">Add Node</button>
-            <div class="hint">Drag handle above to place node, or type id/handler and click Add.</div>
+            <div class="hint">Drag to canvas. Edit id/handler in Node Properties after drop.</div>
           </section>
 
           <section class="side-section">
@@ -1434,6 +1454,7 @@ def _studio_html() -> str:
                   <option value="llm">llm</option>
                   <option value="structured_llm">structured_llm</option>
                   <option value="streaming_llm">streaming_llm</option>
+                  <option value="subgraph">subgraph</option>
                   <option value="custom">custom</option>
                 </select>
               </div>
@@ -1441,6 +1462,12 @@ def _studio_html() -> str:
                 <label for="nodeHandlerInput">handler name</label>
                 <input id="nodeHandlerInput" v-model="nodeEditor.handler" type="text"
                   placeholder="my_custom_handler" />
+              </div>
+              <div v-if="nodeEditor.handlerType === 'subgraph'" class="field">
+                <label for="nodeWorkflowRefInput">workflow_ref</label>
+                <input id="nodeWorkflowRefInput" v-model.trim="nodeEditor.workflowRef" type="text"
+                  placeholder="e.g. ./sub_workflow.yaml" />
+                <div class="hint">Relative path to the subgraph workflow YAML file.</div>
               </div>
 
               <div v-if="showPromptFields" class="subsection-label">Prompt Settings</div>
@@ -1545,6 +1572,36 @@ def _studio_html() -> str:
                 />
               </div>
 
+              <template v-if="isLlmHandler">
+                <div class="subsection-label" style="cursor:pointer; display:flex; align-items:center; gap:4px;" @click="showAdvancedModel = !showAdvancedModel">
+                  Advanced Model Settings
+                  <span style="margin-left:auto; font-size:0.8em;">{{ showAdvancedModel ? '&#9660;' : '&#9654;' }}</span>
+                </div>
+                <template v-if="showAdvancedModel">
+                  <div class="inline-row">
+                    <div class="field">
+                      <label for="nodeFrequencyPenaltyInput">frequency_penalty</label>
+                      <input id="nodeFrequencyPenaltyInput" v-model.trim="nodeEditor.frequencyPenalty" type="text" placeholder="e.g. 0.5" />
+                    </div>
+                    <div class="field">
+                      <label for="nodePresencePenaltyInput">presence_penalty</label>
+                      <input id="nodePresencePenaltyInput" v-model.trim="nodeEditor.presencePenalty" type="text" placeholder="e.g. 0.5" />
+                    </div>
+                  </div>
+                  <div class="inline-row">
+                    <div class="field">
+                      <label for="nodeSeedInput">seed</label>
+                      <input id="nodeSeedInput" v-model.trim="nodeEditor.seed" type="text" placeholder="e.g. 42" />
+                    </div>
+                    <div class="field">
+                      <label for="nodeStopInput">stop</label>
+                      <input id="nodeStopInput" v-model.trim="nodeEditor.stop" type="text" placeholder='e.g. ["\\n"]' />
+                    </div>
+                  </div>
+                  <div class="hint">Stop accepts a JSON array of strings, e.g. ["\n"].</div>
+                </template>
+              </template>
+
               <template v-if="isStructuredLlm">
                 <div class="subsection-label">Schema Settings</div>
                 <div class="field">
@@ -1584,6 +1641,36 @@ def _studio_html() -> str:
                 />
               </div>
               <div v-if="isLlmHandler" class="hint">If left blank, the result is stored under the "output" key.</div>
+
+              <template v-if="nodeEditor.handlerType === 'custom' || nodeEditor.handlerType === 'subgraph'">
+                <div class="subsection-label">Custom Parameters</div>
+                <div class="hint">Arbitrary key-value params merged into the node's params on Apply.</div>
+                <table style="width:100%; border-collapse:collapse; font-size:0.85em;">
+                  <thead>
+                    <tr>
+                      <th style="text-align:left; padding:2px 4px;">key</th>
+                      <th style="text-align:left; padding:2px 4px;">value</th>
+                      <th style="width:28px;"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="(row, idx) in nodeEditor.customParams" :key="'cp-' + idx">
+                      <td style="padding:2px 4px;">
+                        <input v-model.trim="row.key" type="text" placeholder="param_name" style="width:100%; box-sizing:border-box;" />
+                      </td>
+                      <td style="padding:2px 4px;">
+                        <input v-model.trim="row.value" type="text" placeholder="value" style="width:100%; box-sizing:border-box;" />
+                      </td>
+                      <td style="padding:2px 4px; text-align:center;">
+                        <button type="button" class="secondary" style="padding:2px 6px; min-width:0; font-size:0.9em;"
+                          @click="nodeEditor.customParams.splice(idx, 1)" title="Remove">&times;</button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+                <button type="button" class="secondary" style="width:100%;"
+                  @click="nodeEditor.customParams.push({ key: '', value: '' })">+ Add Param</button>
+              </template>
 
               <div class="subsection-label">Resilience Settings</div>
               <div class="field" style="flex-direction: row; align-items: center; gap: 8px;">
@@ -1662,6 +1749,18 @@ def _studio_html() -> str:
               <div class="field">
                 <label for="edgeConditionInput">condition</label>
                 <input id="edgeConditionInput" v-model="edgeEditor.condition" type="text" placeholder="retry / done" />
+              </div>
+              <div class="subsection-label">Fan-Out (Send API)</div>
+              <div class="hint">Parallel dispatch: each item in state[items_key] is sent to target node.</div>
+              <div class="inline-row">
+                <div class="field">
+                  <label for="edgeFanOutItemsKeyInput">items_key</label>
+                  <input id="edgeFanOutItemsKeyInput" v-model.trim="edgeEditor.fanOutItemsKey" type="text" placeholder="e.g. topics" />
+                </div>
+                <div class="field">
+                  <label for="edgeFanOutItemKeyInput">item_key</label>
+                  <input id="edgeFanOutItemKeyInput" v-model.trim="edgeEditor.fanOutItemKey" type="text" placeholder="e.g. topic" />
+                </div>
               </div>
               <button type="button" class="secondary" :disabled="isBusy" @click="applyEdgeEdit">Apply Edge Edit</button>
             </template>
@@ -2502,10 +2601,7 @@ def _studio_html() -> str:
         const selectedEdgeId = ref(null);
         const isConnecting = ref(false);
 
-        const newNode = reactive({
-          id: "",
-          handler: "",
-        });
+        // newNode removed: Add Node button unified into DnD-only flow
         const nodeEditor = reactive({
           id: "",
           handlerType: "llm",
@@ -2523,9 +2619,15 @@ def _studio_html() -> str:
           temperature: "",
           topP: "",
           maxTokens: "",
+          frequencyPenalty: "",
+          presencePenalty: "",
+          seed: "",
+          stop: "",
           schemaYaml: "",
           streamDisabled: false,
           outputKey: "",
+          workflowRef: "",
+          customParams: [],
           retryEnabled: false,
           retryMaxAttempts: "3",
           retryBackoff: "exponential",
@@ -2535,6 +2637,8 @@ def _studio_html() -> str:
         });
         const edgeEditor = reactive({
           condition: "",
+          fanOutItemsKey: "",
+          fanOutItemKey: "",
         });
 
         const defaultEdgeOptions = {
@@ -2594,6 +2698,7 @@ def _studio_html() -> str:
         });
 
         // Toggle display of data flow variable badges
+        const showAdvancedModel = ref(false);
         const showInputVars = ref(true);
         const showOutputVars = ref(true);
 
@@ -2616,9 +2721,15 @@ def _studio_html() -> str:
               nodeEditor.temperature = "";
               nodeEditor.topP = "";
               nodeEditor.maxTokens = "";
+              nodeEditor.frequencyPenalty = "";
+              nodeEditor.presencePenalty = "";
+              nodeEditor.seed = "";
+              nodeEditor.stop = "";
               nodeEditor.schemaYaml = "";
               nodeEditor.streamDisabled = false;
               nodeEditor.outputKey = "";
+              nodeEditor.workflowRef = "";
+              nodeEditor.customParams = [];
               nodeEditor.retryEnabled = false;
               nodeEditor.retryMaxAttempts = "3";
               nodeEditor.retryBackoff = "exponential";
@@ -2644,7 +2755,9 @@ def _studio_html() -> str:
             nodeEditor.id = normalizeText(node.id);
             const handlerVal = normalizeText(data.handler);
             nodeEditor.handler = handlerVal;
-            nodeEditor.handlerType = LLM_HANDLERS.includes(handlerVal) ? handlerVal : "custom";
+            nodeEditor.handlerType = LLM_HANDLERS.includes(handlerVal)
+              ? handlerVal
+              : handlerVal === "subgraph" ? "subgraph" : "custom";
             nodeEditor.promptRef = normalizeText(data.promptRef);
             nodeEditor.promptKeyOptions = [];
             nodeEditor.promptSystem = typeof prompt?.system === "string"
@@ -2666,9 +2779,30 @@ def _studio_html() -> str:
             nodeEditor.maxTokens = Number.isInteger(Number(maxTokensRaw))
               ? String(Number(maxTokensRaw))
               : "";
+            const freqPenaltyRaw = model?.frequency_penalty ?? modelKwargs?.frequency_penalty;
+            const presPenaltyRaw = model?.presence_penalty ?? modelKwargs?.presence_penalty;
+            const seedRaw = model?.seed ?? modelKwargs?.seed;
+            const stopRaw = model?.stop ?? modelKwargs?.stop;
+            nodeEditor.frequencyPenalty = Number.isFinite(Number(freqPenaltyRaw))
+              ? String(Number(freqPenaltyRaw)) : "";
+            nodeEditor.presencePenalty = Number.isFinite(Number(presPenaltyRaw))
+              ? String(Number(presPenaltyRaw)) : "";
+            nodeEditor.seed = Number.isInteger(Number(seedRaw))
+              ? String(Number(seedRaw)) : "";
+            nodeEditor.stop = Array.isArray(stopRaw)
+              ? JSON.stringify(stopRaw)
+              : typeof stopRaw === "string" ? stopRaw : "";
             const params = isRecord(data.params) ? data.params : {};
             nodeEditor.schemaYaml = typeof params.schema_yaml === "string" ? params.schema_yaml : "";
             nodeEditor.outputKey = typeof params.output_key === "string" ? params.output_key : "";
+            nodeEditor.workflowRef = typeof params.workflow_ref === "string" ? params.workflow_ref : "";
+            const KNOWN_PARAM_KEYS = new Set([
+              "schema_yaml", "output_key", "prompt_ref", "prompt", "model", "workflow_ref",
+            ]);
+            const customEntries = Object.entries(params)
+              .filter(([k]) => !KNOWN_PARAM_KEYS.has(k))
+              .map(([k, v]) => ({ key: k, value: typeof v === "string" ? v : JSON.stringify(v) }));
+            nodeEditor.customParams = customEntries.length > 0 ? customEntries : [];
             const streamKwargs = isRecord(model?.kwargs) ? model.kwargs : {};
             nodeEditor.streamDisabled = streamKwargs.stream === false;
             const rawNode = isRecord(data.rawNode) ? data.rawNode : {};
@@ -2704,8 +2838,10 @@ def _studio_html() -> str:
         watch(
           () => nodeEditor.handlerType,
           type => {
-            if (type !== "custom") {
+            if (type !== "custom" && type !== "subgraph") {
               nodeEditor.handler = type;
+            } else if (type === "subgraph") {
+              nodeEditor.handler = "subgraph";
             }
           },
         );
@@ -2715,9 +2851,15 @@ def _studio_html() -> str:
           edge => {
             if (!edge) {
               edgeEditor.condition = "";
+              edgeEditor.fanOutItemsKey = "";
+              edgeEditor.fanOutItemKey = "";
               return;
             }
             edgeEditor.condition = normalizeText(edge.data?.condition);
+            const rawEdge = isRecord(edge.data?.rawEdge) ? edge.data.rawEdge : {};
+            const fanOut = isRecord(rawEdge.fan_out) ? rawEdge.fan_out : {};
+            edgeEditor.fanOutItemsKey = normalizeText(fanOut.items_key);
+            edgeEditor.fanOutItemKey = normalizeText(fanOut.item_key);
           },
           { immediate: true },
         );
@@ -3633,11 +3775,18 @@ def _studio_html() -> str:
             const temperature = parseOptionalNumber(nodeEditor.temperature, "temperature");
             const topP = parseOptionalNumber(nodeEditor.topP, "top_p");
             const maxTokens = parseOptionalInteger(nodeEditor.maxTokens, "max_tokens");
+            const frequencyPenalty = parseOptionalNumber(nodeEditor.frequencyPenalty, "frequency_penalty");
+            const presencePenalty = parseOptionalNumber(nodeEditor.presencePenalty, "presence_penalty");
+            const seedVal = parseOptionalInteger(nodeEditor.seed, "seed");
             if (isRecord(modelObj.kwargs)) {
               delete modelObj.kwargs.temperature;
               delete modelObj.kwargs.top_p;
               delete modelObj.kwargs.max_tokens;
               delete modelObj.kwargs.stream;
+              delete modelObj.kwargs.frequency_penalty;
+              delete modelObj.kwargs.presence_penalty;
+              delete modelObj.kwargs.seed;
+              delete modelObj.kwargs.stop;
               if (Object.keys(modelObj.kwargs).length === 0) {
                 delete modelObj.kwargs;
               }
@@ -3657,6 +3806,32 @@ def _studio_html() -> str:
             } else {
               delete modelObj.max_tokens;
             }
+            if (frequencyPenalty !== null) {
+              modelObj.frequency_penalty = frequencyPenalty;
+            } else {
+              delete modelObj.frequency_penalty;
+            }
+            if (presencePenalty !== null) {
+              modelObj.presence_penalty = presencePenalty;
+            } else {
+              delete modelObj.presence_penalty;
+            }
+            if (seedVal !== null) {
+              modelObj.seed = seedVal;
+            } else {
+              delete modelObj.seed;
+            }
+            const stopText = normalizeText(nodeEditor.stop);
+            if (stopText) {
+              try {
+                const parsed = JSON.parse(stopText);
+                modelObj.stop = Array.isArray(parsed) ? parsed : [stopText];
+              } catch {
+                modelObj.stop = [stopText];
+              }
+            } else {
+              delete modelObj.stop;
+            }
             if (isStreamingLlm.value && nodeEditor.streamDisabled) {
               modelObj.kwargs = { ...(isRecord(modelObj.kwargs) ? modelObj.kwargs : {}), stream: false };
             }
@@ -3672,6 +3847,36 @@ def _studio_html() -> str:
               selectedParams.output_key = outputKey;
             } else {
               delete selectedParams.output_key;
+            }
+            if (nodeEditor.handlerType === "subgraph") {
+              const wfRef = normalizeText(nodeEditor.workflowRef);
+              if (wfRef) {
+                selectedParams.workflow_ref = wfRef;
+              } else {
+                delete selectedParams.workflow_ref;
+              }
+            }
+            if (nodeEditor.handlerType === "custom" || nodeEditor.handlerType === "subgraph") {
+              const KNOWN_PARAM_KEYS = new Set([
+                "schema_yaml", "output_key", "prompt_ref", "prompt", "model", "workflow_ref",
+              ]);
+              // Remove old custom params that are no longer in the editor
+              for (const k of Object.keys(selectedParams)) {
+                if (!KNOWN_PARAM_KEYS.has(k)) {
+                  delete selectedParams[k];
+                }
+              }
+              for (const { key, value } of nodeEditor.customParams) {
+                const k = normalizeText(key);
+                const v = normalizeText(value);
+                if (k && !KNOWN_PARAM_KEYS.has(k)) {
+                  try {
+                    selectedParams[k] = JSON.parse(v);
+                  } catch {
+                    selectedParams[k] = v;
+                  }
+                }
+              }
             }
             const finalParams = Object.keys(selectedParams).length > 0 ? selectedParams : null;
 
@@ -3823,16 +4028,40 @@ def _studio_html() -> str:
           }
           const targetId = selectedEdge.value.id;
           const condition = normalizeText(edgeEditor.condition);
+          const itemsKey = normalizeText(edgeEditor.fanOutItemsKey);
+          const itemKey = normalizeText(edgeEditor.fanOutItemKey);
+          // condition and fan_out are mutually exclusive
+          if (condition && (itemsKey || itemKey)) {
+            setStatus("condition and fan_out cannot both be specified", true);
+            return;
+          }
+          if ((itemsKey && !itemKey) || (!itemsKey && itemKey)) {
+            setStatus("both items_key and item_key are required for fan_out", true);
+            return;
+          }
           edges.value = edges.value.map(edge => {
             if (edge.id !== targetId) {
               return edge;
             }
             const current = isRecord(edge.data) ? edge.data : {};
+            const rawEdge = isRecord(current.rawEdge) ? deepClone(current.rawEdge) : {};
+            if (itemsKey && itemKey) {
+              rawEdge.fan_out = { items_key: itemsKey, item_key: itemKey };
+              delete rawEdge.condition;
+            } else {
+              delete rawEdge.fan_out;
+            }
+            if (condition) {
+              rawEdge.condition = condition;
+            } else if (!itemsKey) {
+              delete rawEdge.condition;
+            }
             return {
               ...edge,
               data: {
                 ...current,
                 condition,
+                rawEdge,
               },
             };
           });
@@ -3841,54 +4070,7 @@ def _studio_html() -> str:
           setStatus(`edge edit applied: ${targetId}`);
         }
 
-        function addNode() {
-          const nodeId = normalizeText(newNode.id);
-          const handler = normalizeText(newNode.handler);
-          if (!nodeId) {
-            setStatus("node id is required", true);
-            return;
-          }
-          if (!handler) {
-            setStatus("handler is required", true);
-            return;
-          }
-          if (nodes.value.some(node => node.id === nodeId)) {
-            setStatus(`node already exists: ${nodeId}`, true);
-            return;
-          }
-
-          const position = defaultNodePosition(nodes.value.length);
-          nodes.value = [
-            ...nodes.value,
-            {
-              id: nodeId,
-              type: "workflow",
-              position,
-              data: {
-                id: nodeId,
-                handler,
-                promptRef: "",
-                prompt: null,
-                model: null,
-                isStart: false,
-                isEnd: false,
-                rawNode: { id: nodeId, handler },
-              },
-            },
-          ];
-          if (!normalizeText(workflowMeta.startAt)) {
-            workflowMeta.startAt = nodeId;
-          }
-          if (normalizeNodeIdList(workflowMeta.endAt).length === 0) {
-            workflowMeta.endAt = [nodeId];
-          }
-          onWorkflowMetaChange();
-          selectedNodeId.value = nodeId;
-          selectedEdgeId.value = null;
-          newNode.id = "";
-          newNode.handler = "";
-          setStatus(`node created: ${nodeId}`);
-        }
+        // addNode() removed: unified into DnD-only flow (onFlowDrop)
 
         // -- Delete node --
         function deleteSelectedNode() {
@@ -4070,10 +4252,21 @@ def _studio_html() -> str:
 
         // -- Keyboard shortcuts --
         function onKeyDown(event) {
+          // Ctrl+S / Cmd+S: save (active even inside input fields)
+          if ((event.ctrlKey || event.metaKey) && event.key === "s") {
+            event.preventDefault();
+            saveWorkflow();
+            return;
+          }
+
           const tag = (event.target?.tagName || "").toLowerCase();
           if (tag === "input" || tag === "textarea" || tag === "select") return;
           if (!hasTarget.value) return;
 
+          if (event.key === "Escape") {
+            selectedNodeId.value = null;
+            selectedEdgeId.value = null;
+          }
           if (event.key === "Delete" || event.key === "Backspace") {
             event.preventDefault();
             if (selectedNodeId.value) {
@@ -4841,6 +5034,7 @@ def _studio_html() -> str:
           isStructuredLlm,
           isStreamingLlm,
           showPromptFields,
+          showAdvancedModel,
           showInputVars,
           showOutputVars,
           nodeValidationMap,
@@ -4848,7 +5042,6 @@ def _studio_html() -> str:
           edges,
           selectedNode,
           selectedEdge,
-          newNode,
           nodeEditor,
           edgeEditor,
           isConnecting,
@@ -4867,7 +5060,6 @@ def _studio_html() -> str:
           saveWorkflow,
           rollbackWorkflow,
           onWorkflowMetaChange,
-          addNode,
           deleteSelectedNode,
           deleteSelectedEdge,
           duplicateSelectedNode,

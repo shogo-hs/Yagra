@@ -8,6 +8,17 @@ For the canonical changelog (Japanese), see [CHANGELOG.md](https://github.com/sh
 
 ## [Unreleased]
 
+### Changed
+- 🔄 **Studio: Add Node unification**: Unified node creation to DnD-only flow. Removed the Add Node button/form; users now drag to canvas and edit id/handler in Node Properties after drop
+- ⌨️ **Studio: Keyboard shortcuts**: Added Ctrl+S to save (works inside input fields), Escape to deselect. Added shortcut help tooltip to toolbar
+
+### Added
+- ✨ **Studio: Fan-out edge editing**: Added items_key / item_key inputs to Edge Properties for configuring Send API parallel fan-out directly from the UI (with mutual exclusion validation against condition)
+- ✨ **Studio: Subgraph handler type**: Added subgraph option to handler type selector with workflow_ref input field for specifying child workflow YAML path
+- ✨ **Studio: Custom parameters editor**: Added a generic key-value table editor for arbitrary params when custom or subgraph handler is selected
+- ✨ **Studio: Advanced Model Settings**: Added frequency_penalty, presence_penalty, seed, and stop parameter editing for LLM handlers (collapsible section)
+- 💡 **Studio: Empty canvas guidance**: Shows "Drag a node from the left panel to get started" centered on canvas when no nodes exist
+
 ## [1.1.0] - 2026-03-01
 
 ### Added

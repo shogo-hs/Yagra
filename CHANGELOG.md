@@ -4,6 +4,17 @@
 
 ## [Unreleased]
 
+### Changed
+- 🔄 **Studio: Add Node 統合**: ノード追加を DnD のみに一本化。Add Node ボタン・フォームを廃止し、ドロップ後にサイドパネルで id/handler を設定するフローに統一
+- ⌨️ **Studio: キーボードショートカット追加**: Ctrl+S で保存（入力フィールド内でも有効）、Escape で選択解除を追加。ツールバーにショートカットヘルプ表示
+
+### Added
+- ✨ **Studio: fan_out エッジ編集**: Edge Properties に items_key / item_key 入力を追加。Send API による並列ファンアウトを UI から直接設定可能に（condition との排他バリデーション付き）
+- ✨ **Studio: subgraph ハンドラータイプ**: handler type セレクタに subgraph を追加。workflow_ref 入力フィールドで子ワークフロー YAML を指定可能に
+- ✨ **Studio: カスタムパラメータエディタ**: custom / subgraph ハンドラー選択時に任意の key-value パラメータを追加・編集可能な汎用テーブルエディタを追加
+- ✨ **Studio: Advanced Model Settings**: LLM ハンドラーに frequency_penalty、presence_penalty、seed、stop パラメータの編集 UI を追加（折りたたみ式）
+- 💡 **Studio: 空キャンバスガイダンス**: ノードが 0 個の場合にキャンバス中央に「Drag a node from the left panel to get started」ガイドを表示
+
 ## [1.1.0] - 2026-03-01
 
 ### Added
