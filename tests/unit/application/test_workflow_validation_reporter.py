@@ -43,7 +43,9 @@ def test_validate_workflow_for_ui_reports_valid_fixture() -> None:
     report = validate_workflow_for_ui(WORKFLOW_ROOT / "branch-inline.yaml")
 
     assert report.is_valid is True
-    assert report.issues == []
+    # Non-error issues (info/warning) may be present for prompt-state hints
+    error_issues = [i for i in report.issues if i.severity == "error"]
+    assert error_issues == []
 
 
 def test_validate_workflow_for_ui_reports_reference_error_with_location(tmp_path: Path) -> None:
@@ -741,6 +743,27 @@ def test_validate_graph_spec_for_ui_uses_fallback_when_pydantic_errors_empty(
 # ---------------------------------------------------------------------------
 # _normalize_location: line 349 (non-tuple raw_loc) and line 356 (non-str/int part)
 # ---------------------------------------------------------------------------
+
+
+def test_is_valid_ignores_warning_and_info_severity() -> None:
+    """is_valid should only consider error-severity issues."""
+    from yagra.application.use_cases.workflow_validation_reporter import (
+        WorkflowValidationIssue,
+        WorkflowValidationReport,
+    )
+
+    report = WorkflowValidationReport(
+        issues=[
+            WorkflowValidationIssue(code="hint", message="just info", severity="info"),
+            WorkflowValidationIssue(code="warn", message="advisory", severity="warning"),
+        ]
+    )
+    assert report.is_valid is True
+
+    report.issues.append(
+        WorkflowValidationIssue(code="err", message="real problem", severity="error")
+    )
+    assert report.is_valid is False
 
 
 def test_normalize_location_returns_empty_tuple_for_non_tuple_input() -> None:

@@ -16,7 +16,7 @@ class EdgeRuleIssue:
 
     message: str
     location: Location
-    severity: Literal["error", "warning", "info"] = "warning"
+    severity: Literal["error", "warning", "info"] = "error"
 
 
 def collect_edge_rule_issues(spec: GraphSpec) -> list[EdgeRuleIssue]:

@@ -168,7 +168,8 @@ class TestValidateCommand:
         captured = capsys.readouterr()
         result = json.loads(captured.out)
         assert result["is_valid"] is True
-        assert result["issues"] == []
+        error_issues = [i for i in result["issues"] if i["severity"] == "error"]
+        assert error_issues == []
 
     def test_validate_invalid_workflow_json(
         self,

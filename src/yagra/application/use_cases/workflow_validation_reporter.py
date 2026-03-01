@@ -54,8 +54,13 @@ class WorkflowValidationReport:
 
     @property
     def is_valid(self) -> bool:
-        """Returns whether no issues exist."""
-        return not self.issues
+        """Returns whether no error-severity issues exist.
+
+        Warning and info-level issues do not affect validity. This allows
+        advisory diagnostics (e.g. prompt-state hints) to be added without
+        breaking existing workflows.
+        """
+        return not any(issue.severity == "error" for issue in self.issues)
 
     def to_dict(self) -> dict[str, Any]:
         """Converts to a dict in API response format.
@@ -226,6 +231,19 @@ def validate_workflow_payload_for_ui(
                 location=compat_issue.location,
                 severity="error",
                 context=compat_issue.context,
+            )
+        )
+
+    from yagra.domain.services.prompt_state_validator import collect_prompt_state_issues
+
+    for prompt_state_issue in collect_prompt_state_issues(spec):
+        report.issues.append(
+            WorkflowValidationIssue(
+                code="prompt_state_warning",
+                message=prompt_state_issue.message,
+                location=prompt_state_issue.location,
+                severity=prompt_state_issue.severity,
+                context=prompt_state_issue.context,
             )
         )
 
