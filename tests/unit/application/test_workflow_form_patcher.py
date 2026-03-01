@@ -546,3 +546,36 @@ def test_apply_form_edits_condition_not_str_in_rewire_raises() -> None:
 def test_apply_form_edits_workflow_not_mapping_raises() -> None:
     with pytest.raises(ValueError, match="workflow must be a mapping"):
         apply_form_edits(workflow="not a mapping")  # type: ignore[arg-type]
+
+
+# --- Node-level resilience fields preservation ---
+
+
+def test_apply_form_edits_preserves_resilience_fields() -> None:
+    """Node-level retry/timeout_seconds/fallback are untouched by form edits."""
+    workflow: dict[str, Any] = {
+        "version": "1.0",
+        "start_at": "a",
+        "end_at": ["a"],
+        "nodes": [
+            {
+                "id": "a",
+                "handler": "llm",
+                "retry": {"max_attempts": 5, "backoff": "fixed", "base_delay_seconds": 3},
+                "timeout_seconds": 120,
+                "fallback": "b",
+                "params": {"prompt_ref": "p", "model": {"name": "gpt-4o-mini"}},
+            },
+            {"id": "b", "handler": "llm", "params": {}},
+        ],
+        "edges": [{"source": "a", "target": "b"}],
+    }
+    patched = apply_form_edits(
+        workflow=workflow,
+        node_edits=[{"node_id": "a", "prompt_ref": "p_v2"}],
+    )
+    node_a = patched["nodes"][0]
+    assert node_a["retry"] == {"max_attempts": 5, "backoff": "fixed", "base_delay_seconds": 3}
+    assert node_a["timeout_seconds"] == 120
+    assert node_a["fallback"] == "b"
+    assert node_a["params"]["prompt_ref"] == "p_v2"

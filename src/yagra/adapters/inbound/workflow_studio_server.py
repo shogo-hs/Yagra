@@ -1469,6 +1469,65 @@ def _studio_html() -> str:
               </div>
               <div v-if="isLlmHandler" class="hint">If left blank, the result is stored under the "output" key.</div>
 
+              <div class="subsection-label">Resilience Settings</div>
+              <div class="field" style="flex-direction: row; align-items: center; gap: 8px;">
+                <input
+                  id="nodeRetryEnabledInput"
+                  v-model="nodeEditor.retryEnabled"
+                  type="checkbox"
+                  style="width: auto; margin: 0;"
+                />
+                <label for="nodeRetryEnabledInput" style="margin: 0;">Enable retry</label>
+              </div>
+              <template v-if="nodeEditor.retryEnabled">
+                <div class="inline-row">
+                  <div class="field">
+                    <label for="nodeRetryMaxAttemptsInput">max attempts (1-10)</label>
+                    <input
+                      id="nodeRetryMaxAttemptsInput"
+                      v-model.trim="nodeEditor.retryMaxAttempts"
+                      type="text"
+                      placeholder="3"
+                    />
+                  </div>
+                  <div class="field">
+                    <label for="nodeRetryBackoffSelect">backoff</label>
+                    <select id="nodeRetryBackoffSelect" v-model="nodeEditor.retryBackoff">
+                      <option value="exponential">exponential</option>
+                      <option value="fixed">fixed</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="field">
+                  <label for="nodeRetryBaseDelayInput">base delay seconds (0-60)</label>
+                  <input
+                    id="nodeRetryBaseDelayInput"
+                    v-model.trim="nodeEditor.retryBaseDelay"
+                    type="text"
+                    placeholder="2"
+                  />
+                </div>
+              </template>
+              <div class="field">
+                <label for="nodeTimeoutSecondsInput">timeout seconds (1-600)</label>
+                <input
+                  id="nodeTimeoutSecondsInput"
+                  v-model.trim="nodeEditor.timeoutSeconds"
+                  type="text"
+                  placeholder="(no timeout)"
+                />
+              </div>
+              <div class="field">
+                <label for="nodeFallbackSelect">fallback node</label>
+                <select id="nodeFallbackSelect" v-model="nodeEditor.fallbackNode">
+                  <option value="">(none)</option>
+                  <option v-for="nid in nodeIdOptions" :key="'fb-' + nid" :value="nid">
+                    {{ nid }}
+                  </option>
+                </select>
+              </div>
+              <div class="hint">Retry wraps the handler with retry logic. Timeout limits execution time. Fallback routes to another node on failure.</div>
+
               <button type="button" class="secondary" :disabled="isBusy" @click="applyNodeEdit">Apply Node Edit</button>
               <div class="hint">Node id must be unique and non-empty. If no prompt yaml is selected, a file is auto-created under prompts/ on Apply. Use prompt key for path#key references.</div>
             </template>
@@ -2333,6 +2392,12 @@ def _studio_html() -> str:
           schemaYaml: "",
           streamDisabled: false,
           outputKey: "",
+          retryEnabled: false,
+          retryMaxAttempts: "3",
+          retryBackoff: "exponential",
+          retryBaseDelay: "2",
+          timeoutSeconds: "",
+          fallbackNode: "",
         });
         const edgeEditor = reactive({
           condition: "",
@@ -2408,6 +2473,12 @@ def _studio_html() -> str:
               nodeEditor.schemaYaml = "";
               nodeEditor.streamDisabled = false;
               nodeEditor.outputKey = "";
+              nodeEditor.retryEnabled = false;
+              nodeEditor.retryMaxAttempts = "3";
+              nodeEditor.retryBackoff = "exponential";
+              nodeEditor.retryBaseDelay = "2";
+              nodeEditor.timeoutSeconds = "";
+              nodeEditor.fallbackNode = "";
               return;
             }
             const data = isRecord(node.data) ? node.data : {};
@@ -2454,6 +2525,20 @@ def _studio_html() -> str:
             nodeEditor.outputKey = typeof params.output_key === "string" ? params.output_key : "";
             const streamKwargs = isRecord(model?.kwargs) ? model.kwargs : {};
             nodeEditor.streamDisabled = streamKwargs.stream === false;
+            const rawNode = isRecord(data.rawNode) ? data.rawNode : {};
+            const retryObj = isRecord(rawNode.retry) ? rawNode.retry : null;
+            nodeEditor.retryEnabled = retryObj !== null;
+            nodeEditor.retryMaxAttempts = retryObj !== null && Number.isInteger(Number(retryObj.max_attempts))
+              ? String(Number(retryObj.max_attempts))
+              : "3";
+            nodeEditor.retryBackoff = (retryObj?.backoff === "fixed") ? "fixed" : "exponential";
+            nodeEditor.retryBaseDelay = retryObj !== null && Number.isFinite(Number(retryObj.base_delay_seconds))
+              ? String(Number(retryObj.base_delay_seconds))
+              : "2";
+            nodeEditor.timeoutSeconds = Number.isInteger(Number(rawNode.timeout_seconds))
+              ? String(Number(rawNode.timeout_seconds))
+              : "";
+            nodeEditor.fallbackNode = typeof rawNode.fallback === "string" ? rawNode.fallback : "";
             const refParts = splitPromptReference(nodeEditor.promptRef);
             const workspacePromptPath = promptRefPathToWorkspacePath(refParts.path);
             nodeEditor.promptFilePath = workspacePromptPath;
@@ -3446,6 +3531,38 @@ def _studio_html() -> str:
               delete selectedParams.output_key;
             }
             const finalParams = Object.keys(selectedParams).length > 0 ? selectedParams : null;
+
+            // --- Resilience fields: validate ---
+            let retryPayload = null;
+            if (nodeEditor.retryEnabled) {
+              const maxAttempts = parseOptionalInteger(nodeEditor.retryMaxAttempts, "max attempts");
+              if (maxAttempts === null || maxAttempts < 1 || maxAttempts > 10) {
+                setStatus("max attempts must be an integer between 1 and 10", true);
+                return;
+              }
+              const backoff = nodeEditor.retryBackoff;
+              if (backoff !== "exponential" && backoff !== "fixed") {
+                setStatus("backoff must be 'exponential' or 'fixed'", true);
+                return;
+              }
+              const baseDelay = parseOptionalNumber(nodeEditor.retryBaseDelay, "base delay seconds");
+              if (baseDelay === null || baseDelay < 0 || baseDelay > 60) {
+                setStatus("base delay seconds must be a number between 0 and 60", true);
+                return;
+              }
+              retryPayload = { max_attempts: maxAttempts, backoff, base_delay_seconds: baseDelay };
+            }
+            let timeoutPayload = null;
+            const timeoutRaw = parseOptionalInteger(nodeEditor.timeoutSeconds, "timeout seconds");
+            if (timeoutRaw !== null) {
+              if (timeoutRaw < 1 || timeoutRaw > 600) {
+                setStatus("timeout seconds must be an integer between 1 and 600", true);
+                return;
+              }
+              timeoutPayload = timeoutRaw;
+            }
+            const fallbackPayload = normalizeText(nodeEditor.fallbackNode) || null;
+
             const renamed = currentNodeId !== nextNodeId;
             nodes.value = nodes.value.map(node => {
               if (node.id !== currentNodeId) {
@@ -3453,6 +3570,23 @@ def _studio_html() -> str:
               }
               const current = isRecord(node.data) ? node.data : {};
               const nextHandler = normalizeText(nodeEditor.handler);
+              // Update rawNode with resilience fields
+              const currentRawNode = isRecord(current.rawNode) ? deepClone(current.rawNode) : {};
+              if (retryPayload) {
+                currentRawNode.retry = retryPayload;
+              } else {
+                delete currentRawNode.retry;
+              }
+              if (timeoutPayload !== null) {
+                currentRawNode.timeout_seconds = timeoutPayload;
+              } else {
+                delete currentRawNode.timeout_seconds;
+              }
+              if (fallbackPayload) {
+                currentRawNode.fallback = fallbackPayload;
+              } else {
+                delete currentRawNode.fallback;
+              }
               // Badge recalculation: output_key from finalParams, input variables from promptUser
               const nextRawParams = {
                 ...(isRecord(isRecord(node.data) ? node.data.rawNode?.params : {}) ? node.data.rawNode.params : {}),
@@ -3484,6 +3618,7 @@ def _studio_html() -> str:
                   prompt: null,
                   model: finalModel,
                   params: finalParams,
+                  rawNode: currentRawNode,
                   inputVars: nodeHasPrompt ? extractInputVars(nextRawParams) : null,
                   outputVars: nextOuts.length > 0 ? nextOuts : null,
                 },
