@@ -27,6 +27,7 @@ Built with **AI-Native principles**: JSON Schema export and validation CLI enabl
 - **Schema Validation**: Catch configuration errors early with Pydantic-based validation
 - **Custom State Schema**: Pass any `TypedDict` (including `MessagesState`) via `state_schema` — full LangGraph reducer support
 - **Advanced Patterns**: Fan-out/fan-in (parallel map-reduce via Send API) and subgraph nesting for composable workflows
+- **Node Resilience**: Declare `retry` (exponential/fixed backoff), `timeout_seconds`, and `fallback` per node directly in YAML — no wrapper code needed
 - **Visual Workflow Editor**: Launch Studio WebUI for visual editing, drag-and-drop node/edge management, and diff preview
 - **Template Library**: Quick-start templates for common patterns (branching, loops, RAG, parallel, subgraph, and more)
 - **Golden Test (Regression Testing)**: Save execution traces as golden cases, then replay with mocked LLM responses to verify workflow structure after YAML changes — no API calls needed. Mock dispatch is resolved per node, so multiple nodes sharing the same handler name are replayed correctly. `yagra golden save` supports repeatable `--strategy node_id:strategy` overrides (`exact`/`structural`/`skip`/`auto`) to persist per-node comparison behavior. Available via CLI (`yagra golden`) and MCP tool (`run_golden_tests`)
@@ -467,6 +468,7 @@ Open `http://127.0.0.1:8787/` in your browser.
   - `structured_llm` → Schema Settings section (edit `schema_yaml` as YAML)
   - `streaming_llm` → Streaming Settings section (`stream: false` toggle)
   - `custom` → LLM-specific sections hidden automatically
+- **Resilience Settings**: Configure retry (max attempts, backoff, base delay), timeout, and fallback per node — all handler types supported
 - **State Schema Editor**: Define workflow-level `state_schema` fields visually via a table editor (name, type, reducer columns) — no YAML hand-editing required
 - **Visual Editing**: Edit prompts, models, and conditions via forms
 - **Drag & Drop**: Add nodes, connect edges, adjust layout visually

@@ -130,6 +130,50 @@ nodes:
 
 The subgraph shares the parent's registry and checkpointer. All handlers referenced in both YAMLs must be registered in the same registry when building the graph.
 
+### Resilience (Retry, Timeout, Fallback)
+
+Nodes can declare retry, timeout, and fallback behavior directly in YAML:
+
+```yaml
+nodes:
+  - id: "translate"
+    handler: "llm"
+    retry:
+      max_attempts: 3
+      backoff: exponential    # exponential | fixed
+      base_delay_seconds: 2
+    timeout_seconds: 60
+    fallback: fallback_translate
+    params:
+      prompt_ref: "prompts.yaml#translate"
+      model: { provider: openai, name: gpt-4o-mini }
+```
+
+**Fields**:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `retry` | object, optional | Retry configuration block |
+| `retry.max_attempts` | int (1–10) | Maximum number of retry attempts. Default: `3` |
+| `retry.backoff` | `exponential` \| `fixed` | Backoff strategy. Default: `exponential` |
+| `retry.base_delay_seconds` | float (0–60) | Initial delay in seconds between retries. Default: `2.0` |
+| `timeout_seconds` | int (1–600), optional | Maximum execution time for the node in seconds |
+| `fallback` | str, optional | Node ID to execute if this node fails after all retries |
+
+**Retry behavior**: When a node raises an exception, the retry wrapper re-executes it up to `max_attempts` times with backoff delays:
+
+- **Exponential**: delays are `base * 2^(attempt-1)` seconds (e.g., 2s, 4s, 8s)
+- **Fixed**: delays are always `base_delay_seconds`
+
+**Fallback behavior**: If a node fails after all retries (or without retry), and `fallback` is specified, the error is captured in `state["__error__"]` and execution continues to the fallback node.
+
+**Schema validation**:
+- The `fallback` node ID must exist in the workflow's node list
+- Self-referencing fallbacks (e.g., `fallback: translate` on node `translate`) are rejected
+- Fuzzy match suggestions are provided for typos in fallback references
+
+**Backward compatibility**: All fields are optional with `None` defaults. Existing workflows without retry/timeout/fallback are unaffected.
+
 ### Node Handler Signature
 
 Your handler function receives `(state, params)` or just `(state)`:
@@ -322,6 +366,8 @@ Yagra validates workflows before building the graph:
 5. **Prompt references**: `prompt_ref` paths must resolve to valid files
 6. **Edge rules**: Mixed conditional and unconditional edges from the same source are not allowed; `fan_out` edges cannot be combined with other edge types from the same source
 7. **State schema**: `reducer: add` requires `type: list` or `type: messages`
+8. **Fallback references**: `fallback` must reference an existing node; self-references are rejected
+9. **Prompt-state consistency** (warning): `{variable}` placeholders in prompts should exist in `state_schema` or upstream `output_key`; `output_key` should be declared in `state_schema` when defined
 
 Use `yagra validate` to check compliance:
 

@@ -1,11 +1,12 @@
 # 到達ステップ
 
-最終更新: 2026-02-22 <!-- M-48 を Done に更新（G19-I02・G19-I03 完了）-->
+最終更新: 2026-03-01 <!-- M-53〜M-56 を Done に更新（Phase 6 完了）-->
 
 補足:
 - M-01〜M-36 は Phase 1（Declarative LangGraph Builder）として全て完了済み。各マイルストーンの完了詳細は本ファイル末尾の「Phase 1 完了ノート」を参照。
 - M-37〜M-48 は AgentOps ビジョンに基づく v1.0 目標。Phase 2→3→4 の順に依存関係がある。
 - M-49〜M-52 は Phase 5（回帰検証）として G-20 に紐づく。Phase 2 のトレース基盤に依存する。
+- M-53〜M-56 は Phase 6（弾性制御と型安全）。バリデーション改善と retry/fallback/timeout の YAML 宣言・Studio UI 対応。
 - M-44（ボトルネック検出・改善ヒント生成）は削除。分析・提案はコーディングエージェントに委ねる方針とし、Yagra はデータ収集と構造化出力に徹する。
 
 ## ステップ一覧
@@ -85,6 +86,15 @@
 | M-50 | G-20 | ゴールデンテスト実行エンジンと比較戦略を実装する | GoldenTestRunner がゴールデンケースに基づくリプレイテストを実行し、LLM ハンドラーを `node_id` 単位のモック応答で差し替え、実行パス・ノード入出力の回帰を検証できる。E2E 統合テストが通過する | Done |
 | M-51 | G-20 | `yagra golden` CLI コマンドを実装する | `yagra golden save` / `yagra golden test` / `yagra golden list` で CLI からゴールデンテストの保存・実行・一覧を操作できる。`yagra golden save` は `--strategy node_id:strategy` でノード単位の比較戦略上書きに対応 | Done |
 | M-52 | G-20 | MCP ツール `run_golden_tests` と最適化サイクル統合 | MCP サーバーに `run_golden_tests` ツールを追加し、`propose_update → run_golden_tests → apply_update` のサイクルが MCP 経由で完結する | Done |
+
+### Phase 6: 弾性制御と型安全（Resilience & Type Safety）
+
+| Milestone ID | 対応 Goal ID | 到達ステップ | 完了条件 | 状態 |
+| --- | --- | --- | --- | --- |
+| M-53 | G-21 | `WorkflowValidationReport.is_valid` を error-severity 基準に修正する | `is_valid` が warning/info を無視し error のみをチェック。既存ワークフロー検証が継続可能。テスト化 | Done |
+| M-54 | G-22 | プロンプト変数 × state_schema 型安全バリデーションを実装する | `prompt_state_validator` で warning レベル検証。変数存在確認・output_key 宣言確認。バリデーションパイプラインに統合 | Done |
+| M-55 | G-23 | Retry / Fallback / Timeout YAML 宣言機能を実装する | ノードレベルで retry/timeout/fallback を YAML で直接宣言。`RetrySpec` モデル追加。`state_graph_builder` が実行時ラップ。スキーマバリデーションで fallback 検証 | Done |
+| M-56 | G-24 | Studio UI で Resilience Settings を追加する | ノードプロパティパネルに retry/timeout/fallback 編集セクション実装。rawNode パススルーで YAML 保存に反映 | Done |
 
 ## Goal 別の実装項目
 
@@ -289,6 +299,40 @@
 | G20-I07 | E2E 統合テスト（トレース保存 → ゴールデンケース作成 → YAML 変更 → テスト実行）を整備する | Done | `tests/integration/test_golden_test_e2e.py` |
 | G20-I08 | `yagra golden` CLI コマンド（save / test / list）を実装し、`golden save --strategy node_id:strategy` でノード単位の比較戦略指定を可能にする | Done | `src/yagra/__init__.py` (M-51) |
 | G20-I09 | MCP ツール `run_golden_tests` を実装し最適化サイクルに統合する | Done | `src/yagra/adapters/inbound/mcp_server.py` (M-52) |
+
+### G-21: バリデーションの is_valid 判定が warning/info に影響されない
+
+| Item ID | やるべきこと | 状態 | 根拠 |
+| --- | --- | --- | --- |
+| G21-I01 | `WorkflowValidationReport.is_valid` を error severity のみで判定するよう修正する | Done | `src/yagra/application/use_cases/workflow_validation_reporter.py` (M-53) |
+| G21-I02 | warning/info が is_valid に影響しないテストを追加する | Done | `tests/unit/application/test_workflow_validation_reporter.py` |
+
+### G-22: プロンプト変数と state_schema の型整合性を検証できる
+
+| Item ID | やるべきこと | 状態 | 根拠 |
+| --- | --- | --- | --- |
+| G22-I01 | `prompt_state_validator.py` を実装する（変数存在チェック・output_key チェック） | Done | `src/yagra/domain/services/prompt_state_validator.py` (M-54) |
+| G22-I02 | バリデーションパイプラインに統合する | Done | `src/yagra/application/use_cases/workflow_validation_reporter.py` |
+| G22-I03 | ユニットテストを整備する | Done | `tests/unit/domain/test_prompt_state_validator.py` |
+
+### G-23: ノードレベルの retry / fallback / timeout を YAML で宣言的に設定できる
+
+| Item ID | やるべきこと | 状態 | 根拠 |
+| --- | --- | --- | --- |
+| G23-I01 | `RetrySpec` モデルと `NodeSpec` 拡張を実装する | Done | `src/yagra/domain/entities/graph_schema.py` (M-55) |
+| G23-I02 | スキーマバリデーションに fallback 参照チェックを追加する | Done | `src/yagra/domain/services/schema_validator.py` |
+| G23-I03 | `state_graph_builder` にリトライ・タイムアウト・フォールバックラッパーを実装する | Done | `src/yagra/application/use_cases/state_graph_builder.py` |
+| G23-I04 | LLM ハンドラーに `_retry_override` を追加し二重リトライを防止する | Done | `src/yagra/handlers/llm_handler.py`, `streaming_llm_handler.py`, `structured_llm_handler.py` |
+
+### G-24: Studio UI から retry / fallback / timeout を編集できる
+
+| Item ID | やるべきこと | 状態 | 根拠 |
+| --- | --- | --- | --- |
+| G24-I01 | nodeEditor reactive オブジェクトに resilience フィールドを追加する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` (M-56) |
+| G24-I02 | watch ハンドラーで rawNode からデータを読み込む | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` |
+| G24-I03 | Resilience Settings HTML セクションを追加する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` |
+| G24-I04 | applyNodeEdit() にバリデーションと rawNode 更新を追加する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` |
+| G24-I05 | 回帰テストを追加する | Done | `tests/unit/application/test_workflow_form_patcher.py` |
 
 ## 運用ルール
 

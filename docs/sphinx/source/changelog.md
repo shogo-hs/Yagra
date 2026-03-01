@@ -8,6 +8,19 @@ For the canonical changelog (Japanese), see [CHANGELOG.md](https://github.com/sh
 
 ## [Unreleased]
 
+### Added
+- ✨ **C-1: Retry / Fallback / Timeout YAML declaration**: Node-level retry (max_attempts, backoff strategy, base_delay_seconds), timeout_seconds, and fallback can now be declared directly in YAML
+  - `RetrySpec` model added (max_attempts: 1–10, backoff: exponential|fixed, base_delay_seconds: 0–60)
+  - `NodeSpec` extended with `retry`, `timeout_seconds`, `fallback` fields (all Optional)
+  - `state_graph_builder` automatically wraps nodes with retry, timeout, and fallback routing
+  - `_retry_override` introduced in LLM handlers to prevent double retry when YAML-level retry is configured
+  - Schema validation enforces fallback node existence and rejects self-referencing fallbacks
+- ✨ **F-0: Studio UI Resilience Settings**: Node Properties panel now includes a "Resilience Settings" section with retry configuration (Enable retry checkbox, max_attempts, backoff, base_delay), timeout_seconds input, and fallback node dropdown. Available for all handler types
+- ✨ **D-1: Prompt variable × state_schema type-safety validation**: Added `prompt_state_validator`. Validates that `{variable}` placeholders in prompt templates exist in state_schema or upstream node output_keys (warning level). Also warns when output_key is not declared in state_schema. Emits info when state_schema is undefined but variables are used
+
+### Changed
+- 🔧 **P-0: `is_valid` now checks error severity only**: `WorkflowValidationReport.is_valid` changed from `not self.issues` to `not any(i.severity == "error" for i in self.issues)`. Warning/info-level issues no longer affect the valid/invalid determination of existing workflows
+
 ## [1.0.1] - 2026-02-22
 
 ### Added

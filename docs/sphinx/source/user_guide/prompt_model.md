@@ -167,6 +167,75 @@ def planner_handler(state: AgentState, params: dict) -> dict:
 
 > **Studio**: When a node's handler type is set to **custom**, the *Prompt Settings* section is shown in the Node Properties panel so you can attach and edit a prompt without writing YAML by hand.
 
+## Prompt Variable Type-Safety Validation
+
+Yagra validates that prompt template variables are consistent with your workflow's `state_schema` and node outputs. These checks produce **warning** or **info** level issues (not errors), so they do not block workflow execution but help catch inconsistencies early.
+
+### What is checked
+
+1. **Variable exists in available keys** (warning): Each `{variable}` in a prompt template should be declared in `state_schema` or produced as an `output_key` by another node in the workflow.
+
+2. **output_key declared in state_schema** (warning): When a node specifies an explicit `output_key`, it should be declared in the workflow-level `state_schema` (only checked when `state_schema` is non-empty).
+
+3. **No state_schema defined** (info): When `state_schema` is not defined but prompt variables are used, an informational message is emitted suggesting that adding a `state_schema` would enable type-safety checks.
+
+### Example — variable not in state_schema (warning)
+
+```yaml
+state_schema:
+  answer:
+    type: str
+  # 'query' not declared here
+
+nodes:
+  - id: "respond"
+    handler: "llm"
+    params:
+      prompt:
+        user: "Question: {query}"    # 'query' not in state_schema → warning
+      model: { provider: openai, name: gpt-4o-mini }
+```
+
+**Fix**: Declare `query` in `state_schema`:
+
+```yaml
+state_schema:
+  query:
+    type: str
+  answer:
+    type: str
+```
+
+### Example — output_key not in state_schema (warning)
+
+```yaml
+state_schema:
+  query:
+    type: str
+  # 'extracted_info' not declared here
+
+nodes:
+  - id: "extract"
+    handler: "llm"
+    params:
+      output_key: "extracted_info"    # Not in state_schema → warning
+      model: { provider: openai, name: gpt-4o-mini }
+```
+
+**Fix**: Add `extracted_info` to `state_schema`:
+
+```yaml
+state_schema:
+  query:
+    type: str
+  extracted_info:
+    type: dict
+```
+
+### Interaction with `is_valid`
+
+These prompt-state validation issues are **warning/info only** and do **not** cause `is_valid` to be `false`. The `is_valid` flag is determined exclusively by error-severity issues (schema violations, missing references, etc.).
+
 ## Model Configuration
 
 ### Inline Model Definition

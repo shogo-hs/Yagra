@@ -4,6 +4,19 @@
 
 ## [Unreleased]
 
+### Added
+- ✨ **C-1: retry / fallback / timeout YAML 宣言**: ノードレベルで retry（max_attempts、backoff 戦略、base_delay_seconds）、timeout_seconds、fallback を YAML で直接宣言可能に
+  - `RetrySpec` モデル追加（max_attempts: 1–10、backoff: exponential|fixed、base_delay_seconds: 0–60）
+  - `NodeSpec` に `retry` / `timeout_seconds` / `fallback` フィールドを追加（全て Optional）
+  - `state_graph_builder` がリトライラッパー・タイムアウトラッパー・フォールバックルーティングを自動適用
+  - LLM ハンドラーに `_retry_override` を導入し、YAML レベル retry とハンドラ内リトライの二重実行を防止
+  - スキーマバリデーションで fallback ノード ID の存在確認・自己参照禁止を検証
+- ✨ **F-0: Studio UI に Resilience Settings 追加**: ノードプロパティパネルに retry 設定（Enable retry チェックボックス、max_attempts、backoff、base_delay）、timeout_seconds テキスト入力、fallback ノードドロップダウンを追加。全ハンドラータイプで利用可能
+- ✨ **D-1: プロンプト変数 × state_schema 型安全バリデーション**: `prompt_state_validator` を追加。プロンプトテンプレートの `{variable}` が state_schema または upstream ノードの output_key に存在するかを warning レベルで検証。output_key が state_schema に未定義の場合も warning。state_schema 未定義時は info レベルで通知
+
+### Changed
+- 🔧 **P-0: `is_valid` を error severity のみで判定**: `WorkflowValidationReport.is_valid` が `not self.issues` から `not any(i.severity == "error" for i in self.issues)` に変更。warning/info レベルの issue が追加されても既存ワークフローの valid 判定に影響しない
+
 ## [1.0.1] - 2026-02-22
 
 ### Added

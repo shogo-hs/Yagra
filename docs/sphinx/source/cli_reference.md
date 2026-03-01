@@ -216,6 +216,10 @@ Yagra validates:
 3. **Edge references**: All `source`/`target` nodes exist
 4. **Start/End validity**: `start_at` and `end_at` nodes exist
 5. **Prompt references**: `prompt_ref` paths resolve to valid files
+6. **Fallback references**: `fallback` node IDs exist and are not self-referencing
+7. **Prompt-state consistency** (warning): `{variable}` in prompts should exist in `state_schema` or upstream `output_key`; `output_key` should be declared in `state_schema`
+
+**Note**: `is_valid` is determined by **error-severity issues only**. Warning and info-level issues (such as prompt-state consistency hints) are reported but do not cause `is_valid` to be `false`.
 
 ## `yagra visualize`
 
@@ -461,6 +465,21 @@ state_schema:
 ```
 
 > **Note**: `fan_out` edges and `subgraph` nodes require YAML direct editing — the Studio currently supports `state_schema` only as a table editor.
+
+#### Resilience Settings (Node Properties)
+
+The **Resilience Settings** section in the Node Properties panel allows configuration of retry, timeout, and fallback behavior per node. Available for all handler types.
+
+| Field | Description |
+|-------|-------------|
+| **Enable retry** | Toggle to activate retry behavior |
+| **max attempts** | Maximum retry attempts (1–10). Default: 3 |
+| **backoff** | Strategy: `exponential` (delays double each attempt) or `fixed` (constant delay) |
+| **base delay (s)** | Initial delay in seconds between retries (0–60). Default: 2 |
+| **timeout (seconds)** | Maximum execution time for the node (1–600). Leave empty for no timeout |
+| **fallback node** | Dropdown to select a fallback node (executes if the node fails after retries) |
+
+These settings map directly to the YAML `retry`, `timeout_seconds`, and `fallback` fields on the node. See [Workflow YAML Reference — Resilience](user_guide/workflow_yaml.md#resilience-retry-timeout-fallback) for details.
 
 #### Diff Preview
 - View exact YAML diff before saving
