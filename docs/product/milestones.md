@@ -139,8 +139,8 @@
 | Item ID | やるべきこと | 状態 | 根拠 |
 | --- | --- | --- | --- |
 | G05-I01 | WebUI 可視化に必要な検証契約（エラー形式）を定義する | Done | `src/yagra/application/use_cases/workflow_validation_reporter.py` |
-| G05-I02 | YAML からノード/エッジ/条件分岐を表示する Read Only 画面を実装する | Done | `src/yagra/application/use_cases/workflow_visualization.py` |
-| G05-I03 | ノード詳細で `prompt` / `model` / `*_ref` を確認できるようにする | Done | `src/yagra/application/use_cases/workflow_visualization.py` |
+| G05-I02 | YAML からノード/エッジ/条件分岐を表示する Read Only 画面を実装する | Done | Studio に統合（`workflow_visualization.py` は廃止） |
+| G05-I03 | ノード詳細で `prompt` / `model` / `*_ref` を確認できるようにする | Done | Studio に統合（`workflow_visualization.py` は廃止） |
 | G05-I04 | 編集保存時の差分確認とロールバック方針を整備する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` |
 | G05-I05 | prompt/model/条件をフォーム編集できるようにする | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` |
 | G05-I06 | DnD でノード追加とエッジ接続変更を行い round-trip 整合を維持する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` |
@@ -202,7 +202,7 @@
 | G10-I06 | 入出力バッジの CSS スタイルを実装する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` |
 | G10-I07 | ツールバーにバッジ ON/OFF トグルを追加する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` |
 | G10-I08 | バッジ数が多い場合のレイアウト崩れ防止を実装する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` |
-| G10-I09 | Read-Only 可視化 HTML にも入出力変数情報を表示する | Done | `src/yagra/application/use_cases/workflow_visualization.py` |
+| G10-I09 | Read-Only 可視化 HTML にも入出力変数情報を表示する | Done | Studio に統合（`workflow_visualization.py` は廃止） |
 
 ### G-11: コーディングエージェントが Yagra ワークフローを高精度に自律生成・修正できる
 
@@ -254,7 +254,7 @@
 | --- | --- | --- | --- |
 | G15-I01 | 組み込み LLM ハンドラーにトークン使用量の抽出・記録を追加する | Done | `src/yagra/handlers/llm_handler.py` |
 | G15-I02 | ストリーミングハンドラーのトークン使用量取得に対応する | Done | `src/yagra/handlers/streaming_llm_handler.py` |
-| G15-I03 | モデル名とトークン数からコスト推定を算出する機能を実装する | Done | `src/yagra/domain/entities/cost_table.py` |
+| G15-I03 | モデル名とトークン数からコスト推定を算出する機能を実装する | Done | litellm `cost_per_token()` に委譲（静的テーブル廃止） |
 | G15-I04 | トークン・コスト情報をトレースレコードに統合する | Done | `src/yagra/application/use_cases/trace_collector.py` |
 
 ### G-16: コーディングエージェントが実行ログを MCP 経由で取得・分析できる
@@ -263,7 +263,7 @@
 | --- | --- | --- | --- |
 | G16-I01 | MCP サーバーに `get_traces` ツールを追加する | Done | `src/yagra/adapters/inbound/mcp_server.py` |
 | G16-I02 | MCP サーバーに `analyze_traces` ツールを追加する | Done | `src/yagra/adapters/inbound/mcp_server.py` |
-| G16-I03 | エージェント向けの分析ツール利用ガイドを整備する | Planned | — |
+| G16-I03 | エージェント向けの分析ツール利用ガイドを整備する | Done | `docs/sphinx/source/user_guide/optimization_cycle.md` (M-48 で対応) |
 
 ### G-17: 複数回の実行結果を集約し、品質傾向を把握できる
 

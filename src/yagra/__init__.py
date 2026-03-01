@@ -29,7 +29,6 @@ from yagra.application.use_cases import (
     WorkflowValidationReport,
     build_from_workflow_path,
     format_validation_report,
-    render_workflow_visualization_html,
     validate_workflow_for_ui,
     validate_workflow_payload_for_ui,
 )
@@ -250,9 +249,6 @@ def main() -> None:
     if args.command == "validate":
         exit_code = _run_validate_command(args)
         raise SystemExit(exit_code)
-    if args.command == "visualize":
-        exit_code = _run_visualize_command(args)
-        raise SystemExit(exit_code)
     if args.command == "studio":
         exit_code = _run_studio_command(args)
         raise SystemExit(exit_code)
@@ -429,31 +425,6 @@ def _build_cli_parser() -> argparse.ArgumentParser:
         choices=["text", "json"],
         default="text",
         help="Output format (default: text)",
-    )
-
-    visualize = subparsers.add_parser(
-        "visualize",
-        help="Visualize a workflow as read-only HTML",
-    )
-    visualize.add_argument(
-        "--workflow",
-        required=True,
-        help="Path to the workflow YAML to visualize",
-    )
-    visualize.add_argument(
-        "--bundle-root",
-        default=None,
-        help="Base directory for resolving split references",
-    )
-    visualize.add_argument(
-        "--output",
-        default="workflow-visualization.html",
-        help="Path for the generated HTML file",
-    )
-    visualize.add_argument(
-        "--title",
-        default=None,
-        help="Title for the visualization page",
     )
 
     studio = subparsers.add_parser(
@@ -776,37 +747,6 @@ def _run_validate_command(args: argparse.Namespace) -> int:
         )
 
     return 0 if report.is_valid else 1
-
-
-def _run_visualize_command(args: argparse.Namespace) -> int:
-    """Executes the `visualize` subcommand.
-
-    Args:
-        args: Parsed CLI arguments.
-
-    Returns:
-        Exit code. 0 on success.
-    """
-    report = validate_workflow_for_ui(
-        workflow_path=args.workflow,
-        bundle_root=args.bundle_root,
-    )
-    if not report.is_valid:
-        print(format_validation_report(report), file=sys.stderr)
-        return 1
-
-    html_text = render_workflow_visualization_html(
-        workflow_path=args.workflow,
-        bundle_root=args.bundle_root,
-        title=args.title,
-    )
-
-    output_path = Path(args.output).expanduser().resolve()
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(html_text, encoding="utf-8")
-
-    print(f"workflow visualization generated: {output_path}")
-    return 0
 
 
 def _run_studio_command(args: argparse.Namespace) -> int:

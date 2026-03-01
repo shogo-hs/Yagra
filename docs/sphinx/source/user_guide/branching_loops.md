@@ -309,19 +309,7 @@ edges:
 
 ## Visualizing Branching and Loops
 
-Use `yagra visualize` to see branching and loop structure:
-
-```bash
-yagra visualize --workflow workflows/loop.yaml --output loop.html
-```
-
-Open `loop.html` to see:
-- Nodes as boxes
-- Edges as arrows
-- Conditional edges labeled with conditions
-- Loops as circular paths
-
-Use `yagra studio` for interactive editing:
+Use `yagra studio` for interactive visualization and editing:
 
 ```bash
 yagra studio --workflow workflows/loop.yaml --port 8787

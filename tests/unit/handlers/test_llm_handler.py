@@ -31,12 +31,22 @@ class TestCreateLLMHandler:
 
     def test_create_llm_handler_without_litellm_raises_import_error(self) -> None:
         """Confirms that ImportError is raised when litellm is not installed."""
-        # Patch the litellm global variable to None to simulate uninstalled state
-        with patch("yagra.handlers.llm_handler.litellm", None):
-            with pytest.raises(ImportError, match="litellm is not installed"):
-                from yagra.handlers.llm_handler import create_llm_handler as create_fn
+        import builtins
+        from typing import Any
 
-                create_fn()
+        real_import = builtins.__import__
+
+        def _mock_import(name: str, *args: Any, **kwargs: Any) -> Any:
+            if name == "litellm":
+                raise ImportError("mocked: litellm not installed")
+            return real_import(name, *args, **kwargs)
+
+        with patch("yagra.handlers.llm_handler.litellm", None):
+            with patch("builtins.__import__", side_effect=_mock_import):
+                with pytest.raises(ImportError, match="litellm is not installed"):
+                    from yagra.handlers.llm_handler import create_llm_handler as create_fn
+
+                    create_fn()
 
 
 class TestLLMHandler:

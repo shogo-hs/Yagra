@@ -79,10 +79,6 @@ class TestLocalTraceSink:
         # compact: no indentation
         assert "\n  " not in content
 
-    def test_flush_is_noop(self, tmp_path: Path) -> None:
-        sink = LocalTraceSink(base_dir=tmp_path)
-        sink.flush()  # Should not raise
-
     def test_multiple_writes_produce_separate_files(self, tmp_path: Path) -> None:
         sink = LocalTraceSink(base_dir=tmp_path)
         trace1 = _make_minimal_trace("flow")

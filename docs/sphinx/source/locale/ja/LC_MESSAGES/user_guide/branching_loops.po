@@ -191,7 +191,7 @@ msgid "Visualizing Branching and Loops"
 msgstr ""
 
 #: ../user_guide/branching_loops.md:312
-msgid "Use `yagra visualize` to see branching and loop structure:"
+msgid "Use `yagra studio` for interactive visualization and editing:"
 msgstr ""
 
 #: ../user_guide/branching_loops.md:318

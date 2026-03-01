@@ -32,11 +32,3 @@ class TraceSinkPort(ABC):
         Raises:
             TraceSinkError: If writing fails.
         """
-
-    @abstractmethod
-    def flush(self) -> None:
-        """Ensures all buffered data is committed.
-
-        For file-based sinks, this is typically a no-op since write() is
-        synchronous. Reserved for future async or batched implementations.
-        """

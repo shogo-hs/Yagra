@@ -53,7 +53,7 @@ See the [`yagra mcp` section in the CLI reference](cli_reference.md) for integra
 yagra --help
 ```
 
-You should see available commands: `init`, `schema`, `validate`, `visualize`, `analyze`, `golden`, `studio`, `handlers`, `explain`, `mcp`.
+You should see available commands: `init`, `schema`, `validate`, `analyze`, `golden`, `studio`, `handlers`, `explain`, `prompt`, `mcp`.
 
 ## Your First Workflow
 
@@ -105,11 +105,11 @@ If valid, you'll see:
 
 #### 4. Visualize the Workflow
 
-```bash
-yagra visualize --workflow workflow.yaml --output workflow.html
-```
+Use `yagra studio` to see your workflow visually in the browser:
 
-Open `workflow.html` in your browser to see a visual representation.
+```bash
+yagra studio --port 8787
+```
 
 ### Option 2: Build from Scratch
 

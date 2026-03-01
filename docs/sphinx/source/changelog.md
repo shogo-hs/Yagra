@@ -37,6 +37,12 @@ For the canonical changelog (Japanese), see [CHANGELOG.md](https://github.com/sh
 
 ### Changed
 - 🔧 **P-0: `is_valid` now checks error severity only**: `WorkflowValidationReport.is_valid` changed from `not self.issues` to `not any(i.severity == "error" for i in self.issues)`. Warning/info-level issues no longer affect the valid/invalid determination of existing workflows
+- 🔧 **Cost estimation delegated to litellm**: Removed static cost table (`cost_table.py`) and delegated to `litellm.cost_per_token()`. Pricing data now auto-updates with litellm releases
+
+### Removed
+- 🗑️ **`yagra visualize` command removed**: Fully superseded by Studio UI. Read-only HTML visualization command and Mermaid vendor assets (2.7MB) removed
+- 🗑️ **`TraceSinkPort.flush()` removed**: Unused method that was no-op in all implementations
+- 🗑️ **`cost_table.py` removed**: Static cost table replaced by litellm's dynamic pricing database
 
 ## [1.0.1] - 2026-02-22
 

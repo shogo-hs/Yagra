@@ -1,6 +1,6 @@
 # ユーザー到達状態ゴール
 
-最終更新: 2026-02-21 <!-- G-20 を Done に更新（M-49〜M-52 全完了） -->
+最終更新: 2026-03-01 <!-- G-21〜G-26 を追加・Done に更新（Phase 6 全完了） -->
 
 ## ゴール一覧
 
@@ -49,6 +49,17 @@
 | --- | --- | --- | --- |
 | G-20 | ワークフロー変更後にゴールデンケースベースの回帰検証ができる | 既存トレースからゴールデンケースを保存し、ワークフロー YAML 変更後に `yagra golden test` で実行パス・ノード入出力の回帰を検証できる。LLM ノードは `node_id` 単位のモック解決で決定論的にテストされ、API 呼び出しが不要である。コーディングエージェントが MCP 経由で `run_golden_tests` を実行し、`propose_update → run_golden_tests → apply_update` のサイクルを回せる | Done |
 
+### Phase 6: 弾性制御と型安全（Resilience & Type Safety）
+
+| Goal ID | ユーザーが到達したい状態 | 到達判定（Definition of Done） | 状態 |
+| --- | --- | --- | --- |
+| G-21 | バリデーションの is_valid 判定が warning/info に影響されない | `is_valid` が error severity のみをチェックし、warning/info が追加されても既存ワークフローの valid 判定に影響しない | Done |
+| G-22 | プロンプト変数と state_schema の型整合性を検証できる | `prompt_state_validator` で warning レベルの変数存在確認・output_key 宣言確認がバリデーションパイプラインに統合されている | Done |
+| G-23 | ノードレベルの retry / fallback / timeout を YAML で宣言的に設定できる | `RetrySpec` モデルでノード単位の retry/timeout/fallback を YAML 宣言し、`state_graph_builder` が実行時ラッパーを自動適用する。スキーマバリデーションで fallback 参照を検証する | Done |
+| G-24 | Studio UI から retry / fallback / timeout を編集できる | ノードプロパティパネルに Resilience Settings セクションがあり、retry/timeout/fallback を GUI で編集して YAML に反映できる | Done |
+| G-25 | Studio UI でリアルタイムバリデーションが動作する | フォーム変更時に 400ms デバウンスで自動バリデーションが実行され、severity バッジとキャンバスノードのエラー/警告ハイライトで結果が表示される | Done |
+| G-26 | プロンプトバージョニングでバージョン整合性を検証できる | `_meta.version` メタデータと `@version` サフィックスでバージョンピニングでき、不一致を warning/info で検出する。`yagra prompt info` CLI で確認可能 | Done |
+
 ## 運用ルール
 
 - アクティブなゴールは 3〜5 個に絞る。
@@ -59,4 +70,5 @@
 - G-01〜G-13 は Phase 1（Declarative LangGraph Builder）として全て完了済み。詳細は各 Goal の実装項目（milestones.md）を参照。
 - G-14/G-15 は PR #21 で実装完了。G-16/G-17 は PR #22 で実装完了。G-18/G-19 は Phase 4 で実装完了。v1.0 目標の全ゴールが達成された。
 - G-20 は Phase 5（回帰検証）として M-49〜M-52 に分割。全マイルストーン完了。M-49（ドメインモデル）、M-50（テストランナー）、M-51（CLI）、M-52（MCP ツール）。
+- G-21〜G-26 は Phase 6（弾性制御と型安全）として M-53〜M-58 に分割。全マイルストーン完了。
 - G-14/G-15（Run & Observe）は完了。G-16/G-17（Analyze & Propose）はログ出力に依存する。G-18/G-19（Approve & Update）は分析機能に依存する。分析・提案の生成はコーディングエージェントに委ね、Yagra はデータ収集と構造化出力に徹する。

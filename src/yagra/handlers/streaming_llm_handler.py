@@ -13,7 +13,7 @@ from yagra.handlers.llm_handler import LLMHandlerCallError, LLMHandlerConfigErro
 from yagra.ports.outbound.node_registry import NodeHandler
 
 if TYPE_CHECKING:
-    import litellm  # type: ignore[import-not-found]
+    import litellm
 else:
     litellm = None  # type: ignore[assignment]
 

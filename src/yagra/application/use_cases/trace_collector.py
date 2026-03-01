@@ -22,7 +22,6 @@ from datetime import UTC, datetime
 from time import perf_counter
 from typing import Any
 
-from yagra.domain.entities.cost_table import estimate_cost
 from yagra.domain.entities.trace import (
     ErrorTrace,
     LLMCallTrace,
@@ -34,6 +33,34 @@ from yagra.domain.entities.trace import (
 # Thread-local storage for LLM handlers to report token usage back to the collector
 # without changing NodeHandler return signatures.
 _trace_context: threading.local = threading.local()
+
+
+def _estimate_cost(litellm_model: str, prompt_tokens: int, completion_tokens: int) -> float | None:
+    """Estimates cost using litellm's pricing data.
+
+    Delegates to litellm.cost_per_token() which maintains an up-to-date
+    pricing database. Returns None when litellm is not installed or the
+    model is not recognized.
+
+    Args:
+        litellm_model: Full litellm model string, e.g. 'openai/gpt-4o-mini'.
+        prompt_tokens: Number of input tokens.
+        completion_tokens: Number of output tokens.
+
+    Returns:
+        Estimated cost in USD, or None if unavailable.
+    """
+    try:
+        from litellm import cost_per_token
+
+        input_cost, output_cost = cost_per_token(
+            model=litellm_model,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+        )
+        return round(input_cost + output_cost, 8)
+    except Exception:  # noqa: BLE001
+        return None
 
 
 class TraceContext:
@@ -91,7 +118,7 @@ class TraceContext:
             prompt_tokens=prompt_tokens,
             completion_tokens=completion_tokens,
             total_tokens=total_tokens,
-            estimated_cost_usd=estimate_cost(model, prompt_tokens, completion_tokens),
+            estimated_cost_usd=_estimate_cost(model, prompt_tokens, completion_tokens),
         )
 
     def consume_llm_call(self) -> LLMCallTrace | None:

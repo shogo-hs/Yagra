@@ -81,10 +81,3 @@ class LocalTraceSink(TraceSinkPort):
             raise TraceSinkError(f"Failed to write trace file '{file_path}': {exc}") from exc
 
         return str(file_path.resolve())
-
-    def flush(self) -> None:
-        """No-op for synchronous file writes.
-
-        Returns:
-            None
-        """

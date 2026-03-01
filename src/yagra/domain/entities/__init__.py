@@ -6,11 +6,6 @@ from yagra.domain.entities.comparison import (
     compare_snapshots,
     compare_structural,
 )
-from yagra.domain.entities.cost_table import (
-    LLM_PRICING_TABLE,
-    ModelPricing,
-    estimate_cost,
-)
 from yagra.domain.entities.golden_case import (
     LLM_HANDLER_NAMES,
     GoldenCase,
@@ -40,10 +35,6 @@ __all__ = [
     "compare_exact",
     "compare_snapshots",
     "compare_structural",
-    # cost_table
-    "LLM_PRICING_TABLE",
-    "ModelPricing",
-    "estimate_cost",
     # golden_case
     "LLM_HANDLER_NAMES",
     "GoldenCase",

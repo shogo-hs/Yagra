@@ -18,7 +18,6 @@
 | `yagra validate --workflow <path> --format json` | YAML を検証して JSON で結果を返す | 修正ループでエラーを確認する |
 | `yagra validate --workflow - --format json` | stdin から YAML を検証（パイプ対応）| 一時ファイルなしで検証する |
 | `yagra explain --workflow <path> --format json` | ワークフローの実行パス・変数フローを静的解析して出力 | 生成した YAML の実行経路・依存変数を把握する |
-| `yagra visualize --workflow <path>` | ワークフローを HTML で可視化 | 生成した YAML の構造を把握する |
 | `yagra analyze [--workflow <name>] [--limit <n>]` | 実行トレースを集約してサマリを出力 | ノード別の遅延・エラー率を確認し改善点を発見する |
 
 ## ワークフロー生成→検証→修正ループ

@@ -499,36 +499,18 @@ params:
     name: "gpt-4.1-mini"
 ```
 
-### Prompt Variable Not Declared (`prompt_variable_error`)
+### Prompt Variable Not Found (`prompt_state_variable_not_found`)
 
-**Error**: `"prompt_variable_error": Variable 'foo' is not guaranteed on all paths before node 'my_node'`
+**Warning**: `"prompt_state_variable_not_found": Prompt variable 'foo' not found in state_schema or upstream output_keys for node 'my_node'`
 
-Yagra validates at save time that every `{variable}` in a prompt template is resolvable before the node executes. A variable is resolvable if:
+Yagra validates that every `{variable}` in a prompt template exists in `state_schema` or is produced by an upstream node's `output_key`. This is a **warning-level** check (does not affect `is_valid`).
 
-1. It is a key in the workflow-level `params` section (initial state), **or**
-2. It is the `output_key` of an upstream node that is reached on **every** execution path leading to this node.
-
-**Example — missing declaration**:
+**Fix option 1 — declare in `state_schema`**:
 
 ```yaml
-# BAD: {query} is used in the prompt but not declared anywhere
-nodes:
-  - id: "answer"
-    handler: "llm"
-    params:
-      prompt:
-        system: "You are helpful."
-        user: "Answer: {query}"
-      model: ...
-edges: []
-# params section is absent → {query} has no source
-```
-
-**Fix option 1 — declare as initial state**:
-
-```yaml
-params:
-  query: ""   # Declare {query} as an initial state key
+state_schema:
+  - name: "query"
+    type: "str"
 ```
 
 **Fix option 2 — produce it from an upstream node**:
@@ -538,30 +520,7 @@ nodes:
   - id: "extract_query"
     handler: "llm"
     params:
-      ...
       output_key: "query"   # Produces the 'query' key
-  - id: "answer"
-    handler: "llm"
-    params:
-      prompt:
-        user: "Answer: {query}"
-      ...
-edges:
-  - source: "extract_query"
-    target: "answer"
-```
-
-**Branching**: If conditional edges exist, `{variable}` must be guaranteed on **all** paths:
-
-```yaml
-# BAD: 'result' only exists on path A, not path B
-edges:
-  - source: "start"
-    target: "node_a"
-    condition: "A"       # node_a produces output_key: "result"
-  - source: "start"
-    target: "end"
-    condition: "B"       # 'result' is not available here → error
 ```
 
 ## Next Steps

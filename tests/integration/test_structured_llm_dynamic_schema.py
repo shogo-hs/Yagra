@@ -22,7 +22,7 @@ class TestDynamicSchemaIntegration:
     def _reset_litellm_global(self) -> Generator[None, None, None]:
         """Manages the global litellm variable in structured_llm_handler before and after each test."""
         original = slm_module.litellm
-        slm_module.litellm = None
+        slm_module.litellm = None  # type: ignore[assignment]
         yield
         # Restore the original value after the test
         slm_module.litellm = original

@@ -12,7 +12,6 @@ yagra <command> [options]
 - `init`: Initialize from template
 - `schema`: Export JSON Schema
 - `validate`: Validate workflow YAML
-- `visualize`: Generate visualization HTML
 - `golden`: Manage golden regression test cases
 - `studio`: Launch visual editor WebUI
 - `handlers`: Display params schema for built-in handlers
@@ -221,54 +220,6 @@ Yagra validates:
 7. **Prompt-state consistency** (warning): `{variable}` in prompts should exist in `state_schema` or upstream `output_key`; `output_key` should be declared in `state_schema`
 
 **Note**: `is_valid` is determined by **error-severity issues only**. Warning and info-level issues (such as prompt-state consistency hints) are reported but do not cause `is_valid` to be `false`.
-
-## `yagra visualize`
-
-Generate a read-only HTML visualization of the workflow.
-
-### Usage
-
-```bash
-yagra visualize --workflow <file> [--bundle-root <dir>] [--output <file>] [--title <title>]
-```
-
-### Options
-
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--workflow` | Path to workflow YAML | Required |
-| `--bundle-root` | Base directory for reference resolution | Workflow parent directory |
-| `--output` | Output HTML file path | `workflow-visualization.html` |
-| `--title` | Page title | Workflow file name |
-
-### Examples
-
-**Basic visualization**:
-
-```bash
-yagra visualize --workflow workflows/support.yaml --output /tmp/workflow.html
-```
-
-**Custom title**:
-
-```bash
-yagra visualize --workflow workflows/loop.yaml --title "Loop Workflow" --output loop.html
-```
-
-### Output
-
-- Standalone HTML file with embedded Mermaid diagram
-- No internet connection required (Mermaid is bundled)
-- Nodes, edges, and conditional branches are visualized
-- Opens directly in any browser
-
-### Example Visualization
-
-![Visualization Example](https://via.placeholder.com/600x400?text=Workflow+Visualization)
-
-- Nodes: Boxes
-- Edges: Arrows
-- Conditional edges: Labeled arrows
 
 ## `yagra golden`
 

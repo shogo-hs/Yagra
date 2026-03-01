@@ -32,7 +32,7 @@ class TestStructuredLLMHandlerIntegration:
     def _reset_litellm_global(self) -> Generator[None, None, None]:
         """Resets the global litellm variable in structured_llm_handler before and after each test."""
         original = slm_module.litellm
-        slm_module.litellm = None
+        slm_module.litellm = None  # type: ignore[assignment]
         yield
         slm_module.litellm = original
 

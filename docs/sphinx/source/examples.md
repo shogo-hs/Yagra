@@ -243,15 +243,6 @@ git clone https://github.com/shogo-hs/Yagra.git
 cd Yagra/examples
 ```
 
-## Visualizing Examples
-
-Generate HTML visualizations:
-
-```bash
-yagra visualize --workflow examples/workflows/branch-inline.yaml --output branch.html
-yagra visualize --workflow examples/workflows/loop-split.yaml --output loop.html
-```
-
 ## Using Templates
 
 Yagra also provides templates for common patterns. Templates include both workflow YAML and prompt files, ready to use:

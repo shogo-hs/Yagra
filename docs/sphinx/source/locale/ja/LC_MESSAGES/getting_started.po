@@ -58,7 +58,7 @@ msgstr ""
 #: ../getting_started.md:30
 msgid ""
 "You should see available commands: `init`, `schema`, `validate`, "
-"`visualize`, `studio`."
+"`studio`."
 msgstr ""
 
 #: ../getting_started.md:32

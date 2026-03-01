@@ -33,6 +33,12 @@
 
 ### Changed
 - 🔧 **P-0: `is_valid` を error severity のみで判定**: `WorkflowValidationReport.is_valid` が `not self.issues` から `not any(i.severity == "error" for i in self.issues)` に変更。warning/info レベルの issue が追加されても既存ワークフローの valid 判定に影響しない
+- 🔧 **コスト推定を litellm に委譲**: 静的コストテーブル（`cost_table.py`）を廃止し、`litellm.cost_per_token()` に委譲。価格情報が litellm のリリースに追従して自動更新される
+
+### Removed
+- 🗑️ **`yagra visualize` コマンド廃止**: Studio UI に完全統合されたため、Read-Only HTML 可視化コマンドを削除。Mermaid ベンダーアセット（2.7MB）も除去
+- 🗑️ **`TraceSinkPort.flush()` 廃止**: 全実装が no-op だった未使用メソッドを削除
+- 🗑️ **`cost_table.py` 廃止**: 静的コストテーブルを削除。litellm の動的価格データベースに置換
 
 ## [1.0.1] - 2026-02-22
 

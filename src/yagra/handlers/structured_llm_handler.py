@@ -16,7 +16,7 @@ from yagra.handlers.schema_builder import build_model_from_schema_yaml
 from yagra.ports.outbound.node_registry import NodeHandler
 
 if TYPE_CHECKING:
-    import litellm  # type: ignore[import-not-found]
+    import litellm
 else:
     litellm = None  # type: ignore[assignment]
 

@@ -50,10 +50,6 @@ msgid "`validate`: Validate workflow YAML"
 msgstr ""
 
 #: ../cli_reference.md:15
-msgid "`visualize`: Generate visualization HTML"
-msgstr ""
-
-#: ../cli_reference.md:16
 msgid "`studio`: Launch visual editor WebUI"
 msgstr ""
 
@@ -353,88 +349,6 @@ msgid "**Prompt references**: `prompt_ref` paths resolve to valid files"
 msgstr ""
 
 #: ../cli_reference.md:210
-msgid "`yagra visualize`"
-msgstr ""
-
-#: ../cli_reference.md:212
-msgid "Generate a read-only HTML visualization of the workflow."
-msgstr ""
-
-#: ../cli_reference.md
-msgid "Output HTML file path"
-msgstr ""
-
-#: ../cli_reference.md
-msgid "`workflow-visualization.html`"
-msgstr ""
-
-#: ../cli_reference.md
-msgid "`--title`"
-msgstr ""
-
-#: ../cli_reference.md
-msgid "Page title"
-msgstr ""
-
-#: ../cli_reference.md
-msgid "Workflow file name"
-msgstr ""
-
-#: ../cli_reference.md:231
-msgid "**Basic visualization**:"
-msgstr ""
-
-#: ../cli_reference.md:237
-msgid "**Custom title**:"
-msgstr ""
-
-#: ../cli_reference.md:243
-msgid "Output"
-msgstr ""
-
-#: ../cli_reference.md:245
-msgid "Standalone HTML file with embedded Mermaid diagram"
-msgstr ""
-
-#: ../cli_reference.md:246
-msgid "No internet connection required (Mermaid is bundled)"
-msgstr ""
-
-#: ../cli_reference.md:247
-msgid "Nodes, edges, and conditional branches are visualized"
-msgstr ""
-
-#: ../cli_reference.md:248
-msgid "Opens directly in any browser"
-msgstr ""
-
-#: ../cli_reference.md:250
-msgid "Example Visualization"
-msgstr ""
-
-#: ../cli_reference.md:252
-msgid ""
-"![Visualization "
-"Example](https://via.placeholder.com/600x400?text=Workflow+Visualization)"
-msgstr ""
-
-#: ../cli_reference.md:252
-msgid "Visualization Example"
-msgstr ""
-
-#: ../cli_reference.md:254
-msgid "Nodes: Boxes"
-msgstr ""
-
-#: ../cli_reference.md:255
-msgid "Edges: Arrows"
-msgstr ""
-
-#: ../cli_reference.md:256
-msgid "Conditional edges: Labeled arrows"
-msgstr ""
-
-#: ../cli_reference.md:258
 msgid "`yagra studio`"
 msgstr ""
 
