@@ -652,9 +652,7 @@ def _wrap_with_timeout(runner: NodeHandler, timeout_seconds: int) -> NodeHandler
         thread.start()
         thread.join(timeout=timeout_seconds)
         if thread.is_alive():
-            raise TimeoutError(
-                f"node execution timed out after {timeout_seconds} seconds"
-            )
+            raise TimeoutError(f"node execution timed out after {timeout_seconds} seconds")
         if error_box:
             raise error_box[0]
         return result_box[0]

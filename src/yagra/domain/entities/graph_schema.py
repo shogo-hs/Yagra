@@ -22,8 +22,7 @@ class RetrySpec(BaseModel):
         ge=1,
         le=10,
         description=(
-            "Maximum number of attempts including the first try. "
-            "Must be between 1 and 10."
+            "Maximum number of attempts including the first try. Must be between 1 and 10."
         ),
         examples=[3, 5],
     )

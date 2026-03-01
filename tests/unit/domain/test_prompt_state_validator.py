@@ -170,7 +170,9 @@ def test_warning_for_multiple_missing_variables() -> None:
     )
     issues = collect_prompt_state_issues(spec)
 
-    var_warnings = [i for i in issues if i.severity == "warning" and "variable" in (i.context or {})]
+    var_warnings = [
+        i for i in issues if i.severity == "warning" and "variable" in (i.context or {})
+    ]
     missing_vars = {i.context["variable"] for i in var_warnings}
     assert missing_vars == {"role", "topic", "detail"}
 
