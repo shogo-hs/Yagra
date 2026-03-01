@@ -4,10 +4,7 @@
 
 ## [Unreleased]
 
-### Changed
-- **litellm を必須依存に昇格**: オプショナル依存（`yagra[llm]`）から通常依存に変更。全 LLM ハンドラがコア機能であるため、条件付き import パターンを削除し型安全性を向上
-- 🔧 **Handler DRY 化**: LLM ハンドラ（`llm` / `structured_llm` / `streaming_llm`）の共通ロジックを `_llm_common.py` に抽出（`extract_llm_params`、`interpolate_prompt`、`llm_retry_loop`、`report_token_usage`、`build_params_schema`）。内部リファクタリングのため、ユーザー向け API に変更なし
-- 🔧 **ハンドラカタログ分離**: ハンドラカタログを `catalog.py` に集約。内部リファクタリングのため、ユーザー向け API に変更なし
+## [1.1.0] - 2026-03-01
 
 ### Added
 - ✨ **C-1: retry / fallback / timeout YAML 宣言**: ノードレベルで retry（max_attempts、backoff 戦略、base_delay_seconds）、timeout_seconds、fallback を YAML で直接宣言可能に
@@ -37,8 +34,11 @@
   - `yagra prompt info --file <path>` CLI コマンドを追加（`_meta` 情報・プロンプトキー一覧を表示、`--format json` 対応）
 
 ### Changed
+- **litellm を必須依存に昇格**: オプショナル依存（`yagra[llm]`）から通常依存に変更。全 LLM ハンドラがコア機能であるため、条件付き import パターンを削除し型安全性を向上
 - 🔧 **P-0: `is_valid` を error severity のみで判定**: `WorkflowValidationReport.is_valid` が `not self.issues` から `not any(i.severity == "error" for i in self.issues)` に変更。warning/info レベルの issue が追加されても既存ワークフローの valid 判定に影響しない
 - 🔧 **コスト推定を litellm に委譲**: 静的コストテーブル（`cost_table.py`）を廃止し、`litellm.cost_per_token()` に委譲。価格情報が litellm のリリースに追従して自動更新される
+- 🔧 **Handler DRY 化**: LLM ハンドラ（`llm` / `structured_llm` / `streaming_llm`）の共通ロジックを `_llm_common.py` に抽出（`extract_llm_params`、`interpolate_prompt`、`llm_retry_loop`、`report_token_usage`、`build_params_schema`）。内部リファクタリングのため、ユーザー向け API に変更なし
+- 🔧 **ハンドラカタログ分離**: ハンドラカタログを `catalog.py` に集約。内部リファクタリングのため、ユーザー向け API に変更なし
 
 ### Removed
 - 🗑️ **`yagra visualize` コマンド廃止**: Studio UI に完全統合されたため、Read-Only HTML 可視化コマンドを削除。Mermaid ベンダーアセット（2.7MB）も除去

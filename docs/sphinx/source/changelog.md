@@ -8,10 +8,7 @@ For the canonical changelog (Japanese), see [CHANGELOG.md](https://github.com/sh
 
 ## [Unreleased]
 
-### Changed
-- **litellm promoted to required dependency**: Moved from optional (`yagra[llm]`) to core dependency. Removes conditional import patterns and improves type safety
-- 🔧 **Handler DRY refactoring**: Extracted common LLM handler logic (`llm` / `structured_llm` / `streaming_llm`) into `_llm_common.py` (`extract_llm_params`, `interpolate_prompt`, `llm_retry_loop`, `report_token_usage`, `build_params_schema`). Internal refactoring only — no user-facing API changes
-- 🔧 **Handler catalog centralized**: Moved handler catalog into `catalog.py`. Internal refactoring only — no user-facing API changes
+## [1.1.0] - 2026-03-01
 
 ### Added
 - ✨ **C-1: Retry / Fallback / Timeout YAML declaration**: Node-level retry (max_attempts, backoff strategy, base_delay_seconds), timeout_seconds, and fallback can now be declared directly in YAML
@@ -41,8 +38,11 @@ For the canonical changelog (Japanese), see [CHANGELOG.md](https://github.com/sh
   - Added `yagra prompt info --file <path>` CLI command (displays `_meta` info and prompt keys, supports `--format json`)
 
 ### Changed
+- **litellm promoted to required dependency**: Moved from optional (`yagra[llm]`) to core dependency. Removes conditional import patterns and improves type safety
 - 🔧 **P-0: `is_valid` now checks error severity only**: `WorkflowValidationReport.is_valid` changed from `not self.issues` to `not any(i.severity == "error" for i in self.issues)`. Warning/info-level issues no longer affect the valid/invalid determination of existing workflows
 - 🔧 **Cost estimation delegated to litellm**: Removed static cost table (`cost_table.py`) and delegated to `litellm.cost_per_token()`. Pricing data now auto-updates with litellm releases
+- 🔧 **Handler DRY refactoring**: Extracted common LLM handler logic (`llm` / `structured_llm` / `streaming_llm`) into `_llm_common.py` (`extract_llm_params`, `interpolate_prompt`, `llm_retry_loop`, `report_token_usage`, `build_params_schema`). Internal refactoring only — no user-facing API changes
+- 🔧 **Handler catalog centralized**: Moved handler catalog into `catalog.py`. Internal refactoring only — no user-facing API changes
 
 ### Removed
 - 🗑️ **`yagra visualize` command removed**: Fully superseded by Studio UI. Read-only HTML visualization command and Mermaid vendor assets (2.7MB) removed

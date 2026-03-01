@@ -797,10 +797,8 @@ The server communicates over stdin/stdout using the MCP protocol. No additional 
 
 | Tool | Required params | Description |
 |------|----------------|-------------|
-| `validate_workflow` | `yaml_content` | Validate a workflow YAML string and return structured issues. Pass `base_dir` to resolve relative `prompt_ref` paths. |
-| `validate_workflow_file` | `workflow_path` | Validate a workflow YAML file by path (more convenient than `validate_workflow` when the file is accessible). |
-| `explain_workflow` | `yaml_content` | Statically analyze a workflow YAML string and return execution paths, required handlers, and variable flow. |
-| `explain_workflow_file` | `workflow_path` | Statically analyze a workflow YAML file by path. |
+| `validate_workflow` | `yaml_content` or `workflow_path` | Validate a workflow YAML and return structured issues. Pass `yaml_content` for inline YAML or `workflow_path` for file-based validation. Optional: `base_dir` to resolve relative `prompt_ref` paths. |
+| `explain_workflow` | `yaml_content` or `workflow_path` | Statically analyze a workflow YAML and return execution paths, required handlers, and variable flow. Pass `yaml_content` or `workflow_path`. |
 | `list_templates` | — | List available `yagra init` templates with name, description, and use_case. |
 | `list_handlers` | — | List built-in handlers and their params schemas. |
 | `get_template` | `name` | Return the file contents of a template (workflow.yaml + prompt files). Use `list_templates` first to get the name. |
@@ -841,7 +839,7 @@ Add the following to your `claude_desktop_config.json`:
 }
 ```
 
-Once connected, the agent has access to all 13 tools listed in the table above. See the [Optimization Cycle guide](user_guide/optimization_cycle.md) for end-to-end usage examples.
+Once connected, the agent has access to all 11 tools listed in the table above. See the [Optimization Cycle guide](user_guide/optimization_cycle.md) for end-to-end usage examples.
 
 ## Environment Variables
 

@@ -501,8 +501,8 @@ Yagra validates that every `{variable}` in a prompt template exists in `state_sc
 
 ```yaml
 state_schema:
-  - name: "query"
-    type: "str"
+  query:
+    type: str
 ```
 
 **Fix option 2 — produce it from an upstream node**:
