@@ -474,7 +474,7 @@ Open `http://127.0.0.1:8787/` in your browser.
 - **Drag & Drop**: Add nodes, connect edges, adjust layout visually
 - **Diff Preview**: Review changes before saving
 - **Backup & Rollback**: Automatic backups with rollback support
-- **Validation**: Real-time validation with detailed error messages
+- **Live Validation**: Auto-validates on every form change (400ms debounce) with severity-aware issue display (error/warning/info badges) and canvas node error highlights
 
 ## 📚 Documentation
 

@@ -17,6 +17,12 @@ For the canonical changelog (Japanese), see [CHANGELOG.md](https://github.com/sh
   - Schema validation enforces fallback node existence and rejects self-referencing fallbacks
 - ✨ **F-0: Studio UI Resilience Settings**: Node Properties panel now includes a "Resilience Settings" section with retry configuration (Enable retry checkbox, max_attempts, backoff, base_delay), timeout_seconds input, and fallback node dropdown. Available for all handler types
 - ✨ **D-1: Prompt variable × state_schema type-safety validation**: Added `prompt_state_validator`. Validates that `{variable}` placeholders in prompt templates exist in state_schema or upstream node output_keys (warning level). Also warns when output_key is not declared in state_schema. Emits info when state_schema is undefined but variables are used
+- ✨ **F-2: Studio real-time validation**: Automatically validates on form changes and displays results inline
+  - Added `POST /api/workflow/validate` endpoint (lightweight validation without diff computation)
+  - JS-side debounce (400ms) auto-triggers on node edits, edge edits, metadata changes, and connection additions
+  - Validation issue severity (error/warning/info) shown with color-coded badges
+  - Canvas nodes highlighted with red border (error) or yellow border (warning)
+  - When `is_valid: true` with warning/info issues, displays "Validation passed (with warnings)" alongside issues
 
 ### Changed
 - 🔧 **P-0: `is_valid` now checks error severity only**: `WorkflowValidationReport.is_valid` changed from `not self.issues` to `not any(i.severity == "error" for i in self.issues)`. Warning/info-level issues no longer affect the valid/invalid determination of existing workflows

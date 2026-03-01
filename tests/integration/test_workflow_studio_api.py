@@ -965,3 +965,135 @@ def test_workflow_studio_api_supports_single_node_without_edges(tmp_path: Path) 
         server.shutdown()
         server.server_close()
         thread.join(timeout=2)
+
+
+def test_workflow_studio_api_validate_live(tmp_path: Path) -> None:
+    """Tests the POST /api/workflow/validate endpoint for live validation."""
+    workspace_root = tmp_path / "workspace"
+    _write_workflow(workspace_root / "workflows" / "test.yaml", _base_payload())
+
+    server = create_workflow_studio_server(
+        workflow_path=workspace_root / "workflows" / "test.yaml",
+        workspace_root=workspace_root,
+        backup_dir=tmp_path / ".yagra-backups",
+        host="127.0.0.1",
+        port=0,
+    )
+    thread = Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    base_url = _server_base_url(server)
+
+    try:
+        # Valid workflow -> passes validation
+        valid_workflow = _base_payload()
+        status, payload = _request_json(
+            "POST",
+            f"{base_url}/api/workflow/validate",
+            {"workflow": valid_workflow},
+        )
+        assert status == 200
+        assert payload["validation_report"]["is_valid"] is True
+
+        # Invalid workflow (start_at references non-existent node) -> fails validation
+        invalid_workflow = deepcopy(valid_workflow)
+        invalid_workflow["start_at"] = "nonexistent"
+        status, payload = _request_json(
+            "POST",
+            f"{base_url}/api/workflow/validate",
+            {"workflow": invalid_workflow},
+        )
+        assert status == 200
+        assert payload["validation_report"]["is_valid"] is False
+        assert len(payload["validation_report"]["issues"]) > 0
+
+        # Issues have severity field
+        first_issue = payload["validation_report"]["issues"][0]
+        assert "severity" in first_issue
+        assert first_issue["severity"] in ("error", "warning", "info")
+
+        # Missing workflow key -> 400
+        status, payload = _request_json(
+            "POST",
+            f"{base_url}/api/workflow/validate",
+            {},
+        )
+        assert status == 400
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+
+def test_workflow_studio_api_validate_live_returns_warnings(tmp_path: Path) -> None:
+    """Tests that validate_live returns warning/info severity issues."""
+    workspace_root = tmp_path / "workspace"
+
+    # Create prompt file with {query} variable
+    prompts_dir = workspace_root / "prompts"
+    prompts_dir.mkdir(parents=True, exist_ok=True)
+    prompt_file = prompts_dir / "test_prompts.yaml"
+    prompt_file.write_text(
+        yaml.safe_dump(
+            {
+                "responder": {
+                    "system": "You are helpful.",
+                    "user": "Answer: {query}",
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    # Workflow using prompt_ref without state_schema -> should produce info/warning
+    workflow_with_prompt_ref = {
+        "version": "1.0",
+        "start_at": "responder",
+        "end_at": ["responder"],
+        "nodes": [
+            {
+                "id": "responder",
+                "handler": "llm",
+                "params": {
+                    "prompt_ref": "../prompts/test_prompts.yaml#responder",
+                    "model": {"provider": "openai", "name": "gpt-4o-mini"},
+                },
+            },
+        ],
+        "edges": [],
+        "params": {},
+    }
+    _write_workflow(
+        workspace_root / "workflows" / "prompt_test.yaml",
+        workflow_with_prompt_ref,
+    )
+
+    server = create_workflow_studio_server(
+        workflow_path=workspace_root / "workflows" / "prompt_test.yaml",
+        workspace_root=workspace_root,
+        backup_dir=tmp_path / ".yagra-backups",
+        host="127.0.0.1",
+        port=0,
+    )
+    thread = Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    base_url = _server_base_url(server)
+
+    try:
+        status, payload = _request_json(
+            "POST",
+            f"{base_url}/api/workflow/validate",
+            {"workflow": workflow_with_prompt_ref},
+        )
+        assert status == 200
+        report = payload["validation_report"]
+        # is_valid should be True because only warning/info issues
+        assert report["is_valid"] is True
+        # Should have at least one issue (info about missing state_schema)
+        assert len(report["issues"]) > 0
+        severities = {i["severity"] for i in report["issues"]}
+        # All issues should be warning or info (not error)
+        assert "error" not in severities
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)

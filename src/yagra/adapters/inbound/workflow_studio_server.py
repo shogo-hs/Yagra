@@ -175,6 +175,7 @@ def _build_handler_class(
         "/api/workflow/rollback": "rollback",
         "/api/studio/open": "open_studio_target",
         "/api/studio/create": "create_studio_target",
+        "/api/workflow/validate": "validate_live",
         "/api/studio/file/read": "read_studio_yaml_file",
         "/api/studio/file/save": "save_studio_yaml_file",
     }
@@ -764,6 +765,23 @@ def _studio_html() -> str:
       font-size: 11px;
       color: var(--muted);
     }
+    .issue-severity-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .severity-error { background: var(--danger); color: #fff; }
+    .severity-warning { background: #e8a735; color: #1a1a1a; }
+    .severity-info { background: #5b9bd5; color: #fff; }
+    .issue-warning { background: rgba(232,167,53,0.10); }
+    .issue-info { background: rgba(91,155,213,0.10); }
     .diff-display {
       width: 100%;
       min-height: 170px;
@@ -849,6 +867,14 @@ def _studio_html() -> str:
       border-color: var(--primary-active);
       box-shadow: var(--shadow-lg);
       border-width: 2px;
+    }
+    .workflow-node.node-has-error {
+      border-color: var(--danger);
+      box-shadow: 0 0 0 2px rgba(220,53,69,0.25);
+    }
+    .workflow-node.node-has-warning {
+      border-color: #e8a735;
+      box-shadow: 0 0 0 2px rgba(232,167,53,0.20);
     }
     .workflow-node-role {
       display: flex;
@@ -1146,6 +1172,7 @@ def _studio_html() -> str:
                   v-bind="nodeProps"
                   :show-input-vars="showInputVars"
                   :show-output-vars="showOutputVars"
+                  :validation-status="nodeValidationMap[nodeProps.data?.id] || ''"
                 ></workflow-node>
               </template>
               <mini-map></mini-map>
@@ -1557,11 +1584,13 @@ def _studio_html() -> str:
       <section class="lower">
         <article class="panel">
           <h2>Validation</h2>
-          <div v-if="validationData.isValid" class="validation-list">
+          <div v-if="validationData.isValid && validationData.issues.length === 0" class="validation-list">
             <div class="validation-pass">Validation passed</div>
           </div>
           <div v-else-if="validationData.issues.length > 0" class="validation-list">
-            <div v-for="(issue, idx) in validationData.issues" :key="'vi-' + idx" class="validation-issue">
+            <div v-if="validationData.isValid" class="validation-pass" style="margin-bottom:4px;">Validation passed (with warnings)</div>
+            <div v-for="(issue, idx) in validationData.issues" :key="'vi-' + idx" class="validation-issue" :class="'issue-' + issue.severity">
+              <span class="issue-severity-badge" :class="'severity-' + issue.severity">{{ issue.severity }}</span>
               <span class="issue-badge">{{ issue.code }}</span>
               <span class="issue-msg">{{ issue.message }}</span>
               <span v-if="issue.location" class="issue-location">@ {{ issue.location }}</span>
@@ -1626,12 +1655,13 @@ def _studio_html() -> str:
         selected: { type: Boolean, default: false },
         showInputVars: { type: Boolean, default: true },
         showOutputVars: { type: Boolean, default: true },
+        validationStatus: { type: String, default: "" },
       },
       setup() {
         return { Position };
       },
       template: `
-        <div class="workflow-node" :class="{ selected, 'is-start': data.isStart, 'is-end': data.isEnd }">
+        <div class="workflow-node" :class="{ selected, 'is-start': data.isStart, 'is-end': data.isEnd, 'node-has-error': validationStatus === 'error', 'node-has-warning': validationStatus === 'warning' }">
           <Handle id="left-in" type="target" :position="Position.Left" class="node-handle" />
           <Handle id="top-in" type="target" :position="Position.Top" class="node-handle node-handle-top" />
           <div v-if="data.isStart || data.isEnd" class="workflow-node-role">
@@ -1671,6 +1701,14 @@ def _studio_html() -> str:
     function normalizeText(value) {
       if (value === null || value === undefined) return "";
       return String(value).trim();
+    }
+
+    function debounce(fn, delay) {
+      let timer = null;
+      return function (...args) {
+        if (timer !== null) clearTimeout(timer);
+        timer = setTimeout(() => { timer = null; fn.apply(this, args); }, delay);
+      };
     }
 
     function normalizeNodeIdList(value) {
@@ -2276,15 +2314,18 @@ def _studio_html() -> str:
       if (!report) {
         return { isValid: false, issues: [], empty: true };
       }
-      if (report.is_valid) {
-        return { isValid: true, issues: [], empty: false };
-      }
-      const issues = (report.issues || []).map(issue => ({
-        code: issue.code || "UNKNOWN",
-        message: issue.message || "",
-        location: issue.location ? JSON.stringify(issue.location) : "",
-      }));
-      return { isValid: false, issues, empty: false };
+      const issues = (report.issues || []).map(issue => {
+        const loc = Array.isArray(issue.location) ? issue.location : [];
+        const nodeId = loc.length >= 2 && loc[0] === "nodes" ? String(loc[1]) : "";
+        return {
+          code: issue.code || "UNKNOWN",
+          message: issue.message || "",
+          location: loc.length > 0 ? JSON.stringify(loc) : "",
+          severity: issue.severity || "error",
+          nodeId,
+        };
+      });
+      return { isValid: Boolean(report.is_valid), issues, empty: false };
     }
 
     function buildDiffText(data) {
@@ -2446,6 +2487,18 @@ def _studio_html() -> str:
         const isStructuredLlm = computed(() => nodeEditor.handlerType === "structured_llm");
         const isStreamingLlm = computed(() => nodeEditor.handlerType === "streaming_llm");
         const showPromptFields = computed(() => isLlmHandler.value || nodeEditor.handlerType === "custom");
+
+        const nodeValidationMap = computed(() => {
+          const map = {};
+          for (const issue of validationData.issues) {
+            if (!issue.nodeId) continue;
+            const prev = map[issue.nodeId];
+            if (!prev || issue.severity === "error" || (issue.severity === "warning" && prev !== "error")) {
+              map[issue.nodeId] = issue.severity;
+            }
+          }
+          return map;
+        });
 
         // Toggle display of data flow variable badges
         const showInputVars = ref(true);
@@ -3046,6 +3099,7 @@ def _studio_html() -> str:
         function onWorkflowMetaChange() {
           syncWorkflowMetaWithNodes(nodes.value);
           syncNodeRoleFlags();
+          debouncedValidateLive();
         }
 
         function refreshEdgeMetadata() {
@@ -3694,6 +3748,7 @@ def _studio_html() -> str:
             };
           });
           refreshEdgeMetadata();
+          debouncedValidateLive();
           setStatus(`edge edit applied: ${targetId}`);
         }
 
@@ -3754,6 +3809,7 @@ def _studio_html() -> str:
         function onEdgesChange(changes) {
           edges.value = applyEdgeChanges(changes, edges.value);
           refreshEdgeMetadata();
+          debouncedValidateLive();
         }
 
         function onConnect(connection) {
@@ -3784,6 +3840,7 @@ def _studio_html() -> str:
           };
           edges.value = [...edges.value, nextEdge];
           refreshEdgeMetadata();
+          debouncedValidateLive();
           selectedNodeId.value = null;
           selectedEdgeId.value = edgeId;
           isConnecting.value = false;
@@ -3862,6 +3919,28 @@ def _studio_html() -> str:
           }
           return { response, data };
         }
+
+        let _validateLiveSeq = 0;
+        async function validateLive() {
+          if (!revision.value) return;
+          const seq = ++_validateLiveSeq;
+          try {
+            const { response, data } = await requestJson("/api/workflow/validate", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ workflow: buildWorkflowPayload() }),
+            });
+            if (seq !== _validateLiveSeq) return;
+            if (!response.ok) return;
+            const vd = parseValidationReport(data.validation_report);
+            validationData.isValid = vd.isValid;
+            validationData.issues = vd.issues;
+            validationData.empty = vd.empty;
+          } catch (_err) {
+            /* network error — keep existing validation state */
+          }
+        }
+        const debouncedValidateLive = debounce(validateLive, 400);
 
         async function loadStudioTarget() {
           const { response, data } = await requestJson("/api/studio/target");
@@ -4476,6 +4555,7 @@ def _studio_html() -> str:
           showPromptFields,
           showInputVars,
           showOutputVars,
+          nodeValidationMap,
           nodes,
           edges,
           selectedNode,

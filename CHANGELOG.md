@@ -13,6 +13,12 @@
   - スキーマバリデーションで fallback ノード ID の存在確認・自己参照禁止を検証
 - ✨ **F-0: Studio UI に Resilience Settings 追加**: ノードプロパティパネルに retry 設定（Enable retry チェックボックス、max_attempts、backoff、base_delay）、timeout_seconds テキスト入力、fallback ノードドロップダウンを追加。全ハンドラータイプで利用可能
 - ✨ **D-1: プロンプト変数 × state_schema 型安全バリデーション**: `prompt_state_validator` を追加。プロンプトテンプレートの `{variable}` が state_schema または upstream ノードの output_key に存在するかを warning レベルで検証。output_key が state_schema に未定義の場合も warning。state_schema 未定義時は info レベルで通知
+- ✨ **F-2: Studio リアルタイムバリデーション**: フォーム変更時に自動でバリデーションを実行し結果をインライン表示
+  - `POST /api/workflow/validate` エンドポイント追加（diff 計算なしの軽量バリデーション）
+  - JS 側デバウンス（400ms）でフォーム変更時に自動呼び出し（ノード編集・エッジ編集・メタデータ変更・接続追加に対応）
+  - バリデーション issue の severity（error/warning/info）を色分きバッジで表示
+  - キャンバスノードにエラーハイライト（赤枠）・警告ハイライト（黄枠）を表示
+  - `is_valid: true` でも warning/info issue がある場合は「Validation passed (with warnings)」と共に表示
 
 ### Changed
 - 🔧 **P-0: `is_valid` を error severity のみで判定**: `WorkflowValidationReport.is_valid` が `not self.issues` から `not any(i.severity == "error" for i in self.issues)` に変更。warning/info レベルの issue が追加されても既存ワークフローの valid 判定に影響しない

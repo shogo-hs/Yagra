@@ -92,5 +92,16 @@ class StudioPort(ABC):
         """Saves the editing proposal."""
 
     @abstractmethod
+    def validate_live(self, body: dict[str, Any]) -> dict[str, Any]:
+        """Validates a workflow payload without computing a diff.
+
+        Args:
+            body: Request body containing the ``workflow`` payload to validate.
+
+        Returns:
+            Dictionary with ``validation_report`` holding the structured report.
+        """
+
+    @abstractmethod
     def rollback(self, body: dict[str, Any]) -> dict[str, Any]:
         """Restores using the specified backup ID."""

@@ -30,6 +30,7 @@ from yagra.application.use_cases.workflow_persistence import (
 )
 from yagra.application.use_cases.workflow_validation_reporter import (
     WorkflowValidationFailedError,
+    validate_workflow_payload_for_ui,
 )
 from yagra.ports.inbound import (
     StudioBadRequestError,
@@ -767,6 +768,29 @@ class StudioService(StudioPort):
             "saved_revision": result.saved_revision,
             "backup_id": result.backup_id,
         }
+
+    def validate_live(self, body: dict[str, Any]) -> dict[str, Any]:
+        """Validates a workflow payload without computing a diff.
+
+        Args:
+            body: Request body containing the ``workflow`` payload to validate.
+
+        Returns:
+            Dictionary with ``validation_report`` holding the structured report.
+        """
+        candidate_workflow = body.get("workflow")
+        if not isinstance(candidate_workflow, dict):
+            raise StudioBadRequestError(error="workflow must be a mapping")
+
+        with self._config.lock:
+            workflow_path, _ = self._require_active_target_paths()
+            report = validate_workflow_payload_for_ui(
+                payload=candidate_workflow,
+                workflow_path=workflow_path,
+                bundle_root=self._config.bundle_root,
+            )
+
+        return {"validation_report": report.to_dict()}
 
     def rollback(self, body: dict[str, Any]) -> dict[str, Any]:
         """Restores using the specified backup ID."""

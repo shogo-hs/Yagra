@@ -491,10 +491,15 @@ These settings map directly to the YAML `retry`, `timeout_seconds`, and `fallbac
 - List available backups
 - Rollback to previous version by backup ID
 
-#### Validation
-- Real-time validation as you edit
-- Detailed error messages with location
-- Prevents saving invalid workflows
+#### Live Validation
+
+Studio validates your workflow automatically as you edit:
+
+- **Debounced auto-validation**: Every form change (node edits, edge edits, metadata changes, connections) triggers a validation request after a 400ms debounce delay via `POST /api/workflow/validate`
+- **Severity-aware display**: Issues are shown with color-coded severity badges — `error` (red), `warning` (yellow), `info` (blue)
+- **Canvas node highlights**: Nodes with validation errors are highlighted with a red border; nodes with warnings get a yellow border
+- **Warning-aware pass state**: When `is_valid` is true but warnings/info exist, displays "Validation passed (with warnings)" alongside the issue list
+- **Prevents saving invalid workflows**: Save is blocked when error-level issues exist
 
 ### Accessing Studio
 

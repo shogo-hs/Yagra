@@ -95,6 +95,7 @@
 | M-54 | G-22 | プロンプト変数 × state_schema 型安全バリデーションを実装する | `prompt_state_validator` で warning レベル検証。変数存在確認・output_key 宣言確認。バリデーションパイプラインに統合 | Done |
 | M-55 | G-23 | Retry / Fallback / Timeout YAML 宣言機能を実装する | ノードレベルで retry/timeout/fallback を YAML で直接宣言。`RetrySpec` モデル追加。`state_graph_builder` が実行時ラップ。スキーマバリデーションで fallback 検証 | Done |
 | M-56 | G-24 | Studio UI で Resilience Settings を追加する | ノードプロパティパネルに retry/timeout/fallback 編集セクション実装。rawNode パススルーで YAML 保存に反映 | Done |
+| M-57 | G-25 | Studio リアルタイムバリデーションを実装する | `POST /api/workflow/validate` エンドポイント追加。400ms デバウンスでフォーム変更時に自動バリデーション。severity バッジ表示。キャンバスノードにエラー/警告ハイライト。統合テスト追加 | Done |
 
 ## Goal 別の実装項目
 
@@ -333,6 +334,19 @@
 | G24-I03 | Resilience Settings HTML セクションを追加する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` |
 | G24-I04 | applyNodeEdit() にバリデーションと rawNode 更新を追加する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` |
 | G24-I05 | 回帰テストを追加する | Done | `tests/unit/application/test_workflow_form_patcher.py` |
+
+### G-25: Studio UI でリアルタイムバリデーションが動作する
+
+| Item ID | やるべきこと | 状態 | 根拠 |
+| --- | --- | --- | --- |
+| G25-I01 | `StudioPort` に `validate_live()` メソッドを追加する | Done | `src/yagra/ports/inbound/studio.py` (M-57) |
+| G25-I02 | `StudioService` に `validate_live()` を実装する | Done | `src/yagra/application/services/studio_service.py` |
+| G25-I03 | `POST /api/workflow/validate` ルートを追加する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` |
+| G25-I04 | JS debounce 関数と `validateLive()` を実装する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` |
+| G25-I05 | フォーム変更箇所に `debouncedValidateLive()` 呼び出しを追加する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` |
+| G25-I06 | バリデーション issue の severity バッジと HTML 表示を更新する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` |
+| G25-I07 | キャンバスノードのエラー/警告ハイライト CSS を追加する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` |
+| G25-I08 | 統合テストを追加する | Done | `tests/integration/test_workflow_studio_api.py` |
 
 ## 運用ルール
 
