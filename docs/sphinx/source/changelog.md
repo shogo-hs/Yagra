@@ -8,6 +8,8 @@ For the canonical changelog (Japanese), see [CHANGELOG.md](https://github.com/sh
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-03-01
+
 ### Changed
 - 🔄 **Studio: Add Node unification**: Unified node creation to DnD-only flow. Removed the Add Node button/form; users now drag to canvas and edit id/handler in Node Properties after drop
 - ⌨️ **Studio: Keyboard shortcuts**: Added Ctrl+S to save (works inside input fields), Escape to deselect. Added shortcut help tooltip to toolbar
