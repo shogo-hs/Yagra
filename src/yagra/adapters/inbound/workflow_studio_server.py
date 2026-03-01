@@ -585,6 +585,11 @@ def _studio_html() -> str:
       overflow: hidden;
       min-height: 620px;
       background: linear-gradient(180deg, #fcfeff 0%, #f2f8ff 100%);
+      transition: border-color 0.15s;
+    }
+    .flow-shell-dragover {
+      border-color: var(--primary);
+      border-style: dashed;
     }
     .workflow-flow {
       width: 100%;
@@ -1029,6 +1034,62 @@ def _studio_html() -> str:
         grid-template-columns: 1fr;
       }
     }
+
+    /* -- F-1: DnD / Delete / Duplicate / Auto Layout -- */
+    .palette-handle {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+      padding: var(--spacing-sm) var(--spacing-md);
+      margin-bottom: var(--spacing-sm);
+      border: 2px dashed var(--line);
+      border-radius: var(--border-radius-md);
+      cursor: grab;
+      background: #f6f9ff;
+      color: var(--primary);
+      font-weight: var(--font-weight-bold);
+      font-size: var(--font-size-sm);
+      user-select: none;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .palette-handle:hover {
+      border-color: var(--primary);
+      background: #eaf1ff;
+    }
+    .palette-handle:active { cursor: grabbing; }
+    .palette-icon {
+      font-size: var(--font-size-xl);
+      line-height: 1;
+    }
+    .node-actions {
+      display: flex;
+      gap: var(--spacing-sm);
+      margin: var(--spacing-sm) 0;
+    }
+    .node-actions button { flex: 1; }
+    button.danger-btn {
+      color: #c0392b;
+      border-color: #c0392b;
+    }
+    button.danger-btn:hover {
+      background: rgba(192,57,43,0.07);
+    }
+    .canvas-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--spacing-md);
+      flex-wrap: wrap;
+    }
+    .layout-controls {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+    }
+    .layout-dir-select {
+      width: auto;
+      min-width: 110px;
+    }
   </style>
 </head>
 <body>
@@ -1135,11 +1196,26 @@ def _studio_html() -> str:
         <article class="panel canvas-panel">
           <div class="section-head">
             <h2>Graph Canvas</h2>
-            <div class="hint">
-              Click a node to edit properties in the sidebar. Connect nodes via right/left handles; loop edges use bottom/top handles.
+            <div class="canvas-toolbar">
+              <div class="hint" style="margin:0;">
+                Click a node to edit. Connect via right/left handles; loops use bottom/top.
+              </div>
+              <div class="layout-controls">
+                <select v-model="layoutDirection" class="layout-dir-select">
+                  <option value="LR">Left→Right</option>
+                  <option value="TB">Top→Bottom</option>
+                </select>
+                <button type="button" class="secondary" @click="applyAutoLayout">Auto Layout</button>
+              </div>
             </div>
           </div>
-          <div class="flow-shell">
+          <div
+            class="flow-shell"
+            :class="{ 'flow-shell-dragover': isDraggingPalette }"
+            @dragover.prevent="onFlowDragOver"
+            @drop="onFlowDrop"
+            @dragleave="onFlowDragLeave"
+          >
             <vue-flow
               v-model:nodes="nodes"
               v-model:edges="edges"
@@ -1312,6 +1388,15 @@ def _studio_html() -> str:
 
           <section class="side-section">
             <h2>Add Node</h2>
+            <div
+              class="palette-handle"
+              draggable="true"
+              @dragstart="onPaletteDragStart"
+              title="Drag to canvas to add a new node"
+            >
+              <span class="palette-icon">+</span>
+              <span>Drag to Canvas</span>
+            </div>
             <div class="inline-row">
               <div class="field">
                 <label for="newNodeId">node id</label>
@@ -1323,7 +1408,7 @@ def _studio_html() -> str:
               </div>
             </div>
             <button type="button" class="secondary" @click="addNode">Add Node</button>
-            <div class="hint">Nodes are auto-positioned. Drag on canvas to reposition.</div>
+            <div class="hint">Drag handle above to place node, or type id/handler and click Add.</div>
           </section>
 
           <section class="side-section">
@@ -1333,6 +1418,10 @@ def _studio_html() -> str:
             </div>
             <template v-else>
               <div class="mono">selected: {{ selectedNode.id }}</div>
+              <div class="node-actions">
+                <button type="button" class="secondary" @click="duplicateSelectedNode" title="Ctrl+D">Duplicate</button>
+                <button type="button" class="secondary danger-btn" @click="deleteSelectedNode" title="Delete">Delete</button>
+              </div>
 
               <div class="subsection-label">Basic Info</div>
               <div class="field">
@@ -1634,6 +1723,7 @@ def _studio_html() -> str:
   <script>
     window.process = window.process || { env: { NODE_ENV: "production" } };
   </script>
+  <script src="/assets/vendor/dagrejs/dagre/1.1.4/dagre.min.js"></script>
   <script type="module">
     import { createApp, computed, onMounted, reactive, ref, watch } from "vue";
     import {
@@ -1642,7 +1732,9 @@ def _studio_html() -> str:
       Position,
       applyEdgeChanges,
       applyNodeChanges,
+      useVueFlow,
     } from "@vue-flow/core";
+    const dagre = window.dagre;
     import { MiniMap } from "@vue-flow/minimap";
     import { Controls as FlowControls } from "@vue-flow/controls";
     import { Background as FlowBackground } from "@vue-flow/background";
@@ -2369,6 +2461,7 @@ def _studio_html() -> str:
         "workflow-node": WorkflowNode,
       },
       setup() {
+        const { screenToFlowCoordinate, fitView } = useVueFlow();
         const revision = ref(null);
         const backupId = ref("");
         const status = reactive({ message: "idle", isError: false });
@@ -3801,6 +3894,204 @@ def _studio_html() -> str:
           setStatus(`node created: ${nodeId}`);
         }
 
+        // -- Delete node --
+        function deleteSelectedNode() {
+          if (!selectedNode.value) {
+            setStatus("no node selected", true);
+            return;
+          }
+          const nodeId = selectedNode.value.id;
+          if (!window.confirm(`Delete node "${nodeId}"? Related edges will also be removed.`)) {
+            return;
+          }
+          edges.value = edges.value.filter(
+            (e) => e.source !== nodeId && e.target !== nodeId,
+          );
+          nodes.value = nodes.value.filter((n) => n.id !== nodeId);
+          if (workflowMeta.startAt === nodeId) {
+            workflowMeta.startAt = nodes.value.length > 0 ? nodes.value[0].id : "";
+          }
+          workflowMeta.endAt = workflowMeta.endAt.filter((id) => id !== nodeId);
+          workflowMeta.interruptBefore = workflowMeta.interruptBefore.filter((id) => id !== nodeId);
+          workflowMeta.interruptAfter = workflowMeta.interruptAfter.filter((id) => id !== nodeId);
+          selectedNodeId.value = null;
+          selectedEdgeId.value = null;
+          onWorkflowMetaChange();
+          refreshEdgeMetadata();
+          debouncedValidateLive();
+          setStatus(`node deleted: ${nodeId}`);
+        }
+
+        // -- Delete edge --
+        function deleteSelectedEdge() {
+          if (!selectedEdge.value) return;
+          const edgeId = selectedEdge.value.id;
+          edges.value = edges.value.filter((e) => e.id !== edgeId);
+          selectedEdgeId.value = null;
+          refreshEdgeMetadata();
+          debouncedValidateLive();
+          setStatus(`edge deleted: ${edgeId}`);
+        }
+
+        // -- Duplicate node --
+        function duplicateSelectedNode() {
+          if (!selectedNode.value) {
+            setStatus("no node selected", true);
+            return;
+          }
+          const src = selectedNode.value;
+          let copyId = `${src.id}_copy`;
+          let suffix = 1;
+          while (nodes.value.some((n) => n.id === copyId)) {
+            suffix += 1;
+            copyId = `${src.id}_copy${suffix}`;
+          }
+          const clonedData = deepClone(src.data);
+          clonedData.id = copyId;
+          clonedData.isStart = false;
+          clonedData.isEnd = false;
+          if (isRecord(clonedData.rawNode)) {
+            clonedData.rawNode = { ...clonedData.rawNode, id: copyId };
+          }
+          nodes.value = [
+            ...nodes.value,
+            {
+              id: copyId,
+              type: "workflow",
+              position: { x: src.position.x + 30, y: src.position.y + 30 },
+              data: clonedData,
+            },
+          ];
+          selectedNodeId.value = copyId;
+          selectedEdgeId.value = null;
+          onWorkflowMetaChange();
+          debouncedValidateLive();
+          setStatus(`node duplicated: ${copyId}`);
+        }
+
+        // -- Palette DnD --
+        const isDraggingPalette = ref(false);
+
+        function onPaletteDragStart(event) {
+          isDraggingPalette.value = true;
+          event.dataTransfer.effectAllowed = "copy";
+          event.dataTransfer.setData("application/yagra-node", "new");
+        }
+
+        function onFlowDragOver(event) {
+          if (!isDraggingPalette.value) return;
+          event.preventDefault();
+          event.dataTransfer.dropEffect = "copy";
+        }
+
+        function onFlowDrop(event) {
+          isDraggingPalette.value = false;
+          if (event.dataTransfer.getData("application/yagra-node") !== "new") return;
+          event.preventDefault();
+          const flowPos = screenToFlowCoordinate({
+            x: event.clientX,
+            y: event.clientY,
+          });
+          let counter = nodes.value.length + 1;
+          let nodeId = `node_${counter}`;
+          while (nodes.value.some((n) => n.id === nodeId)) {
+            counter += 1;
+            nodeId = `node_${counter}`;
+          }
+          nodes.value = [
+            ...nodes.value,
+            {
+              id: nodeId,
+              type: "workflow",
+              position: flowPos,
+              data: {
+                id: nodeId,
+                handler: "",
+                promptRef: "",
+                prompt: null,
+                model: null,
+                isStart: false,
+                isEnd: false,
+                rawNode: { id: nodeId, handler: "" },
+              },
+            },
+          ];
+          if (!normalizeText(workflowMeta.startAt)) {
+            workflowMeta.startAt = nodeId;
+          }
+          if (normalizeNodeIdList(workflowMeta.endAt).length === 0) {
+            workflowMeta.endAt = [nodeId];
+          }
+          onWorkflowMetaChange();
+          selectedNodeId.value = nodeId;
+          selectedEdgeId.value = null;
+          debouncedValidateLive();
+          setStatus(`node created (drop): ${nodeId}`);
+        }
+
+        function onFlowDragLeave() {
+          isDraggingPalette.value = false;
+        }
+
+        // -- Auto layout (dagre) --
+        const layoutDirection = ref("LR");
+
+        function applyAutoLayout() {
+          if (nodes.value.length === 0) {
+            setStatus("no nodes to layout", true);
+            return;
+          }
+          const g = new dagre.graphlib.Graph();
+          g.setDefaultEdgeLabel(() => ({}));
+          g.setGraph({
+            rankdir: layoutDirection.value,
+            nodesep: 60,
+            ranksep: 100,
+            marginx: 40,
+            marginy: 40,
+          });
+          const W = 220;
+          const H = 100;
+          for (const node of nodes.value) {
+            g.setNode(node.id, { width: W, height: H });
+          }
+          for (const edge of edges.value) {
+            g.setEdge(edge.source, edge.target);
+          }
+          dagre.layout(g);
+          nodes.value = nodes.value.map((node) => {
+            const dn = g.node(node.id);
+            if (!dn) return node;
+            return {
+              ...node,
+              position: { x: dn.x - W / 2, y: dn.y - H / 2 },
+            };
+          });
+          onWorkflowMetaChange();
+          setTimeout(() => fitView({ padding: 0.15 }), 50);
+          setStatus(`auto layout applied (${layoutDirection.value})`);
+        }
+
+        // -- Keyboard shortcuts --
+        function onKeyDown(event) {
+          const tag = (event.target?.tagName || "").toLowerCase();
+          if (tag === "input" || tag === "textarea" || tag === "select") return;
+          if (!hasTarget.value) return;
+
+          if (event.key === "Delete" || event.key === "Backspace") {
+            event.preventDefault();
+            if (selectedNodeId.value) {
+              deleteSelectedNode();
+            } else if (selectedEdgeId.value) {
+              deleteSelectedEdge();
+            }
+          }
+          if ((event.ctrlKey || event.metaKey) && event.key === "d") {
+            event.preventDefault();
+            duplicateSelectedNode();
+          }
+        }
+
         function onNodesChange(changes) {
           nodes.value = applyNodeChanges(changes, nodes.value);
           onWorkflowMetaChange();
@@ -4499,6 +4790,7 @@ def _studio_html() -> str:
         }
 
         onMounted(async () => {
+          document.addEventListener("keydown", onKeyDown);
           setStatus("initializing...");
           const targetLoaded = await loadStudioTarget();
           if (!targetLoaded) {
@@ -4580,6 +4872,16 @@ def _studio_html() -> str:
           rollbackWorkflow,
           onWorkflowMetaChange,
           addNode,
+          deleteSelectedNode,
+          deleteSelectedEdge,
+          duplicateSelectedNode,
+          isDraggingPalette,
+          onPaletteDragStart,
+          onFlowDragOver,
+          onFlowDrop,
+          onFlowDragLeave,
+          layoutDirection,
+          applyAutoLayout,
           applyNodeEdit,
           applyEdgeEdit,
           onNodesChange,

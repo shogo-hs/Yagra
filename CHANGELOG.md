@@ -19,6 +19,12 @@
   - バリデーション issue の severity（error/warning/info）を色分きバッジで表示
   - キャンバスノードにエラーハイライト（赤枠）・警告ハイライト（黄枠）を表示
   - `is_valid: true` でも warning/info issue がある場合は「Validation passed (with warnings)」と共に表示
+- ✨ **F-1: Studio ノード DnD フル機能**: Studio UI のノード操作を大幅に強化
+  - パレットからキャンバスへのドラッグ&ドロップによるノード追加（ID 自動生成、既存フォーム入力も併存）
+  - Delete / Backspace キーでノード・エッジを削除（確認ダイアログ付き、start_at/end_at の自動整合）
+  - Ctrl+D / Cmd+D でノード複製（ID に `_copy` サフィックス、位置オフセット）
+  - dagre ライブラリによる自動レイアウト（LR / TB 方向切替、Auto Layout ボタン）
+  - Node Properties パネルに Duplicate / Delete ボタンを追加
 - ✨ **D-2: プロンプトバージョニング**: プロンプト YAML に `_meta.version` メタデータを導入し、`prompt_ref` で `@version` サフィックスによるバージョン指定を追加
   - `prompt_ref: "prompts.yaml#greeting@v2"` 構文でバージョンを指定可能（`file@version` も対応）
   - `_meta.version` との照合：不一致時は warning、`_meta` 未定義で `@version` 指定時は warning、`_meta` 存在で未ピン留めは info

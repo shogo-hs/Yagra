@@ -146,6 +146,7 @@
 | G05-I06 | DnD でノード追加とエッジ接続変更を行い round-trip 整合を維持する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` |
 | G05-I07 | 主要操作の情報設計と導線を見直し、初見でも操作順が分かる UI にする | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` |
 | G05-I08 | レイアウト/配色/ラベル体系を改善し、可読性と視認性を向上する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` (M-11) |
+| G05-I09 | パレット DnD でノード追加、Delete キーで削除、Ctrl+D で複製、dagre 自動レイアウトを実現する | Done | `src/yagra/adapters/inbound/workflow_studio_server.py` (F-1) |
 
 ### G-06: コーディングエージェントが Yagra ワークフローを正確に生成・検証できる
 

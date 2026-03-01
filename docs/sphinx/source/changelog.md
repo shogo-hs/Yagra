@@ -23,6 +23,12 @@ For the canonical changelog (Japanese), see [CHANGELOG.md](https://github.com/sh
   - Validation issue severity (error/warning/info) shown with color-coded badges
   - Canvas nodes highlighted with red border (error) or yellow border (warning)
   - When `is_valid: true` with warning/info issues, displays "Validation passed (with warnings)" alongside issues
+- ✨ **F-1: Studio Node DnD full features**: Major enhancement to Studio UI node operations
+  - Drag & drop from sidebar palette to canvas for node creation (auto-generated IDs, existing form input preserved)
+  - Delete / Backspace key to remove nodes and edges (with confirmation dialog, auto-adjusts start_at/end_at)
+  - Ctrl+D / Cmd+D to duplicate nodes (appends `_copy` suffix to ID, position offset)
+  - dagre-based auto layout (LR / TB direction toggle, Auto Layout button)
+  - Duplicate / Delete buttons added to Node Properties panel
 - ✨ **D-2: Prompt versioning**: Introduced `_meta.version` metadata in prompt YAML files and `@version` suffix for `prompt_ref` version pinning
   - `prompt_ref: "prompts.yaml#greeting@v2"` syntax for version pinning (`file@version` also supported)
   - Version consistency checks: mismatch → warning, `_meta` missing with `@version` → warning, `_meta` present but unpinned → info
