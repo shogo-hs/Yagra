@@ -23,36 +23,10 @@ class TestCreateStructuredLLMHandler:
 
     def test_returns_callable(self) -> None:
         """Confirms that create_structured_llm_handler returns a callable."""
-        with patch.dict("sys.modules", {"litellm": MagicMock()}):
-            from yagra.handlers import create_structured_llm_handler
+        from yagra.handlers import create_structured_llm_handler
 
-            handler = create_structured_llm_handler(schema=PersonInfo)
-            assert callable(handler)
-
-    def test_raises_import_error_when_litellm_not_installed(self) -> None:
-        """Confirms that ImportError is raised when litellm is not installed."""
-        import sys
-
-        # Remove litellm module from cache
-        modules_to_remove = [k for k in sys.modules if "litellm" in k]
-        original_modules = {k: sys.modules.pop(k) for k in modules_to_remove}
-
-        # Reload structured_llm_handler module as well
-        if "yagra.handlers.structured_llm_handler" in sys.modules:
-            del sys.modules["yagra.handlers.structured_llm_handler"]
-
-        try:
-            with patch.dict("sys.modules", {"litellm": None}):
-                if "yagra.handlers.structured_llm_handler" in sys.modules:
-                    del sys.modules["yagra.handlers.structured_llm_handler"]
-                from yagra.handlers.structured_llm_handler import (
-                    create_structured_llm_handler,
-                )
-
-                with pytest.raises(ImportError, match="litellm is not installed"):
-                    create_structured_llm_handler(schema=PersonInfo)
-        finally:
-            sys.modules.update(original_modules)
+        handler = create_structured_llm_handler(schema=PersonInfo)
+        assert callable(handler)
 
 
 class TestStructuredLLMHandler:

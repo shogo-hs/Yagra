@@ -7,18 +7,14 @@ by parsing LLM responses with a Pydantic model.
 import json
 import re
 import time
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
+import litellm
 from pydantic import BaseModel, ValidationError
 
 from yagra.handlers.llm_handler import LLMHandlerCallError, LLMHandlerConfigError
 from yagra.handlers.schema_builder import build_model_from_schema_yaml
 from yagra.ports.outbound.node_registry import NodeHandler
-
-if TYPE_CHECKING:
-    import litellm
-else:
-    litellm = None  # type: ignore[assignment]
 
 
 def create_structured_llm_handler(
@@ -54,9 +50,6 @@ def create_structured_llm_handler(
         NodeHandler: Handler function that takes (state, params) and returns a dict.
             The value of output_key will be a Pydantic model instance.
 
-    Raises:
-        ImportError: If litellm is not installed.
-
     Examples:
         Static schema specification:
 
@@ -90,16 +83,6 @@ def create_structured_llm_handler(
                     name: "gpt-4o"
                   output_key: "user_info"
     """
-    global litellm
-    if litellm is None:
-        try:
-            import litellm
-        except ImportError as e:
-            msg = (
-                "litellm is not installed. "
-                "Install with: pip install 'yagra[llm]' or uv add --optional llm yagra"
-            )
-            raise ImportError(msg) from e
 
     def handler(state: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
         """Calls the LLM and returns a validated Pydantic model instance.

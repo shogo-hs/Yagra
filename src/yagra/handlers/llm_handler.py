@@ -6,14 +6,11 @@ It supports over 100 LLM providers through a unified API.
 
 import re
 import time
-from typing import TYPE_CHECKING, Any
+from typing import Any
+
+import litellm
 
 from yagra.ports.outbound.node_registry import NodeHandler
-
-if TYPE_CHECKING:
-    import litellm
-else:
-    litellm = None  # type: ignore[assignment]
 
 
 class LLMHandlerError(Exception):
@@ -52,9 +49,6 @@ def create_llm_handler(
     Returns:
         NodeHandler: Handler function that takes (state, params) and returns a dict.
 
-    Raises:
-        ImportError: If litellm is not installed.
-
     Examples:
         Basic usage:
 
@@ -84,17 +78,6 @@ def create_llm_handler(
                       temperature: 0.7
                   output_key: "response"
     """
-    # Import litellm (stored as global variable)
-    global litellm
-    if litellm is None:
-        try:
-            import litellm
-        except ImportError as e:
-            msg = (
-                "litellm is not installed. "
-                "Install with: pip install 'yagra[llm]' or uv add --optional llm yagra"
-            )
-            raise ImportError(msg) from e
 
     def handler(state: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
         """Invokes the LLM and returns the response.

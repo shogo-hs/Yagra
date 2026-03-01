@@ -5,11 +5,9 @@ Validates that the structured output LLM handler works correctly when integrated
 
 import json
 import tempfile
-from collections.abc import Generator
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
 from pydantic import BaseModel
 
 import yagra.handlers.structured_llm_handler as slm_module
@@ -27,14 +25,6 @@ class ExtractedEntities(BaseModel):
 
 class TestStructuredLLMHandlerIntegration:
     """Integration tests for the structured LLM handler."""
-
-    @pytest.fixture(autouse=True)
-    def _reset_litellm_global(self) -> Generator[None, None, None]:
-        """Resets the global litellm variable in structured_llm_handler before and after each test."""
-        original = slm_module.litellm
-        slm_module.litellm = None  # type: ignore[assignment]
-        yield
-        slm_module.litellm = original
 
     def test_structured_handler_with_prompt_ref(self) -> None:
         """Structured output using prompt_ref should work correctly."""

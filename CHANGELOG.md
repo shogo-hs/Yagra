@@ -4,6 +4,9 @@
 
 ## [Unreleased]
 
+### Changed
+- **litellm を必須依存に昇格**: オプショナル依存（`yagra[llm]`）から通常依存に変更。全 LLM ハンドラがコア機能であるため、条件付き import パターンを削除し型安全性を向上
+
 ### Added
 - ✨ **C-1: retry / fallback / timeout YAML 宣言**: ノードレベルで retry（max_attempts、backoff 戦略、base_delay_seconds）、timeout_seconds、fallback を YAML で直接宣言可能に
   - `RetrySpec` モデル追加（max_attempts: 1–10、backoff: exponential|fixed、base_delay_seconds: 0–60）

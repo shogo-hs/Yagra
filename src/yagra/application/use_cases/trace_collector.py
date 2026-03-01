@@ -22,6 +22,8 @@ from datetime import UTC, datetime
 from time import perf_counter
 from typing import Any
 
+from litellm import cost_per_token
+
 from yagra.domain.entities.trace import (
     ErrorTrace,
     LLMCallTrace,
@@ -39,8 +41,7 @@ def _estimate_cost(litellm_model: str, prompt_tokens: int, completion_tokens: in
     """Estimates cost using litellm's pricing data.
 
     Delegates to litellm.cost_per_token() which maintains an up-to-date
-    pricing database. Returns None when litellm is not installed or the
-    model is not recognized.
+    pricing database. Returns None when the model is not recognized.
 
     Args:
         litellm_model: Full litellm model string, e.g. 'openai/gpt-4o-mini'.
@@ -51,8 +52,6 @@ def _estimate_cost(litellm_model: str, prompt_tokens: int, completion_tokens: in
         Estimated cost in USD, or None if unavailable.
     """
     try:
-        from litellm import cost_per_token
-
         input_cost, output_cost = cost_per_token(
             model=litellm_model,
             prompt_tokens=prompt_tokens,

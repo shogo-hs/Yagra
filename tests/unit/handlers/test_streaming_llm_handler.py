@@ -42,13 +42,6 @@ class TestCreateStreamingLLMHandler:
             handler = create_streaming_llm_handler()
         assert callable(handler)
 
-    def test_raises_import_error_when_litellm_not_installed(self) -> None:
-        """Raises ImportError when litellm is not installed."""
-        with patch("yagra.handlers.streaming_llm_handler.litellm", None):
-            with patch.dict("sys.modules", {"litellm": None}):
-                with pytest.raises(ImportError, match="litellm is not installed"):
-                    create_streaming_llm_handler()
-
 
 class TestStreamingLLMHandler:
     """Tests for the handler returned by create_streaming_llm_handler."""

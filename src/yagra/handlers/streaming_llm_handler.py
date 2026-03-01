@@ -7,15 +7,12 @@ as a Generator, allowing callers to process chunks incrementally.
 import re
 import time
 from collections.abc import Generator
-from typing import TYPE_CHECKING, Any
+from typing import Any
+
+import litellm
 
 from yagra.handlers.llm_handler import LLMHandlerCallError, LLMHandlerConfigError
 from yagra.ports.outbound.node_registry import NodeHandler
-
-if TYPE_CHECKING:
-    import litellm
-else:
-    litellm = None  # type: ignore[assignment]
 
 
 def create_streaming_llm_handler(
@@ -35,9 +32,6 @@ def create_streaming_llm_handler(
     Returns:
         NodeHandler: Handler function that takes (state, params) and returns a dict.
             The output_key value will be a ``Generator[str, None, None]``.
-
-    Raises:
-        ImportError: If litellm is not installed.
 
     Note:
         The returned Generator is single-use. Once consumed, it cannot be iterated again.
@@ -77,16 +71,6 @@ def create_streaming_llm_handler(
                   input_keys: ["query"]
                   output_key: "response"
     """
-    global litellm
-    if litellm is None:
-        try:
-            import litellm
-        except ImportError as e:
-            msg = (
-                "litellm is not installed. "
-                "Install with: pip install 'yagra[llm]' or uv add --optional llm yagra"
-            )
-            raise ImportError(msg) from e
 
     def handler(state: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
         """Invokes the LLM with streaming and returns a chunk generator.

@@ -8,6 +8,9 @@ For the canonical changelog (Japanese), see [CHANGELOG.md](https://github.com/sh
 
 ## [Unreleased]
 
+### Changed
+- **litellm promoted to required dependency**: Moved from optional (`yagra[llm]`) to core dependency. Removes conditional import patterns and improves type safety
+
 ### Added
 - ✨ **C-1: Retry / Fallback / Timeout YAML declaration**: Node-level retry (max_attempts, backoff strategy, base_delay_seconds), timeout_seconds, and fallback can now be declared directly in YAML
   - `RetrySpec` model added (max_attempts: 1–10, backoff: exponential|fixed, base_delay_seconds: 0–60)

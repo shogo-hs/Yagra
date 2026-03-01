@@ -5,16 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-
-# Inject litellm as a mock on import
-@pytest.fixture
-def mock_litellm_import():
-    """Fixture that mocks litellm (autouse=True removed to fix Issue #11)."""
-    with patch.dict("sys.modules", {"litellm": MagicMock()}):
-        yield
-
-
-from yagra.handlers.llm_handler import (  # noqa: E402
+from yagra.handlers.llm_handler import (
     LLMHandlerCallError,
     LLMHandlerConfigError,
     create_llm_handler,
@@ -24,35 +15,16 @@ from yagra.handlers.llm_handler import (  # noqa: E402
 class TestCreateLLMHandler:
     """Tests for the create_llm_handler function."""
 
-    def test_create_llm_handler_returns_callable(self, mock_litellm_import: None) -> None:
+    def test_create_llm_handler_returns_callable(self) -> None:
         """Confirms that the factory function returns a callable."""
         handler = create_llm_handler()
         assert callable(handler)
-
-    def test_create_llm_handler_without_litellm_raises_import_error(self) -> None:
-        """Confirms that ImportError is raised when litellm is not installed."""
-        import builtins
-        from typing import Any
-
-        real_import = builtins.__import__
-
-        def _mock_import(name: str, *args: Any, **kwargs: Any) -> Any:
-            if name == "litellm":
-                raise ImportError("mocked: litellm not installed")
-            return real_import(name, *args, **kwargs)
-
-        with patch("yagra.handlers.llm_handler.litellm", None):
-            with patch("builtins.__import__", side_effect=_mock_import):
-                with pytest.raises(ImportError, match="litellm is not installed"):
-                    from yagra.handlers.llm_handler import create_llm_handler as create_fn
-
-                    create_fn()
 
 
 class TestLLMHandler:
     """Tests for the behavior of the LLM handler."""
 
-    def test_handler_basic_call(self, mock_litellm_import: None) -> None:
+    def test_handler_basic_call(self) -> None:
         """Confirms that a successful LLM call works correctly."""
         handler = create_llm_handler(retry=1, timeout=10)
 
@@ -75,7 +47,7 @@ class TestLLMHandler:
             assert result == {"response": "Hello, world!"}
             mock_litellm.completion.assert_called_once()
 
-    def test_handler_prompt_interpolation(self, mock_litellm_import: None) -> None:
+    def test_handler_prompt_interpolation(self) -> None:
         """Confirms that {variable} format variable substitution works correctly."""
         handler = create_llm_handler(retry=1, timeout=10)
 
@@ -103,7 +75,7 @@ class TestLLMHandler:
             assert messages[1]["content"] == "My name is Alice and I am 30 years old"
             assert result == {"result": "Test response"}
 
-    def test_handler_missing_prompt_raises_error(self, mock_litellm_import: None) -> None:
+    def test_handler_missing_prompt_raises_error(self) -> None:
         """Confirms that an error is raised when the prompt parameter is missing."""
         with patch("yagra.handlers.llm_handler.litellm"):
             handler = create_llm_handler()
@@ -116,7 +88,7 @@ class TestLLMHandler:
             with pytest.raises(LLMHandlerConfigError, match="'prompt' must be a dict"):
                 handler(state, params)
 
-    def test_handler_missing_model_raises_error(self, mock_litellm_import: None) -> None:
+    def test_handler_missing_model_raises_error(self) -> None:
         """Confirms that an error is raised when the model parameter is missing."""
         with patch("yagra.handlers.llm_handler.litellm"):
             handler = create_llm_handler()
@@ -129,7 +101,7 @@ class TestLLMHandler:
             with pytest.raises(LLMHandlerConfigError, match="'model' must be a dict"):
                 handler(state, params)
 
-    def test_handler_missing_model_provider_raises_error(self, mock_litellm_import: None) -> None:
+    def test_handler_missing_model_provider_raises_error(self) -> None:
         """Confirms that an error is raised when model.provider is missing."""
         with patch("yagra.handlers.llm_handler.litellm"):
             handler = create_llm_handler()
@@ -145,7 +117,7 @@ class TestLLMHandler:
             ):
                 handler(state, params)
 
-    def test_handler_retry_on_failure(self, mock_litellm_import: None) -> None:
+    def test_handler_retry_on_failure(self) -> None:
         """Confirms that retry is executed on failure."""
         handler = create_llm_handler(retry=3, timeout=10)
 
@@ -173,7 +145,7 @@ class TestLLMHandler:
                 assert result == {"output": "Success"}
                 assert mock_litellm.completion.call_count == 3
 
-    def test_handler_fails_after_max_retry(self, mock_litellm_import: None) -> None:
+    def test_handler_fails_after_max_retry(self) -> None:
         """Confirms that an error is raised when the maximum retry count is reached."""
         with patch("yagra.handlers.llm_handler.litellm") as mock_litellm:
             handler = create_llm_handler(retry=2, timeout=10)
@@ -190,7 +162,7 @@ class TestLLMHandler:
                 with pytest.raises(LLMHandlerCallError, match="LLM call failed after 2 attempts"):
                     handler(state, params)
 
-    def test_handler_with_model_kwargs(self, mock_litellm_import: None) -> None:
+    def test_handler_with_model_kwargs(self) -> None:
         """Confirms that model.kwargs are correctly passed to litellm."""
         handler = create_llm_handler(retry=1, timeout=10)
 
@@ -216,7 +188,7 @@ class TestLLMHandler:
             assert call_args.kwargs["temperature"] == 0.5
             assert call_args.kwargs["max_tokens"] == 100
 
-    def test_handler_default_output_key(self, mock_litellm_import: None) -> None:
+    def test_handler_default_output_key(self) -> None:
         """Confirms that 'output' is used as the default when output_key is omitted."""
         handler = create_llm_handler(retry=1, timeout=10)
 
@@ -238,7 +210,7 @@ class TestLLMHandler:
             assert "output" in result
             assert result["output"] == "Default output"
 
-    def test_handler_empty_response_raises_error(self, mock_litellm_import: None) -> None:
+    def test_handler_empty_response_raises_error(self) -> None:
         """Confirms that an error is raised when the LLM returns an empty response."""
         mock_response = MagicMock()
         mock_response.choices = []
@@ -256,7 +228,7 @@ class TestLLMHandler:
             with pytest.raises(LLMHandlerCallError, match="LLM returned empty response"):
                 handler(state, params)
 
-    def test_handler_none_content_raises_error(self, mock_litellm_import: None) -> None:
+    def test_handler_none_content_raises_error(self) -> None:
         """Confirms that an error is raised when the LLM returns None content."""
         mock_response = MagicMock()
         mock_response.choices = [MagicMock(message=MagicMock(content=None))]
@@ -278,7 +250,7 @@ class TestLLMHandler:
 class TestLLMHandlerSystemPromptInterpolation:
     """Tests for state variable interpolation in system prompt."""
 
-    def test_system_prompt_variable_interpolation(self, mock_litellm_import: None) -> None:
+    def test_system_prompt_variable_interpolation(self) -> None:
         """Confirms that {variable} in system prompt is substituted from state."""
         handler = create_llm_handler(retry=1, timeout=10)
 
@@ -307,7 +279,7 @@ class TestLLMHandlerSystemPromptInterpolation:
             )
             assert messages[1]["content"] == "Hello"
 
-    def test_system_prompt_only_variable(self, mock_litellm_import: None) -> None:
+    def test_system_prompt_only_variable(self) -> None:
         """Confirms that variables only in system prompt (no user vars) are auto-detected."""
         handler = create_llm_handler(retry=1, timeout=10)
 
@@ -333,7 +305,7 @@ class TestLLMHandlerSystemPromptInterpolation:
             assert messages[0]["content"] == "You are a translator."
             assert messages[1]["content"] == "Translate this text."
 
-    def test_system_and_user_share_variable(self, mock_litellm_import: None) -> None:
+    def test_system_and_user_share_variable(self) -> None:
         """Confirms that the same variable in both system and user is expanded correctly."""
         handler = create_llm_handler(retry=1, timeout=10)
 
@@ -359,7 +331,7 @@ class TestLLMHandlerSystemPromptInterpolation:
             assert messages[0]["content"] == "Respond in French."
             assert messages[1]["content"] == "Translate to French."
 
-    def test_explicit_input_keys_applies_to_both_prompts(self, mock_litellm_import: None) -> None:
+    def test_explicit_input_keys_applies_to_both_prompts(self) -> None:
         """Confirms that explicit input_keys are applied to both system and user prompts."""
         handler = create_llm_handler(retry=1, timeout=10)
 
@@ -390,7 +362,7 @@ class TestLLMHandlerSystemPromptInterpolation:
 class TestLLMHandlerAutoDetect:
     """Tests for automatic input_keys detection."""
 
-    def test_auto_detect_single_variable(self, mock_litellm_import: None) -> None:
+    def test_auto_detect_single_variable(self) -> None:
         """Confirms that {query} in the prompt is automatically fetched from state."""
         handler = create_llm_handler(retry=1, timeout=10)
 
@@ -415,7 +387,7 @@ class TestLLMHandlerAutoDetect:
             assert messages[1]["content"] == "Hello"
             assert result == {"response": "Auto detect response"}
 
-    def test_auto_detect_multiple_variables(self, mock_litellm_import: None) -> None:
+    def test_auto_detect_multiple_variables(self) -> None:
         """Confirms that both {name} and {age} in the prompt are auto-fetched from state."""
         handler = create_llm_handler(retry=1, timeout=10)
 
@@ -438,7 +410,7 @@ class TestLLMHandlerAutoDetect:
             messages = call_args.kwargs["messages"]
             assert messages[1]["content"] == "Name: Alice, Age: 30"
 
-    def test_explicit_input_keys_takes_priority(self, mock_litellm_import: None) -> None:
+    def test_explicit_input_keys_takes_priority(self) -> None:
         """Confirms that explicitly specified input_keys take priority (backward compatibility)."""
         handler = create_llm_handler(retry=1, timeout=10)
 
@@ -462,9 +434,7 @@ class TestLLMHandlerAutoDetect:
             assert messages[1]["content"] == "Hello"
             assert result == {"output": "Explicit keys response"}
 
-    def test_explicit_empty_input_keys_disables_interpolation(
-        self, mock_litellm_import: None
-    ) -> None:
+    def test_explicit_empty_input_keys_disables_interpolation(self) -> None:
         """Confirms that explicitly specifying input_keys: [] disables interpolation (backward compatibility)."""
         handler = create_llm_handler(retry=1, timeout=10)
 
@@ -488,7 +458,7 @@ class TestLLMHandlerAutoDetect:
             assert messages[1]["content"] == "No variables here"
             assert result == {"output": "No interpolation"}
 
-    def test_auto_detect_missing_key_uses_empty_string(self, mock_litellm_import: None) -> None:
+    def test_auto_detect_missing_key_uses_empty_string(self) -> None:
         """Confirms that an empty string is used when an auto-detected key is not in state."""
         handler = create_llm_handler(retry=1, timeout=10)
 
@@ -516,7 +486,7 @@ class TestLLMHandlerAutoDetect:
 class TestLLMHandlerValidationErrors:
     """Tests for parameter validation errors (verified in patch context)."""
 
-    def test_handler_prompt_not_dict_raises_config_error(self, mock_litellm_import: None) -> None:
+    def test_handler_prompt_not_dict_raises_config_error(self) -> None:
         """Confirms that LLMHandlerConfigError is raised when prompt is not a dict."""
         with patch("yagra.handlers.llm_handler.litellm") as _mock_litellm:
             handler = create_llm_handler(retry=1, timeout=10)
@@ -530,7 +500,7 @@ class TestLLMHandlerValidationErrors:
             with pytest.raises(LLMHandlerConfigError, match="'prompt' must be a dict"):
                 handler(state, params)
 
-    def test_handler_model_not_dict_raises_config_error(self, mock_litellm_import: None) -> None:
+    def test_handler_model_not_dict_raises_config_error(self) -> None:
         """Confirms that LLMHandlerConfigError is raised when model is not a dict."""
         with patch("yagra.handlers.llm_handler.litellm") as _mock_litellm:
             handler = create_llm_handler(retry=1, timeout=10)
@@ -544,9 +514,7 @@ class TestLLMHandlerValidationErrors:
             with pytest.raises(LLMHandlerConfigError, match="'model' must be a dict"):
                 handler(state, params)
 
-    def test_handler_model_missing_provider_raises_config_error(
-        self, mock_litellm_import: None
-    ) -> None:
+    def test_handler_model_missing_provider_raises_config_error(self) -> None:
         """Confirms that LLMHandlerConfigError is raised when provider is missing from model."""
         with patch("yagra.handlers.llm_handler.litellm") as _mock_litellm:
             handler = create_llm_handler(retry=1, timeout=10)
@@ -563,9 +531,7 @@ class TestLLMHandlerValidationErrors:
             ):
                 handler(state, params)
 
-    def test_handler_model_missing_name_raises_config_error(
-        self, mock_litellm_import: None
-    ) -> None:
+    def test_handler_model_missing_name_raises_config_error(self) -> None:
         """Confirms that LLMHandlerConfigError is raised when name is missing from model."""
         with patch("yagra.handlers.llm_handler.litellm") as _mock_litellm:
             handler = create_llm_handler(retry=1, timeout=10)
@@ -582,9 +548,7 @@ class TestLLMHandlerValidationErrors:
             ):
                 handler(state, params)
 
-    def test_handler_prompt_interpolation_key_error_raises_config_error(
-        self, mock_litellm_import: None
-    ) -> None:
+    def test_handler_prompt_interpolation_key_error_raises_config_error(self) -> None:
         """Confirms that LLMHandlerConfigError is raised when input_keys references a variable not in the user template.
 
         Details:
@@ -615,7 +579,7 @@ class TestLLMHandlerValidationErrors:
 class TestLLMHandlerCallErrors:
     """Tests for LLM call errors (verified in patch context)."""
 
-    def test_handler_empty_choices_raises_call_error(self, mock_litellm_import: None) -> None:
+    def test_handler_empty_choices_raises_call_error(self) -> None:
         """Confirms that LLMHandlerCallError is raised when LLM returns empty choices."""
         with patch("yagra.handlers.llm_handler.litellm") as mock_litellm:
             handler = create_llm_handler(retry=1, timeout=10)
@@ -633,7 +597,7 @@ class TestLLMHandlerCallErrors:
             with pytest.raises(LLMHandlerCallError, match="LLM returned empty response"):
                 handler(state, params)
 
-    def test_handler_none_content_raises_call_error(self, mock_litellm_import: None) -> None:
+    def test_handler_none_content_raises_call_error(self) -> None:
         """Confirms that LLMHandlerCallError is raised when LLM returns None content."""
         with patch("yagra.handlers.llm_handler.litellm") as mock_litellm:
             handler = create_llm_handler(retry=1, timeout=10)
@@ -651,7 +615,7 @@ class TestLLMHandlerCallErrors:
             with pytest.raises(LLMHandlerCallError, match="LLM returned None content"):
                 handler(state, params)
 
-    def test_handler_call_error_not_retried(self, mock_litellm_import: None) -> None:
+    def test_handler_call_error_not_retried(self) -> None:
         """Confirms that LLMHandlerCallError is raised immediately without retry.
 
         Even with retry=3, confirms that completion is only called once
@@ -676,7 +640,7 @@ class TestLLMHandlerCallErrors:
             # Confirms called only once without retry
             assert mock_litellm.completion.call_count == 1
 
-    def test_handler_api_error_retried_and_finally_fails(self, mock_litellm_import: None) -> None:
+    def test_handler_api_error_retried_and_finally_fails(self) -> None:
         """Confirms that API call failures are retried and finally raise LLMHandlerCallError."""
         with patch("yagra.handlers.llm_handler.litellm") as mock_litellm:
             with patch("yagra.handlers.llm_handler.time.sleep"):

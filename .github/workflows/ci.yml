@@ -27,7 +27,7 @@ jobs:
           enable-cache: true
 
       - name: Sync dependencies
-        run: uv sync --locked --dev
+        run: uv sync --locked --dev --all-extras
 
       - name: Get Playwright version
         id: pw-version

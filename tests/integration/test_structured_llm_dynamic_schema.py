@@ -6,26 +6,14 @@ works correctly when integrated with a YAML workflow.
 
 import json
 import tempfile
-from collections.abc import Generator
 from pathlib import Path
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 import yagra.handlers.structured_llm_handler as slm_module
 
 
 class TestDynamicSchemaIntegration:
     """Workflow integration tests using dynamic schema (schema_yaml)."""
-
-    @pytest.fixture(autouse=True)
-    def _reset_litellm_global(self) -> Generator[None, None, None]:
-        """Manages the global litellm variable in structured_llm_handler before and after each test."""
-        original = slm_module.litellm
-        slm_module.litellm = None  # type: ignore[assignment]
-        yield
-        # Restore the original value after the test
-        slm_module.litellm = original
 
     def test_workflow_with_schema_yaml_basic(self) -> None:
         """A dynamic model defined via schema_yaml in the YAML should be runnable."""

@@ -42,12 +42,8 @@ Built with **AI-Native principles**: JSON Schema export and validation CLI enabl
 # Recommended (uv)
 uv add yagra
 
-# With LLM handler utilities (optional)
-uv add 'yagra[llm]'
-
 # Or with pip
 pip install yagra
-pip install 'yagra[llm]'
 ```
 
 ### 🤖 Using with Claude Code (Recommended)
