@@ -173,7 +173,7 @@ def test_warning_for_multiple_missing_variables() -> None:
     var_warnings = [
         i for i in issues if i.severity == "warning" and "variable" in (i.context or {})
     ]
-    missing_vars = {i.context["variable"] for i in var_warnings}
+    missing_vars = {i.context["variable"] for i in var_warnings if i.context is not None}
     assert missing_vars == {"role", "topic", "detail"}
 
 
@@ -203,6 +203,7 @@ def test_warning_when_output_key_not_in_state_schema() -> None:
     ]
     assert len(output_warnings) == 1
     assert "answer" in output_warnings[0].message
+    assert output_warnings[0].context is not None
     assert output_warnings[0].context["output_key"] == "answer"
 
 
@@ -295,6 +296,7 @@ def test_explicit_input_keys_used_for_validation() -> None:
     # "custom_key" is not in state_schema, so warning
     var_warnings = [i for i in issues if "variable" in (i.context or {})]
     assert len(var_warnings) == 1
+    assert var_warnings[0].context is not None
     assert var_warnings[0].context["variable"] == "custom_key"
 
 
@@ -345,4 +347,5 @@ def test_default_output_key_is_output() -> None:
         i for i in issues if i.severity == "warning" and "output_key" in (i.context or {})
     ]
     assert len(output_warnings) == 1
+    assert output_warnings[0].context is not None
     assert output_warnings[0].context["output_key"] == "output"

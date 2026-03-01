@@ -250,21 +250,23 @@ def test_retry_spec_accepts_valid_config() -> None:
 
 def test_retry_spec_rejects_out_of_range_attempts() -> None:
     import pytest
+    from pydantic import ValidationError
 
     from yagra.domain.entities.graph_schema import RetrySpec
 
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         RetrySpec(max_attempts=0)
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         RetrySpec(max_attempts=11)
 
 
 def test_retry_spec_rejects_invalid_backoff() -> None:
     import pytest
+    from pydantic import ValidationError
 
     from yagra.domain.entities.graph_schema import RetrySpec
 
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         RetrySpec(backoff="random")  # type: ignore[arg-type]
 
 
