@@ -455,27 +455,13 @@ def test_explain_execution_paths_fan_out_includes_target() -> None:
 
 
 # ---------------------------------------------------------------------------
-# _extract_input_variables: explicit input_keys fallback (line 208)
+# _extract_input_variables: input_keys is ignored (deprecated)
 # ---------------------------------------------------------------------------
 
 
-def test_extract_input_variables_no_prompt_with_explicit_input_keys() -> None:
-    # When prompt is None but input_keys is a list, return that list (line 208)
+def test_extract_input_variables_input_keys_ignored() -> None:
+    # input_keys is no longer used; returns empty when no prompt is present
     node = _make_node({"model": "gpt-4o-mini", "input_keys": ["foo", "bar"]})
-    result = _extract_input_variables(node)
-    assert result == ["foo", "bar"]
-
-
-def test_extract_input_variables_no_prompt_explicit_input_keys_filters_non_str() -> None:
-    # input_keys with non-string values are filtered out (line 208)
-    node = _make_node({"model": "gpt-4o-mini", "input_keys": ["foo", 42, "bar"]})
-    result = _extract_input_variables(node)
-    assert result == ["foo", "bar"]
-
-
-def test_extract_input_variables_no_prompt_input_keys_not_list() -> None:
-    # When input_keys is not a list, return empty (line 209 else branch)
-    node = _make_node({"model": "gpt-4o-mini", "input_keys": "not_a_list"})
     result = _extract_input_variables(node)
     assert result == []
 
@@ -502,8 +488,8 @@ def test_extract_input_variables_prompt_ref_without_workflow_dir() -> None:
     assert result == []
 
 
-def test_extract_input_variables_prompt_ref_fallback_to_input_keys(tmp_path: Path) -> None:
-    # When prompt_ref file cannot be found but input_keys is set, fall back to input_keys (line 243)
+def test_extract_input_variables_prompt_ref_not_found_returns_empty(tmp_path: Path) -> None:
+    # When prompt_ref file cannot be found, returns empty (input_keys no longer used as fallback)
     node = _make_node(
         {
             "model": "gpt-4o-mini",
@@ -512,11 +498,11 @@ def test_extract_input_variables_prompt_ref_fallback_to_input_keys(tmp_path: Pat
         }
     )
     result = _extract_input_variables(node, workflow_dir=tmp_path)
-    assert result == ["fallback_var"]
+    assert result == []
 
 
-def test_extract_input_variables_string_prompt_fallback_to_input_keys() -> None:
-    # When prompt string has no vars but input_keys is set, fall back to input_keys (line 243)
+def test_extract_input_variables_string_prompt_no_vars_returns_empty() -> None:
+    # When prompt string has no vars, returns empty (input_keys no longer used as fallback)
     node = _make_node(
         {
             "model": "gpt-4o-mini",
@@ -525,7 +511,7 @@ def test_extract_input_variables_string_prompt_fallback_to_input_keys() -> None:
         }
     )
     result = _extract_input_variables(node)
-    assert result == ["needed_var"]
+    assert result == []
 
 
 # ---------------------------------------------------------------------------

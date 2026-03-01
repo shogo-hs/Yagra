@@ -118,24 +118,16 @@ Built-in LLM handlers (`llm`, `streaming_llm`, `structured_llm`) automatically i
 
 **How it works**:
 
-1. **Auto-detection** (default — no `input_keys`): every `{variable}` placeholder found in the `system` or `user` template is extracted and resolved from the current graph state.
+Every `{variable}` placeholder found in the `system` or `user` template is automatically extracted and resolved from the current graph state.
 
-   ```yaml
-   # system uses {persona}, user uses {query} — both are auto-detected
-   my_prompt:
-     system: |
-       You are {persona}. Answer concisely.
-     user: |
-       Question: {query}
-   ```
-
-2. **Explicit mode** (`input_keys` specified): only the declared keys are injected (backward-compatible with pre-v0.6.0 YAML).
-
-   ```yaml
-   params:
-     prompt_ref: "../prompts/support.yaml#faq"
-     input_keys: ["query", "persona"]
-   ```
+```yaml
+# system uses {persona}, user uses {query} — both are auto-detected
+my_prompt:
+  system: |
+    You are {persona}. Answer concisely.
+  user: |
+    Question: {query}
+```
 
 > **Note**: If a placeholder key is not present in the current state the handler substitutes an empty string and logs a warning—it does **not** raise an exception.
 

@@ -12,26 +12,9 @@ from yagra.domain.services.prompt_variable_validator import (
 # ---------------------------------------------------------------------------
 
 
-def test_extract_required_vars_input_keys_list_of_strings() -> None:
+def test_extract_required_vars_input_keys_ignored() -> None:
+    """input_keys is no longer used; auto-extraction from prompt is the only path."""
     params = {"input_keys": ["question", "context"]}
-    result = _extract_required_vars(params)
-    assert result == ["question", "context"]
-
-
-def test_extract_required_vars_input_keys_list_of_non_strings_coerced() -> None:
-    params = {"input_keys": [1, 2, 3]}
-    result = _extract_required_vars(params)
-    assert result == ["1", "2", "3"]
-
-
-def test_extract_required_vars_input_keys_not_list_returns_empty() -> None:
-    params = {"input_keys": "question"}
-    result = _extract_required_vars(params)
-    assert result == []
-
-
-def test_extract_required_vars_input_keys_not_list_int_returns_empty() -> None:
-    params = {"input_keys": 42}
     result = _extract_required_vars(params)
     assert result == []
 

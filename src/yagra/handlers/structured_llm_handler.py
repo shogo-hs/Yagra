@@ -5,8 +5,6 @@ by parsing LLM responses with a Pydantic model.
 """
 
 import json
-import re
-import time
 from typing import Any
 
 import litellm
@@ -104,6 +102,14 @@ def create_structured_llm_handler(
             LLMHandlerCallError: If LLM invocation or JSON parse/validation fails.
             SchemaYamlError: If parsing schema_yaml or generating the model fails.
         """
+        from yagra.handlers._llm_common import (
+            build_messages,
+            extract_llm_params,
+            interpolate_prompt,
+            llm_retry_loop,
+            report_token_usage,
+        )
+
         # 0. Resolve schema (static > dynamic)
         resolved_schema: type[BaseModel]
         if schema is not None:
@@ -115,130 +121,57 @@ def create_structured_llm_handler(
                 raise LLMHandlerConfigError(msg)
             resolved_schema = build_model_from_schema_yaml(schema_yaml)
 
-        # 1. Extract and validate parameters
-        prompt = params.get("prompt")
-        if not isinstance(prompt, dict):
-            msg = "'prompt' must be a dict with 'system' and 'user' keys"
-            raise LLMHandlerConfigError(msg)
+        p = extract_llm_params(params, default_retry=retry)
+        system_prompt, user_prompt = interpolate_prompt(
+            p.system_prompt_template,
+            p.user_prompt_template,
+            state,
+        )
 
-        model = params.get("model")
-        if not isinstance(model, dict):
-            msg = "'model' must be a dict with 'provider', 'name', and optional 'kwargs'"
-            raise LLMHandlerConfigError(msg)
-
-        provider = model.get("provider")
-        model_name = model.get("name")
-        if not provider or not model_name:
-            msg = "'model' must have 'provider' and 'name' keys"
-            raise LLMHandlerConfigError(msg)
-
-        output_key = params.get("output_key", "output")
-
-        # 2. Interpolate variables into the prompt
-        system_prompt_template = prompt.get("system", "")
-        user_prompt_template = prompt.get("user", "")
-
-        # If input_keys is explicitly specified, use it (backward compatibility);
-        # otherwise auto-extract {variable} patterns from both system and user templates
-        explicit_keys = params.get("input_keys")
-        if explicit_keys is not None:
-            keys = explicit_keys
-        else:
-            system_vars = re.findall(r"\{(\w+)\}", system_prompt_template)
-            user_vars = re.findall(r"\{(\w+)\}", user_prompt_template)
-            keys = list(dict.fromkeys(system_vars + user_vars))
-
-        # Retrieve input values from state
-        input_values = {key: state.get(key, "") for key in keys}
-
-        # Replace {variable} format variables in both system and user prompts
-        try:
-            system_prompt = system_prompt_template.format(**input_values)
-            user_prompt = user_prompt_template.format(**input_values)
-        except KeyError as e:
-            msg = f"Missing key in state for prompt interpolation: {e}"
-            raise LLMHandlerConfigError(msg) from e
-
-        # 3. Append a system prompt that encourages JSON output
+        # Append JSON schema instruction to system prompt
         json_system_prompt = (
             f"{system_prompt}\n\nRespond with valid JSON only. "
             f"The JSON must conform to the following schema:\n"
             f"{json.dumps(resolved_schema.model_json_schema(), ensure_ascii=False)}"
         ).strip()
 
-        messages = [
-            {"role": "system", "content": json_system_prompt},
-            {"role": "user", "content": user_prompt},
-        ]
+        messages = build_messages(json_system_prompt, user_prompt)
 
-        # 4. Retrieve model.kwargs (response_format defaults to json_object)
-        model_kwargs = dict(model.get("kwargs", {}))
+        # Force response_format=json_object unless explicitly overridden
+        model_kwargs = dict(p.model_kwargs)
         if "response_format" not in model_kwargs:
             model_kwargs["response_format"] = {"type": "json_object"}
 
-        litellm_model = f"{provider}/{model_name}"
+        def _call() -> dict[str, Any]:
+            response = litellm.completion(
+                model=p.litellm_model,
+                messages=messages,
+                timeout=timeout,
+                **model_kwargs,
+            )
 
-        # Allow YAML-level retry to suppress handler-internal retry
-        effective_retry: int = params.get("_retry_override", retry)
+            if not response.choices:
+                msg = "LLM returned empty response"
+                raise LLMHandlerCallError(msg)
 
-        # 5. LLM invocation (with retry)
-        last_error = None
-        for attempt in range(effective_retry):
+            content = response.choices[0].message.content
+            if content is None:
+                msg = "LLM returned None content"
+                raise LLMHandlerCallError(msg)
+
+            # JSON parse and Pydantic validation
             try:
-                response = litellm.completion(
-                    model=litellm_model,
-                    messages=messages,
-                    timeout=timeout,
-                    **model_kwargs,
-                )
+                instance = resolved_schema.model_validate_json(content)
+            except (ValidationError, ValueError) as e:
+                msg = f"Failed to parse LLM response as {resolved_schema.__name__}: {e}"
+                raise LLMHandlerCallError(msg) from e
 
-                if not response.choices:
-                    msg = "LLM returned empty response"
-                    raise LLMHandlerCallError(msg)
+            if response.usage is not None:
+                report_token_usage(response.usage, p.litellm_model, p.provider)
 
-                content = response.choices[0].message.content
-                if content is None:
-                    msg = "LLM returned None content"
-                    raise LLMHandlerCallError(msg)
+            return {p.output_key: instance}
 
-                # 6. JSON parse and Pydantic validation
-                try:
-                    instance = resolved_schema.model_validate_json(content)
-                except (ValidationError, ValueError) as e:
-                    msg = f"Failed to parse LLM response as {resolved_schema.__name__}: {e}"
-                    raise LLMHandlerCallError(msg) from e
-
-                # Report token usage to TraceContext if tracing is active (G-15)
-                if response.usage is not None:
-                    from yagra.application.use_cases.trace_collector import (
-                        TraceContext,  # noqa: PLC0415
-                    )
-
-                    ctx = TraceContext.current()
-                    if ctx is not None:
-                        ctx.record_llm_call(
-                            model=litellm_model,
-                            provider=provider,
-                            prompt_tokens=response.usage.prompt_tokens or 0,
-                            completion_tokens=response.usage.completion_tokens or 0,
-                            total_tokens=response.usage.total_tokens or 0,
-                        )
-
-                return {output_key: instance}
-
-            except LLMHandlerCallError:
-                # LLM response errors are raised immediately without retry
-                raise
-            except Exception as e:
-                last_error = e
-                if attempt < effective_retry - 1:
-                    wait_time = 2**attempt
-                    time.sleep(wait_time)
-                    continue
-                break
-
-        msg = f"LLM call failed after {effective_retry} attempts: {last_error}"
-        raise LLMHandlerCallError(msg) from last_error
+        return llm_retry_loop(_call, p.effective_retry)
 
     return handler
 
@@ -282,11 +215,6 @@ STRUCTURED_LLM_HANDLER_PARAMS_SCHEMA: dict = {
                 "kwargs": {"type": "object"},
             },
             "required": ["provider", "name"],
-        },
-        "input_keys": {
-            "type": "array",
-            "items": {"type": "string"},
-            "description": "Explicit state keys to pass to the prompt. Auto-extracted from {variable_name} in the prompt template if omitted",
         },
         "output_key": {
             "type": "string",

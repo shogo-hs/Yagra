@@ -6,6 +6,8 @@
 
 ### Changed
 - **litellm を必須依存に昇格**: オプショナル依存（`yagra[llm]`）から通常依存に変更。全 LLM ハンドラがコア機能であるため、条件付き import パターンを削除し型安全性を向上
+- 🔧 **Handler DRY 化**: LLM ハンドラ（`llm` / `structured_llm` / `streaming_llm`）の共通ロジックを `_llm_common.py` に抽出（`extract_llm_params`、`interpolate_prompt`、`llm_retry_loop`、`report_token_usage`、`build_params_schema`）。内部リファクタリングのため、ユーザー向け API に変更なし
+- 🔧 **ハンドラカタログ分離**: ハンドラカタログを `catalog.py` に集約。内部リファクタリングのため、ユーザー向け API に変更なし
 
 ### Added
 - ✨ **C-1: retry / fallback / timeout YAML 宣言**: ノードレベルで retry（max_attempts、backoff 戦略、base_delay_seconds）、timeout_seconds、fallback を YAML で直接宣言可能に
@@ -42,6 +44,8 @@
 - 🗑️ **`yagra visualize` コマンド廃止**: Studio UI に完全統合されたため、Read-Only HTML 可視化コマンドを削除。Mermaid ベンダーアセット（2.7MB）も除去
 - 🗑️ **`TraceSinkPort.flush()` 廃止**: 全実装が no-op だった未使用メソッドを削除
 - 🗑️ **`cost_table.py` 廃止**: 静的コストテーブルを削除。litellm の動的価格データベースに置換
+- 🗑️ **`input_keys` パラメータ廃止（破壊的変更）**: ワークフロー YAML ノードの `params.input_keys` を削除。プロンプトテンプレート内の `{variable}` パターンからの自動抽出のみに統一。v0.4.2 で非推奨化済み（G08-I02）
+- 🗑️ **`validate_workflow_file` / `explain_workflow_file` MCP ツール廃止（MCP クライアントに破壊的変更）**: `validate_workflow_file` は `validate_workflow`（`workflow_path` パラメータを使用）に統合。`explain_workflow_file` は `explain_workflow`（`workflow_path` パラメータを使用）に統合。MCP ツール数が 13 から 11 に削減
 
 ## [1.0.1] - 2026-02-22
 

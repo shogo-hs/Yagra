@@ -40,6 +40,7 @@ Examples:
     ...     print(chunk, end="", flush=True)
 """
 
+from yagra.handlers.catalog import BUILTIN_HANDLERS_INFO
 from yagra.handlers.llm_handler import LLM_HANDLER_PARAMS_SCHEMA, create_llm_handler
 from yagra.handlers.schema_builder import build_model_from_schema_yaml
 from yagra.handlers.streaming_llm_handler import (
@@ -52,6 +53,7 @@ from yagra.handlers.structured_llm_handler import (
 )
 
 __all__ = [
+    "BUILTIN_HANDLERS_INFO",
     "LLM_HANDLER_PARAMS_SCHEMA",
     "STREAMING_LLM_HANDLER_PARAMS_SCHEMA",
     "STRUCTURED_LLM_HANDLER_PARAMS_SCHEMA",

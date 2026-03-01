@@ -132,7 +132,7 @@ class TestLLMHandler:
                 mock_response,
             ]
 
-            with patch("yagra.handlers.llm_handler.time.sleep"):  # skip sleep
+            with patch("yagra.handlers._llm_common.time.sleep"):  # skip sleep
                 state = {"query": "test"}
                 params = {
                     "prompt": {"system": "Test", "user": "{query}"},
@@ -151,7 +151,7 @@ class TestLLMHandler:
             handler = create_llm_handler(retry=2, timeout=10)
             mock_litellm.completion.side_effect = Exception("Persistent error")
 
-            with patch("yagra.handlers.llm_handler.time.sleep"):
+            with patch("yagra.handlers._llm_common.time.sleep"):
                 state = {"query": "test"}
                 params = {
                     "prompt": {"system": "Test", "user": "{query}"},
@@ -548,32 +548,30 @@ class TestLLMHandlerValidationErrors:
             ):
                 handler(state, params)
 
-    def test_handler_prompt_interpolation_key_error_raises_config_error(self) -> None:
-        """Confirms that LLMHandlerConfigError is raised when input_keys references a variable not in the user template.
+    def test_handler_input_keys_ignored_auto_extraction_resolves(self) -> None:
+        """Confirms that input_keys is ignored and auto-extraction from template succeeds.
 
-        Details:
-
-        With input_keys=["a"] and user="{b}",
-        input_values = {"a": state.get("a", "")} is computed, and
-        "{b}".format(a="") raises KeyError: 'b'.
+        With auto-extraction, {b} in user template is resolved from state (defaulting to "").
+        The input_keys parameter is no longer consulted.
         """
-        with patch("yagra.handlers.llm_handler.litellm") as _mock_litellm:
+        with patch("yagra.handlers.llm_handler.litellm") as mock_litellm:
             handler = create_llm_handler(retry=1, timeout=10)
+
+            mock_response = MagicMock()
+            mock_response.choices = [MagicMock()]
+            mock_response.choices[0].message.content = "response"
+            mock_response.usage = None
+            mock_litellm.completion.return_value = mock_response
 
             state: dict[str, Any] = {"a": "value_a"}
             params = {
                 "prompt": {"system": "Test", "user": "Hello {b}"},
                 "model": {"provider": "openai", "name": "gpt-4"},
-                "input_keys": [
-                    "a"
-                ],  # KeyError occurs because "b" is not included in keys used for format
+                "input_keys": ["a"],  # ignored; {b} is auto-extracted and resolved to ""
             }
 
-            with pytest.raises(
-                LLMHandlerConfigError,
-                match="Missing key in state for prompt interpolation",
-            ):
-                handler(state, params)
+            # No error raised; auto-extraction finds {b} and resolves it from state as ""
+            handler(state, params)
 
 
 class TestLLMHandlerCallErrors:
@@ -643,7 +641,7 @@ class TestLLMHandlerCallErrors:
     def test_handler_api_error_retried_and_finally_fails(self) -> None:
         """Confirms that API call failures are retried and finally raise LLMHandlerCallError."""
         with patch("yagra.handlers.llm_handler.litellm") as mock_litellm:
-            with patch("yagra.handlers.llm_handler.time.sleep"):
+            with patch("yagra.handlers._llm_common.time.sleep"):
                 handler = create_llm_handler(retry=2, timeout=10)
 
                 mock_litellm.completion.side_effect = RuntimeError("api error")

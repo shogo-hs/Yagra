@@ -192,7 +192,7 @@ class TestStreamingLLMHandler:
             iter([_make_chunk("ok")]),
         ]
         with patch("yagra.handlers.streaming_llm_handler.litellm", mock_litellm):
-            with patch("yagra.handlers.streaming_llm_handler.time.sleep"):
+            with patch("yagra.handlers._llm_common.time.sleep"):
                 handler = create_streaming_llm_handler(retry=3)
                 result = handler({}, _BASE_PARAMS)
                 assert list(result["response"]) == ["ok"]
@@ -203,7 +203,7 @@ class TestStreamingLLMHandler:
         mock_litellm = MagicMock()
         mock_litellm.completion.side_effect = Exception("API error")
         with patch("yagra.handlers.streaming_llm_handler.litellm", mock_litellm):
-            with patch("yagra.handlers.streaming_llm_handler.time.sleep"):
+            with patch("yagra.handlers._llm_common.time.sleep"):
                 handler = create_streaming_llm_handler(retry=2)
                 with pytest.raises(LLMHandlerCallError, match="LLM call failed after 2 attempts"):
                     handler({}, _BASE_PARAMS)
@@ -280,26 +280,27 @@ class TestStreamingLLMHandlerAutoExtract:
         assert messages[1]["content"] == "Hello Alice"
 
 
-class TestStreamingLLMHandlerMissingStateKey:
-    """Tests for missing state key during prompt interpolation."""
+class TestStreamingLLMHandlerInputKeysIgnored:
+    """Tests that input_keys is ignored and auto-extraction is used."""
 
-    def test_missing_state_key_raises_config_error(self) -> None:
-        """Input_keys で指定したキーが state にない場合は LLMHandlerConfigError を送出する。"""
-        # input_keys=["name"] だが、user テンプレートに input_keys に含まれない変数 {other} があるため
-        # input_values={"name": "Alice"} → "{other}" の KeyError が発生する
+    def test_input_keys_ignored_auto_extraction_resolves(self) -> None:
+        """input_keys is ignored; auto-extraction finds all template variables and resolves them."""
+        # With auto-extraction, both {name} and {other} are found and resolved from state.
+        # {other} defaults to "" since it's not in state.
         params_with_extra = {
             "prompt": {"system": "sys", "user": "Hello {name} and {other}"},
             "model": {"provider": "openai", "name": "gpt-4o"},
-            "input_keys": ["name"],  # "other" は keys に含まれない
+            "input_keys": ["name"],  # ignored
             "output_key": "response",
         }
-        mock_litellm = _make_mock_litellm([])
+        chunks = [_make_chunk("Hi")]
+        mock_litellm = _make_mock_litellm(chunks)
         with patch("yagra.handlers.streaming_llm_handler.litellm", mock_litellm):
             handler = create_streaming_llm_handler()
-            with pytest.raises(
-                LLMHandlerConfigError, match="Missing key in state for prompt interpolation"
-            ):
-                handler({"name": "Alice"}, params_with_extra)
+            result = handler({"name": "Alice"}, params_with_extra)
+            list(result["response"])  # consume generator
+            messages = mock_litellm.completion.call_args[1]["messages"]
+        assert messages[1]["content"] == "Hello Alice and "
 
 
 class TestStreamingLLMHandlerEmptyChoices:
@@ -445,7 +446,7 @@ class TestStreamingLLMHandlerCallErrorReraised:
         mock_litellm.completion.side_effect = LLMHandlerCallError("direct call error")
 
         with patch("yagra.handlers.streaming_llm_handler.litellm", mock_litellm):
-            with patch("yagra.handlers.streaming_llm_handler.time.sleep") as mock_sleep:
+            with patch("yagra.handlers._llm_common.time.sleep") as mock_sleep:
                 handler = create_streaming_llm_handler(retry=3)
                 with pytest.raises(LLMHandlerCallError, match="direct call error"):
                     handler({}, _BASE_PARAMS)

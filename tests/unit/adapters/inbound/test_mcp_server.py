@@ -325,7 +325,7 @@ def test_resolve_mcp_workflow_path_with_dir():
 
 
 # ---------------------------------------------------------------------------
-# _tool_validate_workflow_file
+# _tool_validate_workflow with workflow_path
 # ---------------------------------------------------------------------------
 
 _VALID_WORKFLOW_YAML = """\
@@ -340,29 +340,29 @@ edges: []
 """
 
 
-def test_tool_validate_workflow_file_valid(tmp_path):
-    from yagra.adapters.inbound.mcp_server import _tool_validate_workflow_file
+def test_tool_validate_workflow_with_workflow_path_valid(tmp_path):
+    from yagra.adapters.inbound.mcp_server import _tool_validate_workflow
 
     wf = tmp_path / "workflow.yaml"
     wf.write_text(_VALID_WORKFLOW_YAML)
 
-    result = _tool_validate_workflow_file(str(wf))
+    result = _tool_validate_workflow(workflow_path=str(wf))
     assert result["is_valid"] is True
     assert result["issues"] == []
 
 
-def test_tool_validate_workflow_file_not_found():
-    from yagra.adapters.inbound.mcp_server import _tool_validate_workflow_file
+def test_tool_validate_workflow_with_workflow_path_not_found():
+    from yagra.adapters.inbound.mcp_server import _tool_validate_workflow
 
-    result = _tool_validate_workflow_file("/nonexistent/path/workflow.yaml")
+    result = _tool_validate_workflow(workflow_path="/nonexistent/path/workflow.yaml")
     assert result["is_valid"] is False
     assert any(i["code"] == "schema_error" for i in result["issues"])
     assert any("not found" in i["message"] for i in result["issues"])
 
 
-def test_tool_validate_workflow_file_resolves_prompt_ref(tmp_path):
+def test_tool_validate_workflow_with_workflow_path_resolves_prompt_ref(tmp_path):
     """prompt_ref relative paths are resolved from the workflow file's directory."""
-    from yagra.adapters.inbound.mcp_server import _tool_validate_workflow_file
+    from yagra.adapters.inbound.mcp_server import _tool_validate_workflow
 
     prompts_dir = tmp_path / "prompts"
     prompts_dir.mkdir()
@@ -388,32 +388,50 @@ edges: []
 """
     )
 
-    result = _tool_validate_workflow_file(str(wf))
+    result = _tool_validate_workflow(workflow_path=str(wf))
     assert result["is_valid"] is True, result
 
 
+def test_tool_validate_workflow_neither_provided():
+    """Returns error when neither yaml_content nor workflow_path is provided."""
+    from yagra.adapters.inbound.mcp_server import _tool_validate_workflow
+
+    result = _tool_validate_workflow()
+    assert result["is_valid"] is False
+    assert any("either yaml_content or workflow_path" in i["message"] for i in result["issues"])
+
+
 # ---------------------------------------------------------------------------
-# _tool_explain_workflow_file
+# _tool_explain_workflow with workflow_path
 # ---------------------------------------------------------------------------
 
 
-def test_tool_explain_workflow_file_valid(tmp_path):
-    from yagra.adapters.inbound.mcp_server import _tool_explain_workflow_file
+def test_tool_explain_workflow_with_workflow_path_valid(tmp_path):
+    from yagra.adapters.inbound.mcp_server import _tool_explain_workflow
 
     wf = tmp_path / "workflow.yaml"
     wf.write_text(_VALID_WORKFLOW_YAML)
 
-    result = _tool_explain_workflow_file(str(wf))
+    result = _tool_explain_workflow(workflow_path=str(wf))
     assert result["entry_point"] == "node1"
     assert "my_handler" in result["required_handlers"]
 
 
-def test_tool_explain_workflow_file_not_found():
-    from yagra.adapters.inbound.mcp_server import _tool_explain_workflow_file
+def test_tool_explain_workflow_with_workflow_path_not_found():
+    from yagra.adapters.inbound.mcp_server import _tool_explain_workflow
 
-    result = _tool_explain_workflow_file("/nonexistent/path/workflow.yaml")
+    result = _tool_explain_workflow(workflow_path="/nonexistent/path/workflow.yaml")
     assert "error" in result
     assert "not found" in result["error"]
+
+
+def test_tool_explain_workflow_neither_provided():
+    """Returns error when neither yaml_content nor workflow_path is provided."""
+    from yagra.adapters.inbound.mcp_server import _tool_explain_workflow
+
+    result = _tool_explain_workflow()
+    assert "error" in result
+    assert "either yaml_content or workflow_path" in result["error"]
 
 
 # ---------------------------------------------------------------------------
@@ -981,15 +999,15 @@ def test_tool_get_template_not_found():
 
 
 # ---------------------------------------------------------------------------
-# _tool_validate_workflow_file: OSError path
+# _tool_validate_workflow with workflow_path: OSError path
 # ---------------------------------------------------------------------------
 
 
-def test_tool_validate_workflow_file_os_error(tmp_path):
+def test_tool_validate_workflow_with_workflow_path_os_error(tmp_path):
     """PermissionError on file read is returned as is_valid=False with schema_error."""
     import stat
 
-    from yagra.adapters.inbound.mcp_server import _tool_validate_workflow_file
+    from yagra.adapters.inbound.mcp_server import _tool_validate_workflow
 
     workflow_file = tmp_path / "workflow.yaml"
     workflow_file.write_text(
@@ -998,7 +1016,7 @@ def test_tool_validate_workflow_file_os_error(tmp_path):
     # Remove read permission
     workflow_file.chmod(0o000)
     try:
-        result = _tool_validate_workflow_file(str(workflow_file))
+        result = _tool_validate_workflow(workflow_path=str(workflow_file))
         assert result["is_valid"] is False
         assert any("schema_error" == i["code"] for i in result["issues"])
     finally:
@@ -1006,15 +1024,15 @@ def test_tool_validate_workflow_file_os_error(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# _tool_explain_workflow_file: OSError path
+# _tool_explain_workflow with workflow_path: OSError path
 # ---------------------------------------------------------------------------
 
 
-def test_tool_explain_workflow_file_os_error(tmp_path):
+def test_tool_explain_workflow_with_workflow_path_os_error(tmp_path):
     """PermissionError on file read returns error key."""
     import stat
 
-    from yagra.adapters.inbound.mcp_server import _tool_explain_workflow_file
+    from yagra.adapters.inbound.mcp_server import _tool_explain_workflow
 
     workflow_file = tmp_path / "workflow.yaml"
     workflow_file.write_text(
@@ -1022,7 +1040,7 @@ def test_tool_explain_workflow_file_os_error(tmp_path):
     )
     workflow_file.chmod(0o000)
     try:
-        result = _tool_explain_workflow_file(str(workflow_file))
+        result = _tool_explain_workflow(workflow_path=str(workflow_file))
         assert "error" in result
     finally:
         workflow_file.chmod(stat.S_IRUSR | stat.S_IWUSR)
@@ -1220,19 +1238,17 @@ def test_tool_analyze_traces_exception(monkeypatch):
 
 
 # ---------------------------------------------------------------------------
-# list_tools(): verify all 12 tool names are present
+# list_tools(): verify all 11 tool names are present
 # ---------------------------------------------------------------------------
 
 
 def test_list_tools_contains_all_tools():
-    """All 13 expected tool names are returned by list_tools via create_mcp_server."""
+    """All 11 expected tool names are returned by list_tools via create_mcp_server."""
     import asyncio
 
     expected_tool_names = {
         "validate_workflow",
         "explain_workflow",
-        "validate_workflow_file",
-        "explain_workflow_file",
         "list_templates",
         "list_handlers",
         "get_template",
@@ -1384,7 +1400,7 @@ def _create_with_mock_server(MockServer, mock_types, mcp_module):
 
 
 def test_create_mcp_server_list_tools_with_mock(monkeypatch):
-    """list_tools closure returns 13 Tool dicts when mcp is mocked."""
+    """list_tools closure returns 11 Tool dicts when mcp is mocked."""
     import asyncio
     import importlib
     import sys
@@ -1445,7 +1461,7 @@ def test_create_mcp_server_list_tools_with_mock(monkeypatch):
 
         with ThreadPoolExecutor(max_workers=1) as ex:
             tools = ex.submit(asyncio.run, server._list_tools_fn()).result()
-        assert len(tools) == 13
+        assert len(tools) == 11
         tool_names = {t["name"] for t in tools}
         assert "validate_workflow" in tool_names
         assert "get_template" in tool_names
@@ -1465,7 +1481,7 @@ def test_create_mcp_server_list_tools_with_mock(monkeypatch):
 
 
 def test_create_mcp_server_call_tool_all_branches(tmp_path, monkeypatch):
-    """call_tool closure dispatches to correct _tool_* functions for all 12 tool names."""
+    """call_tool closure dispatches to correct _tool_* functions for all tool names."""
     import asyncio
     import importlib
     import json
@@ -1545,12 +1561,12 @@ def test_create_mcp_server_call_tool_all_branches(tmp_path, monkeypatch):
         r = call("explain_workflow", {"yaml_content": valid_yaml})
         assert "entry_point" in r or "error" in r
 
-        # validate_workflow_file
-        r = call("validate_workflow_file", {"workflow_path": str(wf)})
+        # validate_workflow with workflow_path
+        r = call("validate_workflow", {"workflow_path": str(wf)})
         assert "is_valid" in r
 
-        # explain_workflow_file
-        r = call("explain_workflow_file", {"workflow_path": str(wf)})
+        # explain_workflow with workflow_path
+        r = call("explain_workflow", {"workflow_path": str(wf)})
         assert "entry_point" in r or "error" in r
 
         # list_templates

@@ -3280,10 +3280,6 @@ def _studio_html() -> str:
         /** Returns the list of input variable names from rawNode.params (mirrors prompt_variable_validator logic) */
         function extractInputVars(params, promptUserFallback) {
           if (!params || typeof params !== "object") return [];
-          const explicitKeys = params.input_keys;
-          if (explicitKeys !== undefined && explicitKeys !== null) {
-            return Array.isArray(explicitKeys) ? explicitKeys.map(String) : [];
-          }
           // Extract {variable} patterns from both system and user prompts (mirrors backend logic)
           const prompt = params.prompt;
           const systemTemplate = (prompt && typeof prompt === "object" && typeof prompt.system === "string")

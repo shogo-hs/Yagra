@@ -4,8 +4,6 @@ This module provides a generic LLM invocation handler using litellm.
 It supports over 100 LLM providers through a unified API.
 """
 
-import re
-import time
 from typing import Any
 
 import litellm
@@ -84,7 +82,7 @@ def create_llm_handler(
 
         Args:
             state: Workflow state dictionary.
-            params: Node parameters (prompt, model, input_keys, output_key).
+            params: Node parameters (prompt, model, output_key).
 
         Returns:
             dict: Response in the format {output_key: response_text}.
@@ -93,112 +91,45 @@ def create_llm_handler(
             LLMHandlerConfigError: If required parameters are missing.
             LLMHandlerCallError: If LLM invocation fails.
         """
-        # 1. Extract and validate parameters
-        prompt = params.get("prompt")
-        if not isinstance(prompt, dict):
-            msg = "'prompt' must be a dict with 'system' and 'user' keys"
-            raise LLMHandlerConfigError(msg)
+        from yagra.handlers._llm_common import (
+            build_messages,
+            extract_llm_params,
+            interpolate_prompt,
+            llm_retry_loop,
+            report_token_usage,
+        )
 
-        model = params.get("model")
-        if not isinstance(model, dict):
-            msg = "'model' must be a dict with 'provider', 'name', and optional 'kwargs'"
-            raise LLMHandlerConfigError(msg)
+        p = extract_llm_params(params, default_retry=retry)
+        system_prompt, user_prompt = interpolate_prompt(
+            p.system_prompt_template,
+            p.user_prompt_template,
+            state,
+        )
+        messages = build_messages(system_prompt, user_prompt)
 
-        provider = model.get("provider")
-        model_name = model.get("name")
-        if not provider or not model_name:
-            msg = "'model' must have 'provider' and 'name' keys"
-            raise LLMHandlerConfigError(msg)
+        def _call() -> dict[str, Any]:
+            response = litellm.completion(
+                model=p.litellm_model,
+                messages=messages,
+                timeout=timeout,
+                **p.model_kwargs,
+            )
 
-        output_key = params.get("output_key", "output")
+            if not response.choices:
+                msg = "LLM returned empty response"
+                raise LLMHandlerCallError(msg)
 
-        # 2. Interpolate variables into the prompt
-        system_prompt_template = prompt.get("system", "")
-        user_prompt_template = prompt.get("user", "")
+            content = response.choices[0].message.content
+            if content is None:
+                msg = "LLM returned None content"
+                raise LLMHandlerCallError(msg)
 
-        # If input_keys is explicitly specified, use it (backward compatibility);
-        # otherwise auto-extract {variable} patterns from both system and user templates
-        explicit_keys = params.get("input_keys")
-        if explicit_keys is not None:
-            keys = explicit_keys
-        else:
-            system_vars = re.findall(r"\{(\w+)\}", system_prompt_template)
-            user_vars = re.findall(r"\{(\w+)\}", user_prompt_template)
-            keys = list(dict.fromkeys(system_vars + user_vars))
+            if response.usage is not None:
+                report_token_usage(response.usage, p.litellm_model, p.provider)
 
-        # Retrieve input values from state
-        input_values = {key: state.get(key, "") for key in keys}
+            return {p.output_key: content}
 
-        # Replace {variable} format variables in both system and user prompts
-        try:
-            system_prompt = system_prompt_template.format(**input_values)
-            user_prompt = user_prompt_template.format(**input_values)
-        except KeyError as e:
-            msg = f"Missing key in state for prompt interpolation: {e}"
-            raise LLMHandlerConfigError(msg) from e
-
-        # 3. LLM invocation (with retry)
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ]
-
-        model_kwargs = model.get("kwargs", {})
-        litellm_model = f"{provider}/{model_name}"
-
-        # Allow YAML-level retry to suppress handler-internal retry
-        effective_retry: int = params.get("_retry_override", retry)
-
-        last_error = None
-        for attempt in range(effective_retry):
-            try:
-                response = litellm.completion(
-                    model=litellm_model,
-                    messages=messages,
-                    timeout=timeout,
-                    **model_kwargs,
-                )
-
-                if not response.choices:
-                    msg = "LLM returned empty response"
-                    raise LLMHandlerCallError(msg)
-
-                content = response.choices[0].message.content
-                if content is None:
-                    msg = "LLM returned None content"
-                    raise LLMHandlerCallError(msg)
-
-                # Report token usage to TraceContext if tracing is active (G-15)
-                if response.usage is not None:
-                    from yagra.application.use_cases.trace_collector import (
-                        TraceContext,  # noqa: PLC0415
-                    )
-
-                    ctx = TraceContext.current()
-                    if ctx is not None:
-                        ctx.record_llm_call(
-                            model=litellm_model,
-                            provider=provider,
-                            prompt_tokens=response.usage.prompt_tokens or 0,
-                            completion_tokens=response.usage.completion_tokens or 0,
-                            total_tokens=response.usage.total_tokens or 0,
-                        )
-
-                return {output_key: content}
-
-            except LLMHandlerCallError:
-                # LLM response errors are raised immediately without retry
-                raise
-            except Exception as e:
-                last_error = e
-                if attempt < effective_retry - 1:
-                    wait_time = 2**attempt
-                    time.sleep(wait_time)
-                    continue
-                break
-
-        msg = f"LLM call failed after {effective_retry} attempts: {last_error}"
-        raise LLMHandlerCallError(msg) from last_error
+        return llm_retry_loop(_call, p.effective_retry)
 
     return handler
 
@@ -253,12 +184,6 @@ LLM_HANDLER_PARAMS_SCHEMA: dict = {
                 },
             },
             "required": ["provider", "name"],
-        },
-        "input_keys": {
-            "type": "array",
-            "items": {"type": "string"},
-            "description": "Explicit state keys to pass to the prompt. Auto-extracted from {variable_name} in the prompt template if omitted",
-            "examples": [["text"], ["input", "context"]],
         },
         "output_key": {
             "type": "string",

@@ -285,7 +285,7 @@ class TestStructuredLLMHandler:
         ]
 
         with patch("yagra.handlers.structured_llm_handler.litellm", mock_litellm):
-            with patch("yagra.handlers.structured_llm_handler.time.sleep") as mock_sleep:
+            with patch("yagra.handlers._llm_common.time.sleep") as mock_sleep:
                 from yagra.handlers.structured_llm_handler import (
                     create_structured_llm_handler,
                 )
@@ -309,7 +309,7 @@ class TestStructuredLLMHandler:
         mock_litellm.completion.side_effect = Exception("Persistent Error")
 
         with patch("yagra.handlers.structured_llm_handler.litellm", mock_litellm):
-            with patch("yagra.handlers.structured_llm_handler.time.sleep"):
+            with patch("yagra.handlers._llm_common.time.sleep"):
                 from yagra.handlers.llm_handler import LLMHandlerCallError
                 from yagra.handlers.structured_llm_handler import (
                     create_structured_llm_handler,
@@ -592,35 +592,33 @@ class TestStructuredLLMHandlerEdgeCases:
         assert "Tom is 50 years old." in call_messages[1]["content"]
         assert result["person"].name == "Tom"
 
-    def test_prompt_interpolation_key_error_raises_config_error(
-        self, mock_litellm: MagicMock
-    ) -> None:
-        """Covers lines 175-177: KeyError during format raises LLMHandlerConfigError."""
+    def test_input_keys_ignored_auto_extraction_resolves(self, mock_litellm: MagicMock) -> None:
+        """input_keys is ignored; auto-extraction resolves all template variables."""
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock()]
+        mock_response.choices[0].message.content = '{"name": "Alice", "age": 30}'
+        mock_response.usage = None
+        mock_litellm.completion.return_value = mock_response
+
         with patch("yagra.handlers.structured_llm_handler.litellm", mock_litellm):
-            from yagra.handlers.llm_handler import LLMHandlerConfigError
             from yagra.handlers.structured_llm_handler import (
                 create_structured_llm_handler,
             )
 
             handler = create_structured_llm_handler(schema=PersonInfo, retry=1)
-            # Use explicit input_keys pointing to a key not in state, and a template that
-            # has a different brace variable so format() raises KeyError.
-            with pytest.raises(
-                LLMHandlerConfigError, match="Missing key in state for prompt interpolation"
-            ):
-                handler(
-                    state={},
-                    params={
-                        # input_keys is None so auto-extraction is used.
-                        # system contains {missing_var} which won't be in state.
-                        "prompt": {"system": "Hello {missing_var}", "user": "test"},
-                        "model": {"provider": "openai", "name": "gpt-4o"},
-                        # Force it: explicitly set input_keys to something that causes
-                        # the format to fail. We pass input_keys=[] so keys=[] but the
-                        # template still contains {missing_var} which format() won't fill.
-                        "input_keys": [],
-                    },
-                )
+            # input_keys=[] is ignored; auto-extraction finds {missing_var} and
+            # resolves it to "" from state.
+            result = handler(
+                state={},
+                params={
+                    "prompt": {"system": "Hello {missing_var}", "user": "test"},
+                    "model": {"provider": "openai", "name": "gpt-4o"},
+                    "input_keys": [],  # ignored
+                },
+            )
+            messages = mock_litellm.completion.call_args[1]["messages"]
+            assert messages[0]["content"].startswith("Hello ")  # {missing_var} resolved to ""
+            assert "output" in result
 
     def test_empty_choices_raises_call_error(self, mock_litellm: MagicMock) -> None:
         """Covers lines 210-211: empty choices list raises LLMHandlerCallError."""

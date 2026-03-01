@@ -272,11 +272,12 @@ def test_no_info_when_no_state_schema_and_no_variables() -> None:
 
 
 # ---------------------------------------------------------------------------
-# collect_prompt_state_issues: input_keys explicit
+# collect_prompt_state_issues: input_keys is ignored (deprecated)
 # ---------------------------------------------------------------------------
 
 
-def test_explicit_input_keys_used_for_validation() -> None:
+def test_input_keys_ignored_auto_extracts_from_prompt() -> None:
+    """input_keys is no longer used; variables are auto-extracted from prompt template."""
     spec = _build_spec(
         nodes=[
             {
@@ -293,11 +294,10 @@ def test_explicit_input_keys_used_for_validation() -> None:
     )
     issues = collect_prompt_state_issues(spec)
 
-    # "custom_key" is not in state_schema, so warning
+    # "text" is auto-extracted from the prompt template and IS in state_schema,
+    # so there should be no variable warnings (input_keys: ["custom_key"] is ignored).
     var_warnings = [i for i in issues if "variable" in (i.context or {})]
-    assert len(var_warnings) == 1
-    assert var_warnings[0].context is not None
-    assert var_warnings[0].context["variable"] == "custom_key"
+    assert len(var_warnings) == 0
 
 
 # ---------------------------------------------------------------------------

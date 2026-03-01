@@ -10,6 +10,8 @@ For the canonical changelog (Japanese), see [CHANGELOG.md](https://github.com/sh
 
 ### Changed
 - **litellm promoted to required dependency**: Moved from optional (`yagra[llm]`) to core dependency. Removes conditional import patterns and improves type safety
+- 🔧 **Handler DRY refactoring**: Extracted common LLM handler logic (`llm` / `structured_llm` / `streaming_llm`) into `_llm_common.py` (`extract_llm_params`, `interpolate_prompt`, `llm_retry_loop`, `report_token_usage`, `build_params_schema`). Internal refactoring only — no user-facing API changes
+- 🔧 **Handler catalog centralized**: Moved handler catalog into `catalog.py`. Internal refactoring only — no user-facing API changes
 
 ### Added
 - ✨ **C-1: Retry / Fallback / Timeout YAML declaration**: Node-level retry (max_attempts, backoff strategy, base_delay_seconds), timeout_seconds, and fallback can now be declared directly in YAML
@@ -46,6 +48,8 @@ For the canonical changelog (Japanese), see [CHANGELOG.md](https://github.com/sh
 - 🗑️ **`yagra visualize` command removed**: Fully superseded by Studio UI. Read-only HTML visualization command and Mermaid vendor assets (2.7MB) removed
 - 🗑️ **`TraceSinkPort.flush()` removed**: Unused method that was no-op in all implementations
 - 🗑️ **`cost_table.py` removed**: Static cost table replaced by litellm's dynamic pricing database
+- 🗑️ **`input_keys` parameter removed (BREAKING)**: The `input_keys` parameter in workflow YAML node params has been removed. Variables are now always auto-extracted from `{variable}` patterns in prompt templates. This was already deprecated since v0.4.2 (G08-I02)
+- 🗑️ **`validate_workflow_file` / `explain_workflow_file` MCP tools removed (BREAKING for MCP clients)**: `validate_workflow_file` merged into `validate_workflow` (use `workflow_path` parameter). `explain_workflow_file` merged into `explain_workflow` (use `workflow_path` parameter). MCP tool count reduced from 13 to 11
 
 ## [1.0.1] - 2026-02-22
 

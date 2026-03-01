@@ -9,9 +9,8 @@ from typing import Any
 def _extract_required_vars(params: dict[str, Any]) -> list[str]:
     """Returns a list of variable names required by the prompt from the node params.
 
-    Uses ``input_keys`` if explicitly specified; otherwise auto-extracts ``{variable}``
-    patterns from both the system and user prompt templates. Uses the same logic as
-    the handler.
+    Auto-extracts ``{variable}`` patterns from both the system and user prompt
+    templates. Uses the same logic as the handler.
 
     Args:
         params: Node params dictionary.
@@ -19,12 +18,6 @@ def _extract_required_vars(params: dict[str, Any]) -> list[str]:
     Returns:
         List of required variable names (deduplicated, preserving order).
     """
-    explicit_keys = params.get("input_keys")
-    if explicit_keys is not None:
-        if isinstance(explicit_keys, list):
-            return [str(k) for k in explicit_keys]
-        return []
-
     prompt = params.get("prompt")
     if not isinstance(prompt, dict):
         return []

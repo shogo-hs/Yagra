@@ -182,10 +182,8 @@ def _build_variable_flow(
 def _extract_input_variables(node: NodeSpec, workflow_dir: Path | None = None) -> list[str]:
     """Extracts input variables from a node's prompt.
 
-    Variables are primarily extracted from ``{variable}`` patterns in the prompt
-    template.  When prompt-based extraction yields no results (e.g. the prompt
-    file could not be read because ``workflow_dir`` is ``None``), the function
-    falls back to the explicit ``input_keys`` parameter if present.
+    Variables are auto-extracted from ``{variable}`` patterns in the prompt
+    template.
 
     Args:
         node: NodeSpec to extract input variables from.
@@ -197,15 +195,9 @@ def _extract_input_variables(node: NodeSpec, workflow_dir: Path | None = None) -
     """
     params = node.params
 
-    # Explicit input_keys serves as a fallback when prompt-based extraction
-    # returns an empty list (e.g. prompt_ref file unreadable without base_dir).
-    explicit_input_keys = params.get("input_keys")
-
     prompt_ref_value = params.get("prompt_ref")
     prompt = params.get("prompt") or prompt_ref_value
     if prompt is None:
-        if isinstance(explicit_input_keys, list):
-            return [k for k in explicit_input_keys if isinstance(k, str)]
         return []
 
     # If prompt is a string, analyze it directly
@@ -237,10 +229,6 @@ def _extract_input_variables(node: NodeSpec, workflow_dir: Path | None = None) -
                             vars_list.append(var)
         extracted = vars_list
 
-    # Fallback: when prompt-based extraction returned nothing but input_keys
-    # is explicitly declared, use it.
-    if not extracted and isinstance(explicit_input_keys, list):
-        return [k for k in explicit_input_keys if isinstance(k, str)]
     return extracted
 
 
