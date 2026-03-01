@@ -422,6 +422,18 @@ yagra analyze --workflow my-workflow --limit 10
 yagra analyze --format json
 ```
 
+### `yagra prompt`
+
+Inspect prompt YAML files and their version metadata.
+
+```bash
+# Display prompt file metadata and keys
+yagra prompt info --file prompts.yaml
+
+# JSON output
+yagra prompt info --file prompts.yaml --format json
+```
+
 ### `yagra mcp`
 
 Launch Yagra as an [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server. Requires `yagra[mcp]` extra.

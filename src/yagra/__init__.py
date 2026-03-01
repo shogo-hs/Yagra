@@ -271,6 +271,9 @@ def main() -> None:
     if args.command == "golden":
         exit_code = _run_golden_command(args)
         raise SystemExit(exit_code)
+    if args.command == "prompt":
+        exit_code = _run_prompt_command(args)
+        raise SystemExit(exit_code)
     raise SystemExit(2)
 
 
@@ -656,6 +659,30 @@ def _build_cli_parser() -> argparse.ArgumentParser:
         help="Golden case directory (default: .yagra/golden)",
     )
     golden_list.add_argument(
+        "--format",
+        choices=["text", "json"],
+        default="text",
+        dest="output_format",
+        help="Output format (default: text)",
+    )
+
+    # --- prompt subcommand group ---
+    prompt = subparsers.add_parser(
+        "prompt",
+        help="Manage and inspect prompt YAML files",
+    )
+    prompt_sub = prompt.add_subparsers(dest="prompt_command", required=True)
+
+    prompt_info = prompt_sub.add_parser(
+        "info",
+        help="Display metadata and version info for a prompt YAML file",
+    )
+    prompt_info.add_argument(
+        "--file",
+        required=True,
+        help="Path to the prompt YAML file",
+    )
+    prompt_info.add_argument(
         "--format",
         choices=["text", "json"],
         default="text",
@@ -1280,6 +1307,80 @@ def _run_golden_list_command(args: argparse.Namespace) -> int:
                 print(f"  {case.workflow_name}/{case.case_name}{desc}")
                 print(f"    created: {case.created_at.isoformat()}")
                 print(f"    nodes: {len(case.execution_path)}")
+    return 0
+
+
+def _run_prompt_command(args: argparse.Namespace) -> int:
+    """Dispatches the prompt subcommand to the appropriate handler.
+
+    Args:
+        args: Parsed CLI arguments including prompt_command.
+
+    Returns:
+        Exit code. 0 on success.
+    """
+    if args.prompt_command == "info":
+        return _run_prompt_info_command(args)
+    return 2
+
+
+def _run_prompt_info_command(args: argparse.Namespace) -> int:
+    """Displays metadata and version info for a prompt YAML file.
+
+    Reads a prompt YAML file and prints its ``_meta`` section,
+    available prompt keys, and version information.
+
+    Args:
+        args: Parsed CLI arguments with ``file`` and ``output_format``.
+
+    Returns:
+        Exit code. 0 on success, 1 on error.
+    """
+    import yaml
+
+    prompt_path = Path(args.file).expanduser().resolve()
+    if not prompt_path.exists():
+        print(f"Error: file not found: {prompt_path}", file=sys.stderr)
+        return 1
+
+    try:
+        with prompt_path.open("r", encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+    except yaml.YAMLError as exc:
+        print(f"Error: failed to parse YAML: {exc}", file=sys.stderr)
+        return 1
+
+    if not isinstance(data, dict):
+        print("Error: prompt file must be a YAML mapping", file=sys.stderr)
+        return 1
+
+    meta = data.get("_meta", {})
+    if not isinstance(meta, dict):
+        meta = {}
+    version = meta.get("version", "(not set)")
+    changelog: list[Any] = meta.get("changelog", [])
+    if not isinstance(changelog, list):
+        changelog = []
+    prompt_keys = [k for k in data if k != "_meta"]
+
+    if args.output_format == "json":
+        result = {
+            "file": str(prompt_path),
+            "version": meta.get("version"),
+            "changelog": changelog,
+            "prompt_keys": prompt_keys,
+            "meta": meta,
+        }
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+    else:
+        print(f"File: {prompt_path}")
+        print(f"Version: {version}")
+        if changelog:
+            print("Changelog:")
+            for entry in changelog:
+                print(f"  - {entry}")
+        print(f"Prompt keys: {', '.join(prompt_keys) or '(none)'}")
+
     return 0
 
 

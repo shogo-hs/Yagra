@@ -236,6 +236,66 @@ state_schema:
 
 These prompt-state validation issues are **warning/info only** and do **not** cause `is_valid` to be `false`. The `is_valid` flag is determined exclusively by error-severity issues (schema violations, missing references, etc.).
 
+## Prompt Versioning
+
+Prompt YAML files can include an optional `_meta` section to track version metadata:
+
+```yaml
+_meta:
+  version: "2.0"
+  changelog:
+    - "2.0: Added persona variable to system prompt"
+    - "1.0: Initial version"
+
+greeting:
+  system: "You are {persona}."
+  user: "Hello! My name is {user_name}."
+```
+
+### Version Pinning with `@version`
+
+You can pin a specific prompt version in `prompt_ref` using the `@version` suffix:
+
+```yaml
+nodes:
+  - id: "greet"
+    handler: "llm"
+    params:
+      prompt_ref: "prompts.yaml#greeting@2.0"
+      model:
+        provider: "openai"
+        name: "gpt-4o-mini"
+```
+
+Supported formats:
+- `prompts.yaml#greeting@v2` — file + key + version
+- `prompts.yaml@v2` — file + version (entire file)
+- `prompts.yaml#greeting` — file + key without version (existing syntax)
+
+### Version Validation
+
+Yagra validates version consistency during workflow validation:
+
+| Scenario | Severity | Message |
+|---|---|---|
+| `@version` matches `_meta.version` | (no issue) | — |
+| `@version` differs from `_meta.version` | **warning** | Version mismatch detected |
+| `@version` specified but `_meta.version` missing | **warning** | Prompt file has no version metadata |
+| `_meta.version` exists but `prompt_ref` unpinned | **info** | Consider pinning with `@version` suffix |
+
+These version validation issues are **warning/info only** and do **not** affect `is_valid`.
+
+### Inspecting Prompt Metadata
+
+Use the CLI to inspect prompt file metadata:
+
+```bash
+yagra prompt info --file prompts.yaml
+yagra prompt info --file prompts.yaml --format json
+```
+
+See [CLI Reference](../cli_reference.md) for details.
+
 ## Model Configuration
 
 ### Inline Model Definition

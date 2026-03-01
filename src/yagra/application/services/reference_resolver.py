@@ -4,12 +4,35 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from copy import deepcopy
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 import yaml
 
 type Location = tuple[str | int, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class PromptVersionInfo:
+    """Metadata about a resolved prompt reference and its version.
+
+    Collected during reference resolution when a ``prompt_version_collector``
+    is passed to :func:`resolve_workflow_references`.
+
+    Attributes:
+        catalog_path: Resolved absolute path of the prompt catalog file.
+        key_path: Key path within the catalog (e.g. ``"greeting"``), or None.
+        version_requested: Version string from the ``@version`` suffix, or None.
+        version_actual: Value of ``_meta.version`` in the catalog, or None.
+        location: Workflow path where the prompt_ref was found.
+    """
+
+    catalog_path: str
+    key_path: str | None
+    version_requested: str | None
+    version_actual: str | None
+    location: Location
 
 
 class WorkflowReferenceError(ValueError):
@@ -26,10 +49,54 @@ class WorkflowReferenceError(ValueError):
         self.location: Location = tuple(location or ())
 
 
+def _parse_prompt_ref(reference: str) -> tuple[str, str | None, str | None]:
+    """Parses a prompt_ref string into (path, key, version) components.
+
+    Supports the following formats::
+
+        "file.yaml"           -> ("file.yaml", None, None)
+        "file.yaml#key"       -> ("file.yaml", "key", None)
+        "file.yaml@v2"        -> ("file.yaml", None, "v2")
+        "file.yaml#key@v2"    -> ("file.yaml", "key", "v2")
+
+    The ``@version`` suffix is extracted from the rightmost ``@`` after the
+    ``#key`` part (if present) or from the path part (if no ``#``).  An empty
+    version (trailing ``@`` with nothing after it) is treated as no version.
+
+    Args:
+        reference: The prompt_ref string to parse.
+
+    Returns:
+        Tuple of ``(catalog_path, key_path, version)``.  Any component may
+        be ``None`` when absent.
+    """
+    raw_path, hash_sep, raw_key_and_version = reference.partition("#")
+    catalog_path = raw_path.strip()
+
+    if not hash_sep:
+        # No '#' separator: check for @version in the path part
+        path_part, at_sep, version_part = catalog_path.rpartition("@")
+        if at_sep and path_part.strip() and version_part.strip():
+            return path_part.strip(), None, version_part.strip()
+        return catalog_path, None, None
+
+    # Has '#' separator: check for @version after the key
+    key_and_version = raw_key_and_version.strip()
+    if not key_and_version:
+        # "file#" — hash present but key is empty; return "" to signal error
+        return catalog_path, "", None
+
+    key_part, at_sep, version_part = key_and_version.rpartition("@")
+    if at_sep and key_part.strip() and version_part.strip():
+        return catalog_path, key_part.strip(), version_part.strip()
+    return catalog_path, key_and_version if key_and_version else None, None
+
+
 def resolve_workflow_references(
     payload: dict[str, Any],
     workflow_path: Path,
     bundle_root: Path | None = None,
+    prompt_version_collector: list[PromptVersionInfo] | None = None,
 ) -> dict[str, Any]:
     """Resolves `prompt_ref` references in a workflow.
 
@@ -37,6 +104,10 @@ def resolve_workflow_references(
         payload: Data from `workflow.yaml` converted to a dictionary.
         workflow_path: Absolute path to the entry workflow file.
         bundle_root: Base directory for split references. Defaults to the workflow parent if not specified.
+        prompt_version_collector: If provided, :class:`PromptVersionInfo` instances
+            are appended for each resolved ``prompt_ref``.  This enables downstream
+            validators to check version consistency without modifying the resolver's
+            return value.
 
     Returns:
         Workflow data with references resolved.
@@ -88,12 +159,14 @@ def resolve_workflow_references(
             location=("nodes", index, "params", "prompt_ref"),
         )
         if prompt_ref is not None:
+            ref_location: Location = ("nodes", index, "params", "prompt_ref")
             resolved_prompt = _resolve_reference(
                 reference=prompt_ref,
                 workflow_path=workflow_path,
                 bundle_root=bundle_root,
                 ref_label="prompt_ref",
-                location=("nodes", index, "params", "prompt_ref"),
+                location=ref_location,
+                prompt_version_collector=prompt_version_collector,
             )
             node_params["prompt"] = resolved_prompt
 
@@ -112,6 +185,7 @@ def _resolve_reference(
     bundle_root: Path | None,
     ref_label: str,
     location: Location = (),
+    prompt_version_collector: list[PromptVersionInfo] | None = None,
 ) -> Any:
     """Loads and resolves a single reference.
 
@@ -121,6 +195,7 @@ def _resolve_reference(
         bundle_root: Base directory for reference resolution.
         ref_label: Reference label for error messages.
         location: Workflow path where the problem occurred.
+        prompt_version_collector: If provided, version metadata is appended.
 
     Returns:
         The resolved value.
@@ -128,14 +203,12 @@ def _resolve_reference(
     Raises:
         WorkflowReferenceError: If the reference string or reference target is invalid.
     """
-    raw_path, _, raw_key = reference.partition("#")
-    catalog_path = raw_path.strip()
+    catalog_path, key_path, version_requested = _parse_prompt_ref(reference)
     if not catalog_path:
         raise WorkflowReferenceError(
             f"{ref_label} path is empty: {reference}",
             location=location,
         )
-    key_path: str | None = raw_key.strip() if _ else None
     if key_path is not None and not key_path:
         raise WorkflowReferenceError(
             f"{ref_label} key is empty: {reference}",
@@ -159,6 +232,27 @@ def _resolve_reference(
                 location=location,
             ) from None
         raise
+
+    # Extract _meta.version from catalog data
+    version_actual: str | None = None
+    if isinstance(catalog_data, dict):
+        meta = catalog_data.get("_meta")
+        if isinstance(meta, dict):
+            raw_version = meta.get("version")
+            if isinstance(raw_version, (str, int, float)):
+                version_actual = str(raw_version)
+
+    if prompt_version_collector is not None:
+        prompt_version_collector.append(
+            PromptVersionInfo(
+                catalog_path=str(target_path),
+                key_path=key_path,
+                version_requested=version_requested,
+                version_actual=version_actual,
+                location=location,
+            )
+        )
+
     if key_path is None:
         return deepcopy(catalog_data)
     return _lookup_key_path(

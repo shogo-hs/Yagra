@@ -9,6 +9,7 @@ from yagra.application.services.handler_compatibility_validator import (
     collect_handler_compatibility_issues,
 )
 from yagra.application.services.reference_resolver import (
+    PromptVersionInfo,
     WorkflowReferenceError,
     resolve_workflow_references,
 )
@@ -25,6 +26,7 @@ from yagra.application.services.workflow_file_store import (
 __all__ = [
     "EdgeRuleIssue",
     "HandlerCompatibilityIssue",
+    "PromptVersionInfo",
     "WorkflowBackupNotFoundError",
     "WorkflowBackupRecord",
     "WorkflowFileStore",

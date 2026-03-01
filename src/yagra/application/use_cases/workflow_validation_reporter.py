@@ -10,7 +10,11 @@ from typing import Any, Literal
 import yaml
 from pydantic import ValidationError
 
-from yagra.application.services import WorkflowReferenceError, resolve_workflow_references
+from yagra.application.services import (
+    PromptVersionInfo,
+    WorkflowReferenceError,
+    resolve_workflow_references,
+)
 from yagra.application.services.edge_rule_validator import collect_edge_rule_issues
 from yagra.domain.entities import GraphSpec
 from yagra.domain.services.schema_validator import collect_graph_structure_issues
@@ -178,11 +182,14 @@ def validate_workflow_payload_for_ui(
     workflow_abspath = Path(workflow_path).expanduser().resolve()
     bundle_root_path = Path(bundle_root).expanduser().resolve() if bundle_root is not None else None
 
+    version_collector: list[PromptVersionInfo] = []
+
     try:
         resolved_payload = resolve_workflow_references(
             payload=payload,
             workflow_path=workflow_abspath,
             bundle_root=bundle_root_path,
+            prompt_version_collector=version_collector,
         )
     except WorkflowReferenceError as exc:
         report.issues.append(
@@ -244,6 +251,21 @@ def validate_workflow_payload_for_ui(
                 location=prompt_state_issue.location,
                 severity=prompt_state_issue.severity,
                 context=prompt_state_issue.context,
+            )
+        )
+
+    from yagra.domain.services.prompt_version_validator import (
+        collect_prompt_version_issues,
+    )
+
+    for version_issue in collect_prompt_version_issues(version_collector):
+        report.issues.append(
+            WorkflowValidationIssue(
+                code="prompt_version_warning",
+                message=version_issue.message,
+                location=version_issue.location,
+                severity=version_issue.severity,
+                context=version_issue.context,
             )
         )
 

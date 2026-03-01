@@ -23,6 +23,11 @@ For the canonical changelog (Japanese), see [CHANGELOG.md](https://github.com/sh
   - Validation issue severity (error/warning/info) shown with color-coded badges
   - Canvas nodes highlighted with red border (error) or yellow border (warning)
   - When `is_valid: true` with warning/info issues, displays "Validation passed (with warnings)" alongside issues
+- ✨ **D-2: Prompt versioning**: Introduced `_meta.version` metadata in prompt YAML files and `@version` suffix for `prompt_ref` version pinning
+  - `prompt_ref: "prompts.yaml#greeting@v2"` syntax for version pinning (`file@version` also supported)
+  - Version consistency checks: mismatch → warning, `_meta` missing with `@version` → warning, `_meta` present but unpinned → info
+  - Added `prompt_version_validator` integrated into the validation pipeline
+  - Added `yagra prompt info --file <path>` CLI command (displays `_meta` info and prompt keys, supports `--format json`)
 
 ### Changed
 - 🔧 **P-0: `is_valid` now checks error severity only**: `WorkflowValidationReport.is_valid` changed from `not self.issues` to `not any(i.severity == "error" for i in self.issues)`. Warning/info-level issues no longer affect the valid/invalid determination of existing workflows

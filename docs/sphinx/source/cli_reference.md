@@ -17,6 +17,7 @@ yagra <command> [options]
 - `studio`: Launch visual editor WebUI
 - `handlers`: Display params schema for built-in handlers
 - `explain`: Statically analyze workflow YAML
+- `prompt`: Manage and inspect prompt YAML files
 - `mcp`: Start MCP server in stdio mode
 
 ## `yagra init`
@@ -754,6 +755,71 @@ yagra analyze --format json | jq '.node_summaries[] | select(.error_rate > 0)'
 
 - Use `yagra mcp` and the `analyze_traces` MCP tool for agent-driven trace analysis
 - Use `get_traces` MCP tool to inspect individual trace records
+
+## `yagra prompt`
+
+Manage and inspect prompt YAML files.
+
+### `yagra prompt info`
+
+Display metadata and version information for a prompt YAML file.
+
+```bash
+yagra prompt info --file <path> [--format text|json]
+```
+
+**Options**:
+- `--file` (required): Path to the prompt YAML file
+- `--format`: Output format — `text` (default) or `json`
+
+**Output** (text format):
+- File path
+- Version from `_meta.version` (or "(not set)" if absent)
+- Changelog entries from `_meta.changelog` (if present)
+- List of prompt keys (excluding `_meta`)
+
+**Example**:
+
+```bash
+$ yagra prompt info --file prompts.yaml
+File: /path/to/prompts.yaml
+Version: 2.0
+Changelog:
+  - 2.0: Added persona variable to system prompt
+  - 1.0: Initial version
+Prompt keys: greeting, farewell
+```
+
+**JSON output**:
+
+```bash
+$ yagra prompt info --file prompts.yaml --format json
+{
+  "file": "/path/to/prompts.yaml",
+  "version": "2.0",
+  "changelog": ["2.0: Added persona variable", "1.0: Initial version"],
+  "prompt_keys": ["greeting", "farewell"],
+  "meta": {"version": "2.0", "changelog": ["..."]}
+}
+```
+
+### Prompt YAML `_meta` Section
+
+Prompt YAML files can include an optional `_meta` section for version metadata:
+
+```yaml
+_meta:
+  version: "2.0"
+  changelog:
+    - "2.0: Added persona variable to system prompt"
+    - "1.0: Initial version"
+
+greeting:
+  system: "You are {persona}."
+  user: "Hello! My name is {user_name}."
+```
+
+The `_meta.version` value is checked against `@version` suffixes in `prompt_ref` references during validation.  See [Prompt Model](user_guide/prompt_model.md) for details.
 
 (yagra-mcp)=
 ## `yagra mcp`

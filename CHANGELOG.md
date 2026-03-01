@@ -19,6 +19,11 @@
   - バリデーション issue の severity（error/warning/info）を色分きバッジで表示
   - キャンバスノードにエラーハイライト（赤枠）・警告ハイライト（黄枠）を表示
   - `is_valid: true` でも warning/info issue がある場合は「Validation passed (with warnings)」と共に表示
+- ✨ **D-2: プロンプトバージョニング**: プロンプト YAML に `_meta.version` メタデータを導入し、`prompt_ref` で `@version` サフィックスによるバージョン指定を追加
+  - `prompt_ref: "prompts.yaml#greeting@v2"` 構文でバージョンを指定可能（`file@version` も対応）
+  - `_meta.version` との照合：不一致時は warning、`_meta` 未定義で `@version` 指定時は warning、`_meta` 存在で未ピン留めは info
+  - `prompt_version_validator` を新規追加し、バリデーションパイプラインに統合
+  - `yagra prompt info --file <path>` CLI コマンドを追加（`_meta` 情報・プロンプトキー一覧を表示、`--format json` 対応）
 
 ### Changed
 - 🔧 **P-0: `is_valid` を error severity のみで判定**: `WorkflowValidationReport.is_valid` が `not self.issues` から `not any(i.severity == "error" for i in self.issues)` に変更。warning/info レベルの issue が追加されても既存ワークフローの valid 判定に影響しない
