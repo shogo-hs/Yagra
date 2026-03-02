@@ -1715,6 +1715,8 @@ def test_run_mcp_server_version_fallback(monkeypatch):
 
     asyncio.run(mcp_mod.run_mcp_server())
 
+    assert version_used.get("version") == "0.0.0"
+
 
 # ---------------------------------------------------------------------------
 # Verify inputSchema does not use oneOf/allOf/anyOf at the top level
@@ -1767,5 +1769,3 @@ def test_input_schemas_have_no_top_level_combining_keywords():
                 f"Tool '{tool.name}' has forbidden top-level keywords in inputSchema: "
                 f"{violations}. Claude RC rejects these schemas."
             )
-
-    assert version_used.get("version") == "0.0.0"
