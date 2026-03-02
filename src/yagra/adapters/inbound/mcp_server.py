@@ -77,10 +77,6 @@ def create_mcp_server() -> Any:
                             ),
                         },
                     },
-                    "oneOf": [
-                        {"required": ["yaml_content"]},
-                        {"required": ["workflow_path"]},
-                    ],
                 },
             ),
             Tool(
@@ -114,10 +110,6 @@ def create_mcp_server() -> Any:
                             ),
                         },
                     },
-                    "oneOf": [
-                        {"required": ["yaml_content"]},
-                        {"required": ["workflow_path"]},
-                    ],
                 },
             ),
             Tool(

@@ -1715,4 +1715,57 @@ def test_run_mcp_server_version_fallback(monkeypatch):
 
     asyncio.run(mcp_mod.run_mcp_server())
 
+
+# ---------------------------------------------------------------------------
+# Verify inputSchema does not use oneOf/allOf/anyOf at the top level
+# (Claude RC rejects schemas with these keywords at the top level)
+# ---------------------------------------------------------------------------
+
+
+def test_input_schemas_have_no_top_level_combining_keywords():
+    """No tool's inputSchema uses oneOf/allOf/anyOf at the top level.
+
+    Claude RC returns 400 when a tool's inputSchema contains oneOf, allOf,
+    or anyOf at the top level.  This test guards against regression.
+    """
+    import asyncio
+
+    try:
+        from yagra.adapters.inbound.mcp_server import create_mcp_server
+
+        server = create_mcp_server()
+    except ImportError:
+        return
+
+    list_tools_handler = None
+    for handler_name, handler_fn in server.request_handlers.items():
+        if "ListTools" in str(handler_name):
+            list_tools_handler = handler_fn
+            break
+
+    if list_tools_handler is None:
+        return
+
+    async def run():
+        from mcp.types import ListToolsRequest
+
+        request = ListToolsRequest(method="tools/list")
+        return await list_tools_handler(request)
+
+    try:
+        result = asyncio.run(run())
+        tools = result.root.tools if hasattr(result, "root") else []
+    except Exception:
+        return
+
+    forbidden = {"oneOf", "allOf", "anyOf"}
+    for tool in tools:
+        schema = tool.inputSchema if hasattr(tool, "inputSchema") else {}
+        if isinstance(schema, dict):
+            violations = forbidden & schema.keys()
+            assert not violations, (
+                f"Tool '{tool.name}' has forbidden top-level keywords in inputSchema: "
+                f"{violations}. Claude RC rejects these schemas."
+            )
+
     assert version_used.get("version") == "0.0.0"
