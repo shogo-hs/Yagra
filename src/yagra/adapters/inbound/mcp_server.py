@@ -62,11 +62,17 @@ def create_mcp_server() -> Any:
                     "properties": {
                         "yaml_content": {
                             "type": "string",
-                            "description": "The Yagra workflow YAML string to validate",
+                            "description": (
+                                "The Yagra workflow YAML string to validate. "
+                                "Provide either this or workflow_path (not both)."
+                            ),
                         },
                         "workflow_path": {
                             "type": "string",
-                            "description": "Absolute or CWD-relative path to the workflow YAML file.",
+                            "description": (
+                                "Absolute or CWD-relative path to the workflow YAML file. "
+                                "Provide either this or yaml_content (not both)."
+                            ),
                         },
                         "base_dir": {
                             "type": "string",
@@ -77,10 +83,6 @@ def create_mcp_server() -> Any:
                             ),
                         },
                     },
-                    "oneOf": [
-                        {"required": ["yaml_content"]},
-                        {"required": ["workflow_path"]},
-                    ],
                 },
             ),
             Tool(
@@ -99,11 +101,17 @@ def create_mcp_server() -> Any:
                     "properties": {
                         "yaml_content": {
                             "type": "string",
-                            "description": "The Yagra workflow YAML string to analyze",
+                            "description": (
+                                "The Yagra workflow YAML string to analyze. "
+                                "Provide either this or workflow_path (not both)."
+                            ),
                         },
                         "workflow_path": {
                             "type": "string",
-                            "description": "Absolute or CWD-relative path to the workflow YAML file.",
+                            "description": (
+                                "Absolute or CWD-relative path to the workflow YAML file. "
+                                "Provide either this or yaml_content (not both)."
+                            ),
                         },
                         "base_dir": {
                             "type": "string",
@@ -114,10 +122,6 @@ def create_mcp_server() -> Any:
                             ),
                         },
                     },
-                    "oneOf": [
-                        {"required": ["yaml_content"]},
-                        {"required": ["workflow_path"]},
-                    ],
                 },
             ),
             Tool(
