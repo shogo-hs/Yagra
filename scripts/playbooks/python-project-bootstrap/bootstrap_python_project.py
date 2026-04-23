@@ -174,7 +174,7 @@ def build_agents_md(
 ## Playbook配置方針（チーム再現性）
 - 原則として新規作成は Playbook 同梱のテンプレートリポジトリから開始する。
 - 空リポジトリから開始する場合のみ、グローバル `python-project-bootstrap` を初回1回だけ使用する。
-- 初回生成直後に手順正本を `<repo>/docs/ai/canonical/playbooks/` に配置してコミットし、以後は repo ローカルを正本にする。
+- 初回生成直後にスキル本体を `<repo>/.claude/skills/<name>/SKILL.md` に配置してコミットし、以後は repo ローカルを正本にする。
 - 個人ホーム配下の Playbook は補助用途とし、必須依存にしない。
 - 共有 Playbook の更新は PR でレビューする。
 
@@ -203,7 +203,7 @@ def build_agents_md(
 
 ## CI / 品質ゲート
 - CI 設定は必須。`python-uv-ci-setup` で `.pre-commit-config.yaml` と `.github/workflows/ci.yml` を整備する。
-- 実行コマンドや失敗時の復旧手順は `docs/ai/playbooks/python-uv-ci-setup.md` の記述を正本とする。
+- 実行コマンドや失敗時の復旧手順は `.claude/skills/python-uv-ci-setup/SKILL.md` の記述を正本とする。
 
 ## Git戦略: Git Worktree ワークフロー
 - ルートディレクトリで `git switch` や `git checkout` によるブランチ切り替えは禁止。
