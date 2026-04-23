@@ -9,9 +9,7 @@ paths:
 
 | コマンド | 用途 |
 |---------|------|
-| `/task-design-gate` | タスク設計ゲート（実装前のスコープ確定・承認取得） |
 | `/python-uv-ci-setup` | Python + uv + ruff/mypy/pytest + pre-commit + GitHub Actions を一括整備 |
-| `/python-project-bootstrap` | 新規 Python プロジェクトを Hexagonal 前提で初期構築 |
 | `/api-spec-sync` | API 実装と仕様ドキュメント（index + エンドポイント）を同期 |
 | `/adr-management` | 設計判断を ADR として記録・更新 |
 | `/git-commit` | 規約に沿ったコミット（日本語、50文字以内、プレフィックス） |
@@ -19,8 +17,6 @@ paths:
 
 ## スキルの使い分け
 
-- 実装前にスコープ整理・承認を得たい → `/task-design-gate`
-- 新規 Python プロジェクトを立ち上げたい → `/python-project-bootstrap`
 - CI / 品質ゲートを整備したい → `/python-uv-ci-setup`
 - API 実装を変更した、仕様ドキュメントを同期したい → `/api-spec-sync`
 - 設計方針の採否を記録したい → `/adr-management`

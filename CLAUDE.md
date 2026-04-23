@@ -23,7 +23,6 @@ Yagra は LangGraph ベースの AI エージェントワークフローラン�
 
 ## タスクルーティング
 - スキル一覧と選択指針: @.claude/rules/skill-catalog.md
-- タスク設計書には `関連ゴールID` / `関連マイルストーンID` を必ず記載（@.claude/skills/task-design-gate/SKILL.md）
 
 ## 開発コマンド・コーディング標準
 - セットアップ、テスト、lint、pre-commit、パッケージ管理: @CONTRIBUTING.md

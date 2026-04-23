@@ -61,6 +61,6 @@ body:
     attributes:
       label: 参照資料
       description: 関連リンク、設計書、ADRなど
-      placeholder: 例) docs/task-designs/..., docs/adr/...
+      placeholder: 例) docs/adr/..., docs/architecture/...
     validations:
       required: false
