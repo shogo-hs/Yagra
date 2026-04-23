@@ -95,6 +95,56 @@ Expected: 新コミットハッシュと件名が表示される。
 
 ## Phase 1: 加算（非破壊）
 
+### Task 1-pre: `.gitignore` を先に更新（Phase 1 前提）
+
+**Files:**
+- Modify: `.gitignore`（229 行目 `.claude/` を削除し、代わりに local/logs のみ除外）
+
+**Context:** 現状 `.gitignore` 229 行目に `.claude/` が記載されており、Tasks 1〜13 が作成する `.claude/` 配下のファイルが `git add` できない。このため Task 14 を Phase 1 の最初に前倒しで実施する。元の Task 14 は完了済みとしてスキップする。
+
+- [ ] **Step 1: 現状の該当行を確認**
+
+```bash
+cd /workspace/Yagra
+grep -n "^\.claude" .gitignore
+```
+
+Expected: `229:.claude/` のような行が表示される。
+
+- [ ] **Step 2: `.gitignore` を編集**
+
+`.gitignore` 内の `.claude/` 行を以下 3 行に置換する：
+
+```
+.claude/settings.local.json
+.claude/logs/
+.claude/scripts/*.log
+```
+
+Edit:
+- old_string: `.claude/`（該当行のみ、一意性のため前後文脈を含めて指定）
+- new_string: `.claude/settings.local.json`<newline>`.claude/logs/`<newline>`.claude/scripts/*.log`
+
+- [ ] **Step 3: 検証**
+
+```bash
+cd /workspace/Yagra
+grep -n "\.claude" .gitignore
+git check-ignore .claude/ 2>&1 || echo ".claude/ no longer ignored - OK"
+```
+
+Expected: 3 行表示、`.claude/ no longer ignored - OK`。
+
+- [ ] **Step 4: コミット**
+
+```bash
+cd /workspace/Yagra
+git add .gitignore
+git commit -m "chore: .claude/ を git 追跡対象に変更（settings.local/logs のみ除外）"
+```
+
+---
+
 ### Task 1: `.claude/settings.json` と `.claude/settings.local.json.example` を作成
 
 **Files:**
@@ -1320,7 +1370,9 @@ git commit -m "feat: CLAUDE.md を実体化（シンボリックリンク解除�
 
 ---
 
-### Task 14: `.gitignore` を更新
+### Task 14: `.gitignore` を更新（**Task 1-pre で完了済み**）
+
+**Status:** Task 1-pre（Phase 1 の最初）で前倒し実施済み。本 Task はスキップ可。検証のみ実施する。
 
 **Files:**
 - Modify: `.gitignore`（line 229 の `.claude/` 削除、代わりに local/logs のみ除外）
