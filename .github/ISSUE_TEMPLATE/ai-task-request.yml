@@ -14,7 +14,7 @@ body:
     attributes:
       label: 目的
       description: 何を達成したいかを1〜3行で記載
-      placeholder: 例) AGENTS.mdの運用ルールを強化したい
+      placeholder: 例) CLAUDE.md の運用ルールを強化したい
     validations:
       required: true
 
@@ -23,7 +23,7 @@ body:
     attributes:
       label: スコープ
       description: 変更対象のファイル・ディレクトリ・機能
-      placeholder: 例) docs/ai/canonical/*, scripts/sync_ai_context.py
+      placeholder: 例) .claude/skills/*, .claude/rules/*
     validations:
       required: true
 
@@ -41,7 +41,7 @@ body:
     attributes:
       label: 受け入れ基準
       description: 完了判定の条件
-      placeholder: 例) sync --checkが通る、AGENTSに方針が反映される
+      placeholder: 例) pre-commit --all-files が通る、CLAUDE.md に方針が反映される
     validations:
       required: true
 
@@ -51,8 +51,8 @@ body:
       label: 検証コマンド
       description: 実行してほしいコマンドがあれば記載
       placeholder: |
-        python3 scripts/sync_ai_context.py
-        python3 scripts/sync_ai_context.py --check
+        uv run pre-commit run --all-files
+        uv run pytest -q
     validations:
       required: false
 
@@ -61,6 +61,6 @@ body:
     attributes:
       label: 参照資料
       description: 関連リンク、設計書、ADRなど
-      placeholder: 例) docs/task-designs/..., docs/adr/...
+      placeholder: 例) docs/adr/..., docs/architecture/...
     validations:
       required: false

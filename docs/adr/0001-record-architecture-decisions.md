@@ -3,17 +3,17 @@
 最終更新: 2026-02-08
 - ステータス: 承認済み(accepted)
 - 決定者: shogo-hs
-- 関連: `docs/ai/canonical/task-routing.md`, `docs/ai/canonical/playbooks/adr-management.md`
+- 関連: `.claude/rules/skill-catalog.md`, `.claude/skills/adr-management/SKILL.md`
 
 ## 1. 文脈
 
-- AGENTS/Playbook の方針変更が増えており、変更理由の追跡が難しくなっている。
+- CLAUDE.md / スキルの方針変更が増えており、変更理由の追跡が難しくなっている。
 - チャット履歴だけでは、後日参照時に採否理由やトレードオフが欠落しやすい。
 
 ## 2. 決定
 
 - 本リポジトリで設計判断を扱うときは ADR を作成する。
-- ADR の保存先を `docs/adr/` に固定し、`adr-management` Playbook で運用する。
+- ADR の保存先を `docs/adr/` に固定し、`adr-management` スキルで運用する。
 
 ## 3. 代替案と不採用理由
 
@@ -26,12 +26,12 @@
 
 - コードへの影響: なし（ドキュメント運用変更のみ）。
 - 運用への影響: 方針変更時に ADR 作成/更新の手順が追加される。
-- ドキュメントへの影響: `docs/adr/README.md` と `adr-management` Playbook の維持が必要。
+- ドキュメントへの影響: `docs/adr/README.md` と `adr-management` スキルの維持が必要。
 
 ## 5. フォローアップ
 
 - [ ] 方針変更タスクで ADR 作成が定着しているかを定期確認する。
-- [ ] ADR と AGENTS/Playbook の参照リンク切れを点検する。
+- [ ] ADR と CLAUDE.md / スキルの参照リンク切れを点検する。
 
 ## 6. 変更履歴
 

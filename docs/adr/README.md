@@ -22,7 +22,7 @@
 
 ## 作成ルール
 
-- 新規ADRは `docs/ai/playbook-assets/adr-management/references/_adr-template.md` を利用する。
+- 新規ADRは `.claude/skills/adr-management/references/_adr-template.md` を利用する。
 - 1ADR には 1 つの判断だけを記載する。
 - 既存判断を置換した場合は、新旧ADRの双方に相互リンクを張る。
 

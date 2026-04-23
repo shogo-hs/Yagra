@@ -226,9 +226,8 @@ __marimo__/
 # yagra init で生成されるワークフロー・プロンプトファイル（ルート直下のみ除外）
 /workflows/
 /prompts/
-.claude/
+.claude/settings.local.json
+.claude/logs/
+.claude/scripts/*.log
 .serena/
 .playwright-mcp/
-
-# Internal planning docs
-docs/task-designs/
