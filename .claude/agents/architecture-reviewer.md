@@ -29,7 +29,7 @@ Yagra のアーキテクチャ制約違反を検出する：
 
 ## レビュー手順
 
-1. 変更ファイルの特定: `git diff --name-only main...HEAD -- src/yagra/ tests/`
+1. 変更ファイルの特定: `git diff --name-only $(git merge-base HEAD @{upstream} 2>/dev/null || git merge-base HEAD origin/HEAD)...HEAD -- src/yagra/ tests/`（ブランチ独立。デフォルトブランチ名に依存しない）
 2. import 文の抽出: `grep -rn "^import \|^from " <changed-files>`
 3. Hexagonal 境界チェック: 層ごとの import 制約に違反がないか検証
 4. SOLID 観点の目視レビュー
@@ -38,7 +38,7 @@ Yagra のアーキテクチャ制約違反を検出する：
 
 ## 参照
 
-- @docs/rules/code_architecture/
-- @docs/rules/solid/
-- @docs/architecture/
+- @docs/rules/code_architecture/README.md
+- @docs/rules/solid/README.md
+- @docs/architecture/hexagonal-architecture.md
 - @.claude/rules/architecture.md

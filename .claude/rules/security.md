@@ -14,7 +14,7 @@ paths:
 
 ## 秘密情報の取扱い
 
-- `.env`, `.env.*`, `.env.keys`, `credentials*`, `*secret*` の読取は Layer 1 で禁止済み
+- `.env`, `.env.*`, `.env.keys`, `credentials*`, `*secret*` の読取は Layer 1 で禁止済み（ルート直下と再帰パス両方）
 - 読取できても WebFetch / WebSearch / MCP / `curl` 等で外部送信しない
 - 秘密情報がソースに含まれる疑いがある場合は作業を停止しユーザーに確認する
 - APIキー・トークン・秘密鍵・`.env.keys` は出力・コミット・Issue/PR本文へ記載しない
@@ -27,8 +27,9 @@ paths:
 
 ## 破壊的操作
 
-- `rm -rf`, `git reset --hard`, `git push --force` は Layer 1 で deny 済み
-- それ以外の取消困難操作（DB truncate、広範囲ファイル上書き等）は実行前にユーザー確認
+- `rm -rf`, `rm -fr`, `git reset --hard`, `git push --force`, `git push -f` は Layer 1 で deny 済み
+- Layer 1 glob は表記揺れを完全網羅できない（例: `rm --recursive --force` 長形式、未列挙の push オプションなど）。Layer 4（本ファイル + `CLAUDE.md` 運用規範）との二重防御を前提とする
+- 取消困難操作（DB truncate、広範囲ファイル上書き等）は実行前にユーザー確認
 - 未追跡ファイルの削除前に `git status` を確認
 - 想定外の大量差分・履歴破壊操作・広範囲削除が必要な場合は作業を停止しユーザー再確認
 

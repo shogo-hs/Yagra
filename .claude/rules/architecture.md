@@ -38,6 +38,6 @@ Yagra は Hexagonal Architecture を採用する。依存方向は外側から�
 
 ## 参照
 
-- @docs/rules/code_architecture/
-- @docs/rules/solid/
-- @docs/architecture/
+- @docs/rules/code_architecture/README.md
+- @docs/rules/solid/README.md
+- @docs/architecture/hexagonal-architecture.md
