@@ -51,7 +51,7 @@ jobs:
         run: uv run sphinx-build -b html docs/sphinx/source docs/sphinx/_build/html
 
       - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v4
+        uses: actions/upload-pages-artifact@v5
         with:
           path: docs/sphinx/_build/html
 
