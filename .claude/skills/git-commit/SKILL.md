@@ -41,8 +41,9 @@ description: Git の変更を安全にコミットするためのスキル。`gi
 
 6. 文字数を機械的に確認する。
    - `msg='feat: ユーザー認証機能を追加'`
-   - `printf %s "$msg" | wc -m`
+   - `printf %s "$msg" | python3 -c "import sys; print(len(sys.stdin.read()))"`
    - 50 を超える場合は短く書き直して再計測する。
+   - 注意: `wc -m` はロケール依存でマルチバイト文字をバイト数として計上する環境があるため使用しない。
 
 7. コミットを実行する。
    - `git commit -m "$msg"`

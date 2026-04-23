@@ -25,8 +25,8 @@ description: 新しい Python プロジェクトの初期セットアップを�
    - 既存プロジェクトで `docs/tasks` を使っている場合のみ、後方互換として既存パス命名を尊重する。
 
 2. CLAUDE.md 情報を対話で確定する。
-   - `.claude/skills/python-project-bootstrap/references/agents-md-checklist.md` の必須項目から埋める。
-   - `.claude/skills/python-project-bootstrap/references/agents-playbooks-boundary.md` を基準に、CLAUDE.md とスキルの責務境界を固定する。
+   - `.claude/skills/python-project-bootstrap/references/claude-md-checklist.md` の必須項目から埋める。
+   - `.claude/skills/python-project-bootstrap/references/claude-md-skills-boundary.md` を基準に、CLAUDE.md とスキルの責務境界を固定する。
    - 未確定項目は既定値を勝手に固定せず、ユーザー確認を優先する。
    - 既定値を使う場合は「既定値を採用した」と明示してから確定する。
 
@@ -70,8 +70,8 @@ description: 新しい Python プロジェクトの初期セットアップを�
 
 ## 参照ファイル
 
-- CLAUDE.md ヒアリング項目: `.claude/skills/python-project-bootstrap/references/agents-md-checklist.md`
-- CLAUDE.md とスキルの責務境界: `.claude/skills/python-project-bootstrap/references/agents-playbooks-boundary.md`
+- CLAUDE.md ヒアリング項目: `.claude/skills/python-project-bootstrap/references/claude-md-checklist.md`
+- CLAUDE.md とスキルの責務境界: `.claude/skills/python-project-bootstrap/references/claude-md-skills-boundary.md`
 - `docs/product` 擦り合わせ質問: `.claude/skills/python-project-bootstrap/references/product-docs-alignment.md`
 - Hexagonal 構成と責務: `.claude/skills/python-project-bootstrap/references/project-structure.md`
 - `.env.*` と dotenvx 暗号化運用: `.claude/skills/python-project-bootstrap/references/env-and-dotenvx.md`

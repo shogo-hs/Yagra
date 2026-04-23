@@ -8,15 +8,15 @@ import re
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-PLAYBOOK_ASSETS_ROOT = REPO_ROOT / "docs" / "ai" / "playbook-assets"
+CLAUDE_SKILLS_ROOT = REPO_ROOT / ".claude" / "skills"
 TASK_DESIGN_TEMPLATE_PATH = (
-    PLAYBOOK_ASSETS_ROOT / "task-design-gate" / "references" / "_task-design-template.md"
+    CLAUDE_SKILLS_ROOT / "task-design-gate" / "references" / "_task-design-template.md"
 )
 API_INDEX_TEMPLATE_PATH = (
-    PLAYBOOK_ASSETS_ROOT / "api-spec-sync" / "references" / "_index_template.md"
+    CLAUDE_SKILLS_ROOT / "api-spec-sync" / "references" / "_index_template.md"
 )
 API_ENDPOINT_TEMPLATE_PATH = (
-    PLAYBOOK_ASSETS_ROOT / "api-spec-sync" / "references" / "_endpoint_template.md"
+    CLAUDE_SKILLS_ROOT / "api-spec-sync" / "references" / "_endpoint_template.md"
 )
 PRODUCT_VISION_TEMPLATE_PATH = REPO_ROOT / "docs" / "product" / "vision.md"
 PRODUCT_GOALS_TEMPLATE_PATH = REPO_ROOT / "docs" / "product" / "goals.md"
@@ -117,17 +117,17 @@ def ensure_gitignore(target: Path, report: dict[str, list[str]]) -> None:
         report["unchanged"].append(str(gitignore_path))
 
 
-def build_agents_md(
+def build_claude_md(
     project_name: str,
     description: str,
     python_version: str,
     task_design_dir: str,
 ) -> str:
-    """AGENTS.md の初期テンプレートを返す。"""
+    """CLAUDE.md の初期テンプレートを返す。"""
     task_readme = f"{task_design_dir}/README.md"
     task_template = f"{task_design_dir}/_task-design-template.md"
 
-    return f"""# AGENTS.md
+    return f"""# CLAUDE.md
 
 ## プロジェクト概要
 - **名前**: {project_name}
@@ -169,7 +169,7 @@ def build_agents_md(
 - API 仕様変更がある場合は `api-spec-sync` を使って `docs/api/` と実装を同期する。
 - 実装前の設計ゲートは `task-design-gate` を利用する。
 - コミット時は `git-commit` を利用して規約を満たす。
-- AGENTS.md には方針とルーティングのみ記載し、詳細手順は各 Playbook に集約する。
+- CLAUDE.md には方針とルーティングのみ記載し、詳細手順は各スキルに集約する。
 
 ## Playbook配置方針（チーム再現性）
 - 原則として新規作成は Playbook 同梱のテンプレートリポジトリから開始する。
@@ -189,7 +189,7 @@ def build_agents_md(
   - `Args` / `Returns` / `Raises` は該当する要素がある場合に記載する。
 
 ## 作業ルール
-- 必ず作業後に、作業によって生じた変更と `README.md`, `AGENTS.md` の内容差分を確認し、差があれば更新すること。
+- 必ず作業後に、作業によって生じた変更と `README.md`, `CLAUDE.md` の内容差分を確認し、差があれば更新すること。
 - タスク依頼時はすぐにコードを書き始めず、まず `{task_design_dir}/` 配下にタスク設計ドキュメントを配置し、レビューを仰ぐこと。
 - タスク実行時は適宜「実装タスクリスト」の進捗を更新しながら進めること。
 - まとまった変更は小さなコミットに分割する。
@@ -520,7 +520,7 @@ def build_task_template() -> str:
 
 ## 12. ドキュメント更新
 - [ ] `README.md`（必要に応じて）
-- [ ] `AGENTS.md`（必要に応じて）
+- [ ] `CLAUDE.md`（必要に応じて）
 - [ ] `docs/`（該当ファイルあれば）
 
 ## 13. 承認ログ
@@ -781,7 +781,7 @@ def main() -> None:
     ensure_directories(directories, report)
 
     files = {
-        target / "AGENTS.md": build_agents_md(
+        target / "CLAUDE.md": build_claude_md(
             project_name=args.project_name,
             description=args.description,
             python_version=args.python_version,

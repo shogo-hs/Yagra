@@ -39,4 +39,4 @@ description: 実装前にタスク設計書を作成し、スコープ・前提�
 
 ## ハイブリッド運用（任意）
 
-この運用をプロジェクト全体に常時適用したい依頼があれば、`.claude/skills/task-design-gate/references/agents-md-snippet.md` を参照し、`CLAUDE.md` への追記を提案する。
+この運用をプロジェクト全体に常時適用したい依頼があれば、`.claude/skills/task-design-gate/references/claude-md-snippet.md` を参照し、`CLAUDE.md` への追記を提案する。

@@ -1,6 +1,6 @@
-# AGENTS.md 追記例（計画ゲート）
+# CLAUDE.md 追記例（計画ゲート）
 
-この運用をプロジェクト全体に適用したい場合、`AGENTS.md` に以下を追記する。
+この運用をプロジェクト全体に適用したい場合、`CLAUDE.md` に以下を追記する。
 
 ```markdown
 ## Task Design Gate (Mandatory)
