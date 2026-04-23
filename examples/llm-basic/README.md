@@ -70,6 +70,11 @@ LLM ノードを含むワークフロー定義。`handler: "llm"` で LLM ハン
 `params` でプロンプト、モデル、入出力キーを設定します。
 
 ```yaml
+version: "1.0"
+start_at: "greeting"
+end_at:
+  - "greeting"
+
 nodes:
   - id: "greeting"
     handler: "llm"
@@ -81,6 +86,8 @@ nodes:
         kwargs:
           temperature: 0.7
       output_key: "response"
+
+edges: []
 ```
 
 ### prompts.yaml
