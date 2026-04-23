@@ -9,7 +9,7 @@ body:
     attributes:
       label: 事象
       description: 何が起きたかを簡潔に記載
-      placeholder: 例) sync_ai_context.py --check が失敗する
+      placeholder: 例) yagra validate が unexpected error で失敗する
     validations:
       required: true
 
@@ -60,5 +60,5 @@ body:
       options:
         - label: 機密情報（APIキー、トークン、秘密鍵）を含んでいない
           required: true
-        - label: 関連するAGENTS/Playbook/ADRを確認した
+        - label: 関連する CLAUDE.md / スキル / ADR を確認した
           required: false
