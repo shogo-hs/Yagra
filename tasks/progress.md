@@ -4,20 +4,24 @@
 **現在の Phase**: 2
 
 ## バックログ概要
-完了: 1/27 タスク（#1 方針確定 done、新規タスク #23-27 追加）
+完了: 2/27 タスク（#1 方針確定、#2 llm-basic 修復 done）
 
 ## 現在のタスク
-- タスク: #2 `examples/llm-basic/workflow.yaml` 修復（入口体験回復）
-- ステージ: Phase 2a（タスク選択完了）→ 2b（PO-PM アライメント）開始予定
+- タスク: #3 `.github/workflows/validate-example.yml` の実在化（CI 統合）
+- ステージ: Phase 2b（PO-PM アライメント）開始予定
 
 ### PO層
-- PO-PMアライメント: 未着手（#2 の Task Brief ドラフト作成予定）
+- PO-PMアライメント: 未着手（#3 の Task Brief ドラフト作成予定）
 - 契約: 未作成
-- PO検証: 未着手
+- PO検証: #2 は PO 直接作業で Accept（PR #47 に同梱）
+
+### PM層
+- #3 を PM 委任予定（CI 設計判断ありのため）
+- Developer 数: S サイズ → 2（skill 規定）
 
 ### 並列実行候補
-- #2（llm-basic 修復）と #3（validate-example.yml 作成）は独立タスク。並列 PM 起動候補
-- #23 (create_judge_handler) は #1 の判断に依存済み、次ウェーブで着手
+- #3 完了後に #4（apply_update golden gate）/ #23（create_judge_handler）等の Must タスクを順次着手
+- #3 の独立性が高いため先に PR マージ可能
 
 ## 生成済みドキュメント
 - tasks/progress.md: 進捗記録（本ファイル）

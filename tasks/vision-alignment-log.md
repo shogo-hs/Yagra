@@ -61,3 +61,19 @@
 - **残課題・新規課題**: #23 (create_judge_handler) 実装までは差別化軸スコアは上がらない。実装完了後に再評価
 - **累積ドリフト所見**: なし（初回タスク）
 - **次タスクへの示唆**: #2, #3 を並列で消化し UX 一貫性を回復しつつ、#23 の judge handler 実装に着手する
+
+---
+
+### Task #2: `examples/llm-basic/workflow.yaml` を v1.0 形式に修復 — 2026-04-23
+
+PO 直接作業で修復。`version`/`start_at`/`end_at` 追加、`edges: []`。README のサンプル YAML も同期。`uv run yagra validate` が error 0 通過（warning 2 件は他 examples と同水準）。`uv run pre-commit run --all-files` 全通過。PR #47 に同梱。
+
+| 観点 | スコア | 前回差分 |
+|------|:------:|:-------:|
+| UX 一貫性 | 4/5 | +1（入口体験の C2 乖離を解消） |
+| 誤魔化し耐性 | 4/5 | ±0（Done 表示と実態の乖離を 1 つ解消） |
+
+- **体現が進んだ点**: README から辿ったユーザーが validator 通過 YAML にたどり着ける状態に回復。他 examples と構文統一
+- **残課題・新規課題**: #3 の validate-example.yml 欠落は未対応（次タスクで解消予定）
+- **累積ドリフト所見**: なし。llm-basic が放置されていた原因は M-15/M-16 実装時に引き継ぎ漏れたものと推定（他 examples は v1.0 化済）
+- **次タスクへの示唆**: #3（validate-example.yml 実在化）を PM 委任で進める。CI 経由で llm-basic 含む全 examples を継続検証する仕組みに繋げる
