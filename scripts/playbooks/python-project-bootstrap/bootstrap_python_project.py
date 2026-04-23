@@ -12,9 +12,7 @@ CLAUDE_SKILLS_ROOT = REPO_ROOT / ".claude" / "skills"
 TASK_DESIGN_TEMPLATE_PATH = (
     CLAUDE_SKILLS_ROOT / "task-design-gate" / "references" / "_task-design-template.md"
 )
-API_INDEX_TEMPLATE_PATH = (
-    CLAUDE_SKILLS_ROOT / "api-spec-sync" / "references" / "_index_template.md"
-)
+API_INDEX_TEMPLATE_PATH = CLAUDE_SKILLS_ROOT / "api-spec-sync" / "references" / "_index_template.md"
 API_ENDPOINT_TEMPLATE_PATH = (
     CLAUDE_SKILLS_ROOT / "api-spec-sync" / "references" / "_endpoint_template.md"
 )
