@@ -14,6 +14,7 @@ paths:
 | `/adr-management` | 設計判断を ADR として記録・更新 |
 | `/git-commit` | 規約に沿ったコミット（日本語、50文字以内、プレフィックス） |
 | `/release-ops` | SemVer リリース（CHANGELOG 3 箇所同期、タグ、GitHub Release） |
+| `/agent-company-v2` | プロダクトビジョン駆動のマルチエージェント開発（Sequential自己組織化モデル）。PO→PM→Developer→PMO で自律開発 |
 
 ## スキルの使い分け
 
@@ -22,6 +23,13 @@ paths:
 - 設計方針の採否を記録したい → `/adr-management`
 - 変更をコミットしたい → `/git-commit`
 - バージョンをリリースしたい → `/release-ops`
+- プロダクトビジョンから自律開発させたい → `/agent-company-v2 {ビジョンドキュメントのパス or プロダクトの説明}`
+
+## 共有スキルの参照方法
+
+`/agent-company-v2` などワークスペース共通スキルは `/workspace/sh_skill_repository/.claude/skills/` が真のソース。
+`~/.claude/skills/` 経由の symlink（ユーザースコープ）で全プロジェクトから参照する。
+symlink は SessionStart hook の `ensure-user-skills.sh` で自動復元される。
 
 ## スキル設計の規約
 

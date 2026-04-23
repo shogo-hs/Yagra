@@ -45,6 +45,18 @@
       "Bash(git reset --hard*)"
     ]
   },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash /workspace/sh_skill_repository/scripts/ensure-user-skills.sh"
+          }
+        ]
+      }
+    ]
+  },
   "model": "claude-opus-4-7",
   "effortLevel": "high"
 }
