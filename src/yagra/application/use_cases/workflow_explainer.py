@@ -344,11 +344,17 @@ def _extract_output_variables(node: NodeSpec, conditional_sources: set[str]) -> 
     output_key = node.params.get("output_key")
     if output_key:
         outputs.append(output_key)
-    # If output_key is not specified but the handler is a builtin, 'output' is the default
-    # (custom handlers are unknown, so only builtin handlers are checked)
-    builtin_handlers = {"llm", "structured_llm", "streaming_llm"}
-    if not output_key and node.handler in builtin_handlers:
-        outputs.append("output")
+    # If output_key is not specified but the handler is a builtin, fall back to
+    # the handler's documented default output_key. Custom handlers are unknown,
+    # so only builtin handlers are checked.
+    builtin_default_output_keys: dict[str, str] = {
+        "llm": "output",
+        "structured_llm": "output",
+        "streaming_llm": "output",
+        "judge": "judge_result",
+    }
+    if not output_key and node.handler in builtin_default_output_keys:
+        outputs.append(builtin_default_output_keys[node.handler])
 
     if node.id in conditional_sources:
         outputs.append("__next__")

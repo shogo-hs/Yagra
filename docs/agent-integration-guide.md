@@ -231,6 +231,91 @@ yagra init --template branch --output ./my_workflow/
 | `multi-agent` | オーケストレーター・リサーチャー・ライターが協調するマルチエージェントパターン |
 | `human-review` | `interrupt_before` によるヒューマン・イン・ザ・ループパターン |
 
+## LLM-as-a-Judge ハンドラー (`judge`)
+
+`judge` は、宣言的なルーブリック（評価基準）に対して入力を採点する組み込みハンドラーです。回答品質の評価、安全性チェック、A/B 比較などを YAML だけで構築できます。
+
+### ルーブリック YAML の例
+
+```yaml
+# rubrics/quality.yaml
+default:
+  criteria:
+    - name: "relevance"
+      description: "回答が質問の意図に答えているか"
+      scale:
+        type: "integer"
+        min: 1
+        max: 5
+    - name: "accuracy"
+      description: "回答内容が事実として正確か"
+      scale:
+        type: "integer"
+        min: 1
+        max: 5
+  require_reasoning: true
+```
+
+### ワークフローへの組み込み
+
+```yaml
+# workflows/judge.yaml
+version: "1.0"
+start_at: "judge"
+end_at:
+  - "judge"
+
+nodes:
+  - id: "judge"
+    handler: "judge"
+    params:
+      rubric_ref: "rubrics/quality.yaml#default"
+      provider: "claude_agent_sdk"   # default; "litellm" でも可
+      model: "sonnet"                # provider に応じて識別子を変える
+      output_key: "judge_result"
+
+edges: []
+```
+
+### Python 側の登録
+
+```python
+from yagra import Yagra
+from yagra.handlers import create_judge_handler
+
+# YAML の `params.provider` で provider を切り替え可能（DI 引数も受け付ける）
+handler = create_judge_handler(retry=3, timeout=30)
+registry = {"judge": handler}
+
+yagra = Yagra.from_workflow("workflows/judge.yaml", registry)
+result = yagra.invoke({"question": "...", "answer": "..."})
+
+# 構造化スコアと推論コメントを取得
+print(result["judge_result"])
+# {
+#   "score": {"relevance": 4, "accuracy": 5, "_overall": 4.5},
+#   "reasoning": "...",
+#   "rubric_items": [...]
+# }
+```
+
+### Provider 切り替え
+
+| Provider | 認証 | 必要なインストール | 備考 |
+|---|---|---|---|
+| `claude_agent_sdk` (default) | Claude サブスクリプション (no API key) | `uv add "yagra[judge]"` | `query()` がストリーミング |
+| `litellm` | 各プロバイダーの API キー (環境変数) | 追加インストール不要 | `model: "openai/gpt-4o"` 形式 |
+
+`claude_agent_sdk` は `claude-agent-sdk` パッケージを必要とします。未インストール時は構造化エラー `claude_agent_sdk_not_installed`（hint 付き）を fail-fast で返します。
+
+### 出力構造とスコア集約
+
+- `score`: 各 criterion 名をキーとした数値マップ。複数 criterion の場合は `_overall`（算術平均）が自動で付与されます。
+- `reasoning`: `require_reasoning: true` の場合のみ必須。
+- `rubric_items`: criterion ごとの個別スコアと、必要に応じた個別コメントの配列。
+
+LLM 応答が必須項目を欠いた場合は構造化エラー `judge_output_validation_error` が即座に発生し、silent success を防ぎます（fail-fast 原則）。
+
 ## MCP サーバーを使った統合
 
 Yagra は MCP（Model Context Protocol）サーバーを提供しており、Claude などの MCP 対応エージェントが直接ツールとして呼び出せます。

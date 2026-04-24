@@ -5,6 +5,9 @@
 ## [Unreleased]
 
 ### Added
+- ✨ **Handler: `create_judge_handler()` 追加**: LLM-as-a-Judge ハンドラを新設。YAML で宣言したルーブリック（criteria + scale + require_reasoning）に対し、入力を構造化スコアと推論コメントに評価する。Built-in handler `judge` として `yagra handlers` / Studio / MCP `list_handlers` から発見可能。デフォルト出力キーは `judge_result`、デフォルトモデルは `sonnet`。複数 criterion 時は score 配列の算術平均を `_overall` として自動算出
+- ✨ **Port/Adapter: `LLMProviderPort` と provider 切り替え機構**: Hexagonal 境界として `yagra/ports/outbound/llm_provider.py` に `LLMProviderPort` Protocol を追加。`yagra/adapters/outbound/llm_providers/` に `LiteLLMProvider`（既存 LiteLLM 経由）と `ClaudeAgentSDKProvider`（Claude サブスクリプション認証ベース、API キー不要）を実装。`resolve_provider(name)` ファクトリ + `create_judge_handler(provider=...)` または YAML `params.provider` の Hybrid 解決をサポート
+- 🧰 **Optional extra: `yagra[judge]`**: `claude-agent-sdk` を任意依存として追加。インストールしていない場合は構造化エラー `claude_agent_sdk_not_installed`（hint 付き）で fail-fast
 - 🔧 **CI: `.github/workflows/validate-example.yml` 追加**: `docs/ci-integration-guide.md` から参照されていた欠落ワークフローを実在化。`pull_request` と `push (main)` で `examples/*/workflow.yaml` 全 6 個を `yagra validate --bundle-root` 付きで継続検証し、サイレント破壊を防止（マッチ 0 時の exit 1 ガード付き）。同一 PR/branch の重複実行は `concurrency` で自動キャンセル
 
 ### Changed

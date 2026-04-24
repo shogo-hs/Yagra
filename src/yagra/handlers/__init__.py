@@ -41,6 +41,13 @@ Examples:
 """
 
 from yagra.handlers.catalog import BUILTIN_HANDLERS_INFO
+from yagra.handlers.judge import (
+    JUDGE_HANDLER_PARAMS_SCHEMA,
+    JudgeHandlerCallError,
+    JudgeHandlerConfigError,
+    JudgeHandlerError,
+    create_judge_handler,
+)
 from yagra.handlers.llm_handler import LLM_HANDLER_PARAMS_SCHEMA, create_llm_handler
 from yagra.handlers.schema_builder import build_model_from_schema_yaml
 from yagra.handlers.streaming_llm_handler import (
@@ -54,10 +61,15 @@ from yagra.handlers.structured_llm_handler import (
 
 __all__ = [
     "BUILTIN_HANDLERS_INFO",
+    "JUDGE_HANDLER_PARAMS_SCHEMA",
     "LLM_HANDLER_PARAMS_SCHEMA",
     "STREAMING_LLM_HANDLER_PARAMS_SCHEMA",
     "STRUCTURED_LLM_HANDLER_PARAMS_SCHEMA",
+    "JudgeHandlerCallError",
+    "JudgeHandlerConfigError",
+    "JudgeHandlerError",
     "build_model_from_schema_yaml",
+    "create_judge_handler",
     "create_llm_handler",
     "create_streaming_llm_handler",
     "create_structured_llm_handler",
