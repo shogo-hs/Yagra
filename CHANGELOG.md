@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+### Added
+- 🔧 **CI: `.github/workflows/validate-example.yml` 追加**: `docs/ci-integration-guide.md` から参照されていた欠落ワークフローを実在化。`pull_request` と `push (main)` で `examples/*/workflow.yaml` 全 6 個を `yagra validate --bundle-root` 付きで継続検証し、サイレント破壊を防止（マッチ 0 時の exit 1 ガード付き）。同一 PR/branch の重複実行は `concurrency` で自動キャンセル
+
+### Fixed
+- 📚 **docs: `docs/ci-integration-guide.md` の `find` 記述を実装と整合**: サンプル workflow が `for f in examples/*/workflow.yaml` を使う実装に合わせ、ガイド本文のコマンド例を `find` から glob に差し替えて齟齬を解消
+
 ## [1.2.0] - 2026-03-01
 
 ### Changed
