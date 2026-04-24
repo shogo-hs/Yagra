@@ -36,6 +36,12 @@
   - 統合スモーク: pytest は Playwright 依存の pre-existing 失敗 33 件あるが、それ以外 945 passed。今回変更と無関係
   - Developer 2 (品質補完): concurrency ブロック追加 + CHANGELOG [Unreleased] 追記 (commit 259b100)
   - 全成功基準 #1-#6 green 確認済み
+- Step 6 完了: PR 作成 + CI 実ジョブ確認 + PMO レビュー
+  - PR: https://github.com/shogo-hs/Yagra/pull/48
+  - CI: `quality` (1m54s pass) + `validate-examples` (16s pass) 両方 green
+  - CI 実ジョブで「Validated 6 workflow(s)」を確認、全 is_valid:true
+  - PMO レビュー結果: Accept (Critical:0 / Major:0 / Minor:0)
+  - レビュー詳細: `tasks/20260424090931_review-add-validate-example-workflow.md`
 
 ### 並列実行候補
 - #3 完了後に #4（apply_update golden gate）/ #23（create_judge_handler）等の Must タスクを順次着手
