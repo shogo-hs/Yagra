@@ -44,7 +44,7 @@ cd examples/self-improve
 python run_example.py
 ```
 
-期待される stdout（構造抜粋）:
+期待される stdout（構造抜粋、具体的な数値や文言は実行ごとに変動します）:
 
 ```
 Creating LLM handler (generate node, LiteLLM / openai gpt-4o-mini)...
@@ -61,19 +61,23 @@ Hexagonal Architecture, also known as Ports and Adapters, ...
 ============================================================
 Judge Result (judge node, claude_agent_sdk / sonnet)
 ============================================================
-  >>> Overall score: 4.50  <<<
+  >>> Overall score: 4.00  <<<
 
   Per-criterion scores:
-    - clarity: 5
+    - clarity: 4
     - accuracy: 4
 
-  Reasoning: The draft clearly explains the concept ...
+  Reasoning: The draft covers three key points about Hexagonal Architecture.
+  **Clarity:** The structure is logical and easy to follow ...
+  **Accuracy:** All three statements are factually sound ...
 
   Rubric items:
-    - clarity (5): Readable and well-structured.
-    - accuracy (4): Covers the core idea with minor omissions.
+    - clarity (4): The three-point structure is well-ordered ...
+    - accuracy (4): All three statements are factually correct ...
 ============================================================
 ```
+
+> `_overall` は rubric の全 criterion スコアの算術平均。上記は draft 3 文の典型的な評価例で、LLM 出力は非決定的なので実際は `3.5〜4.5` 程度の範囲でばらつきます。
 
 ## ファイル構成
 
@@ -90,17 +94,23 @@ examples/self-improve/
 `generate` → `judge` の 2 ノード workflow。`judge` ノードの特徴:
 
 - **`rubric` を inline で宣言**（`clarity` / `accuracy` の 2 criterion、scale 1-5）
-- **`prompt_ref` を指定しない**（judge handler が rubric から **default system prompt を自動生成**。rubric さえ書けば動く）
+- **system prompt は rubric から default が自動生成**されるため `prompts.yaml#judge` には `user` のみ書けば済む
+- **`prompt_ref: "prompts.yaml#judge"`** で user prompt を参照。walking example では `generate` の `output_key: "draft"` を受けて `"Evaluate the following draft:\n\n{draft}"` と記述し、state の `draft` を judge に流し込む
 - `output_key: "judge_result"` に評価結果（スコア・根拠・rubric_items）を書き込む
+
+> Yagra 全体のルールとして inline `prompt` は許可されず、必ず `prompt_ref` 経由で外部 YAML を参照する必要がある。judge ノードも同じ制約下で動くため、user prompt を書くときは `prompts.yaml` の `judge` セクションを使う。
 
 ### `prompts.yaml`
 
-`generate` ノードで使う system/user プロンプトのみ。judge 用セクションは不要です。
+`generate` ノードの system/user に加えて、`judge` ノードの user prompt を定義する。judge の system は省略（rubric から自動生成）。
 
 ```yaml
 generate:
   system: "You are a concise technical writer."
   user: "Write a {length}-sentence introduction about {topic}. Keep it factual and accessible."
+
+judge:
+  user: "Evaluate the following draft:\n\n{draft}"
 ```
 
 ### `run_example.py`
@@ -205,19 +215,16 @@ model:
 
 ### judge の custom system prompt
 
-default では rubric から system prompt を自動生成しますが、独自の判定観点を持たせたい場合は `prompt_ref` を追加できます。
+default では rubric から system prompt を自動生成しますが、独自の判定観点を持たせたい場合は `prompts.yaml#judge` に `system` キーを追加します。
 
 ```yaml
-# workflow.yaml の judge ノード
-- id: "judge"
-  handler: "judge"
-  params:
-    provider: "claude_agent_sdk"
-    model: "sonnet"
-    prompt_ref: "prompts.yaml#judge"   # prompts.yaml に judge セクションを追加
-    rubric:
-      ...
+# prompts.yaml
+judge:
+  system: "You are a strict reviewer focused on technical accuracy."
+  user: "Evaluate the following draft:\n\n{draft}"
 ```
+
+`workflow.yaml` 側は変更不要です（`prompt_ref: "prompts.yaml#judge"` のまま）。
 
 ### judge のモデル差し替え
 

@@ -20,6 +20,7 @@ nodes:
     params:
       provider: "claude_agent_sdk"
       model: "sonnet"
+      prompt_ref: "prompts.yaml#judge"
       rubric:
         description: "Evaluate the draft for clarity and accuracy"
         criteria:
