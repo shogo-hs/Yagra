@@ -253,3 +253,57 @@ PM 委任（general-purpose + opus）で完了。PR #51（PMO Accept、DoD 13/14
 | 累積ドリフト | **強いポジティブ** | #3→#4→#23→#24 の「綻び沈殿減少」4 連続、差別化軸 Critical を体感レベルで完全解消 |
 
 **PO 判定: Accept**。PR #51 マージ後に main 反映。SC-14 はユーザー環境での実走確認を別途依頼。walking example が揃ったことで「Yagra = AI が AI を評価する」というビジョンのピッチが 2 分で伝わる状態に到達。
+
+---
+
+### Task #28: 既存 3 LLM handlers の `LLMProviderPort` 経由移行 — 2026-04-24
+
+PM 委任（general-purpose + opus）で完了。PR #52（PMO Accept、DoD 16/16 PASS、Critical:0 / Major:0 / Minor:0）。**Hexagonal 境界の handlers 層破れを完全解消**し、`create_llm_handler` / `create_structured_llm_handler` / `create_streaming_llm_handler` の 3 全 LLM handler が `LLMProviderPort` 経由で `resolve_provider(...)` 型の Factory 注入に移行。`import litellm` を handlers から完全撤去（`src/yagra/adapters/outbound/llm_providers/litellm_provider.py` のみに残存）。`LLMProviderPort` Protocol に `complete` / `complete_streaming` メソッドを追加し、pure Python dataclass `LLMTokenUsage` / `LLMCompletion` / `LLMStreamChunk`（すべて `frozen=True, slots=True`、SDK 非依存）で戻り値型を構造化。`LiteLLMProvider` が 3 メソッド実装、`ClaudeAgentSDKProvider.complete` / `complete_streaming` は `LLMProviderConfigError` を 4 フィールド payload で送出する subset 対応（Out スコープ境界厳守）。循環 import 解消のため `handlers/errors.py` 新設し `LLMHandlerError` / `LLMHandlerConfigError` / `LLMHandlerCallError` を移設、`llm_handler.py` から `__all__` 再 export で既存 `from yagra.handlers.llm_handler import ...` 経路を温存（backward compat）。hybrid signature（`provider: LLMProviderPort | None` DI > `params["provider"]` > default `"litellm"`）を 3 handler で統一し、judge handler と同じ pattern に集約。streaming の公開 API `Generator[str, None, None]` は維持しつつ、内部 contract は `Iterator[LLMStreamChunk]` 化し generator priming で retry 契約に同期化（SC-15 超過達成）。テスト mock 81 箇所を `patch("...litellm_provider.litellm")` へ付替え、新規 9 件の DI テスト（`tests/unit/handlers/test_llm_handler_port_di.py`）+ Port dataclass smoke + LiteLLMProvider adapter 詳細テスト追加で 1021→1030 passed、pre-commit 全通過、既存 3 examples（llm-basic / llm-structured / llm-streaming）の workflow.yaml 無改修で動作維持。`*_PARAMS_SCHEMA` に `provider` フィールド追加（`llm` / `structured_llm` は `["litellm", "claude_agent_sdk"]`、streaming は `["litellm"]` のみで claude_agent_sdk 非対応を明示）。docs（agent-integration-guide.md Support Matrix）+ CHANGELOG 同期。
+
+| 観点 | スコア | 前回差分 |
+|------|:------:|:-------:|
+| Hexagonal 純度 | 4/5 | **+1**（handlers 層の `import litellm` 直依存を完全撤去、全 LLM handler が `resolve_provider` 経由で Port 境界を遵守。残り 1 は #9 domain→application 逆依存 / #10 domain entity の I/O / #11 application → adapters 具象 new の他箇所が未着手） |
+| API 一貫性 | 5/5 | ±0（judge で確立した hybrid signature + 4 フィールドエラーが 3 handler で一貫適用、provider 選択ロジックが `resolve_provider` に集約、`*_PARAMS_SCHEMA` の構造が judge と揃う） |
+| 誤魔化し耐性 | 5/5 | ±0（未知 provider は 4 フィールド構造化エラー `unknown_provider` + hint で昇格、非 string は `invalid_provider_param`、streaming は claude_agent_sdk 非対応を schema enum で宣言、silent success 防止） |
+| ゴール寄与 | 5/5 | ±0（#5 E2E 実 LLM 補強の前提条件が揃った。fake provider / vcrpy を `LLMProviderPort` 実装として注入可能になり、「propose→golden→apply の決定論的 E2E」という Phase 4 思想の実装前提が完備） |
+| 原則遵守（Local-First / 人間ダッシュボード排除） | 5/5 | ±0（外部送信の増加なし、既存 litellm / claude_agent_sdk の利用パターン維持） |
+| UX 一貫性 | 5/5 | ±0（既存 3 examples の YAML 無改修で動作、CHANGELOG / docs / schema / 実装の四者整合、`yagra handlers --format json` に provider フィールドが表示される） |
+| スコープ境界 | 5/5 | ±0（In/Out 厳守: ClaudeAgentSDKProvider の `complete` / `complete_streaming` 本格実装は Out、fake provider 実装は #5 に分離、handler 再配置 #14 は別タスク） |
+| 差別化軸の実装度（AI が AI を評価） | 5/5 | ±0（直接的な機能追加ではないが、judge handler と同じ Port/Adapter 切替パターンを 3 handler にも広げたことで「AI フレンドリーな拡張基盤」としての完成度が上がった） |
+| エラーメッセージ品質 | 5/5 | ±0（`LLMProviderError` 派生を `LLMHandlerError` に翻訳する retry 契約を整理、`LLMProviderCallError` = retryable / `LLMProviderConfigError` = 非 retryable 即変換の境界が明確） |
+| SRP 遵守 | 1/5 | ±0（本タスクはスコープ外、mcp_server.py / __init__.py / studio の god class は未着手） |
+| Golden Test 実効性 | 4/5 | ±0（本タスクはスコープ外） |
+| E2E 実走性 | 3/5 | ±0（直接的な変化はないが、**次タスク #5 の前提が整った**。fake provider 実装で +1-2 の余地あり） |
+
+- **体現が進んだ点**:
+  - **Hexagonal 境界の最後の handlers 層破れが消失**。ベースライン監査の Critical「handler 層での litellm 直接依存」が完全解消。ベースライン Hexagonal 2 → #23 で 3 → #28 で 4、2 タスク連続 +1 の改善トレンド
+  - Port Protocol に dataclass を追加することで token usage 情報が loss-less に handler 層に届く構造になった。将来 `complete_structured` の戻り値を dataclass 化する際の雛形として機能（次回の Should リファクタ候補）
+  - `handlers/errors.py` 新設により `_llm_common.py` → `llm_handler.py` の矢印が消滅、循環依存が構造的に解消。他 handlers が追加される際の「新しいエラー階層」追加パターンも確立
+  - Generator priming（SC-15 超過達成）で streaming も非 streaming と同じ retry 信頼性を獲得。streaming 固有の「接続失敗が next() まで遅延する問題」を同期化で解決
+  - Contract 事前組込（CHANGELOG / pre-commit / 4 フィールドエラー / docstring r""" / backward compat 絶対維持）で **PMO 指摘 Critical/Major 0 件を 4 タスク連続**（#4 / #23 / #24 / #28）で達成、Minor も #4 / #23 / #28 は 0 件。ハーネス学習効果が完全定着
+  - 既存 examples の無改修動作保持により、既存ユーザーの workflow 資産は一切影響を受けない（「ユーザーの作ったものを壊さない」という OSS の信頼基盤を維持）
+- **残課題・新規課題**:
+  - #5 E2E 実 LLM シナリオ補強は本タスクで前提完了。fake provider を `LLMProviderPort` として実装する形で #5 に着手可能
+  - `ClaudeAgentSDKProvider.complete` / `complete_streaming` の subset 対応は本タスク終了時点で `LLMProviderConfigError` 返却のみ。SDK が streaming / 非構造化応答に公式対応した時点で本格実装する Should タスクを将来バックログに追加する候補
+  - `complete_structured` の戻り値型 dataclass 化（#23 互換性維持のため今回は Out スコープ）は将来の Should リファクタ候補。全 provider method が dataclass を返すようになれば API が一層均質化
+  - handler 再配置（#14 `adapters/outbound/handlers/`）は未着手、Should で残留
+  - Hexagonal 純度 4/5 に留まる理由: #9 (domain→application 逆依存) / #10 (domain entity の I/O `trace.py`) / #11 (application → adapters 具象 new) の 3 件が未着手
+- **累積ドリフト所見**: **強いポジティブ 5 連続**。#3 (docs↔実装) → #4 (API↔思想) → #23 (差別化軸↔実装) → #24 (差別化軸↔体感) → #28 (Hexagonal↔実装) で 5 タスク連続の「綻び沈殿減少」トレンド。特に #28 はベースライン監査で Critical 扱いだった handlers 層の境界違反を消しており、基盤の健全性が一段上がった。「機能追加だけでなく、基盤の正しさを積み増す」タイミングが 2 タスク連続（#23 / #28）で Hexagonal 純度を +2 底上げした効果は今後のリファクタ速度にも効く
+- **次タスクへの示唆**:
+  - **最優先**: #5 (E2E 実 LLM シナリオ補強)。本タスクで前提完了。fake provider（もしくは vcrpy 録画）を `LLMProviderPort` として実装し、`propose → golden → apply` の連結 E2E を決定論的に実走する。Must 残りの中で最も依存解消が進んだタスク
+  - **並行**: #6 (Golden Test 制約ドキュメント化)。軽タスク、ドキュメントのみ。Must 残件を消化する追加候補
+  - **並行**: #25 (MCP `evaluate_traces`)。judge handler の MCP 経由露出、Should だが AI-Ready 軸で価値が高い
+  - **Hexagonal 5/5 達成ロードマップ**: #28 で handlers 層 +1、残り +1 のためには #9 (domain→application 逆依存) か #10 (domain entity の I/O `trace.py`) のいずれかを完了させる必要。#9 は `PromptVersionInfo` の domain 移動で比較的軽い。Should 優先度で機能改修の合間に取る
+  - **テスト mock 再編のパターン**: 本タスクで確立した「handler から litellm 直接 patch → adapter layer での patch + Port fake 使用」は、将来新しい LLM provider が追加されたときのテスト書き換え手順のテンプレートとして `tests/learnings.md` に記録すべき
+  - **ハーネス学習の定着**: Contract v1→v2 のサイクル（PM Alignment 往復での Q/R 解消）が #23 / #28 で 2 回連続の規模拡大（M→L）を正しく検出・受け入れできた。「PO が初期サイジングを迷ったら PM Alignment で補正する」運用が効果を持続
+
+### PO 検証（Phase 2d / Task #28）
+
+| 観点 | 判定 | 根拠 |
+|------|:----:|------|
+| ゴール寄与 | ✓ | #5 E2E 実 LLM シナリオ補強の前提完了、Yagra 基盤の健全性向上（Hexagonal 最後の handlers 層破れ消失） |
+| 原則遵守 | ✓ | Local-First 維持、silent success 防止（未知 provider を 4 フィールドエラーで昇格）、backward compat 絶対維持で既存 examples 無改修 |
+| UX 一貫性 | ✓ | CHANGELOG / docs / schema / 実装 / `yagra handlers --format json` 出力の五者整合、judge と 3 handler で hybrid signature + 4 フィールドエラー完全統一 |
+| 累積ドリフト | **強いポジティブ** | #3→#4→#23→#24→#28 で「綻び沈殿減少」5 連続、基盤の正しさが 2 タスク連続（#23 / #28）で底上げ |
+
+**PO 判定: Accept**。PR #52 マージ後に main 反映。Hexagonal 純度の handlers 層破れが消え、#5 E2E 補強の前提が完備。5 タスク連続のポジティブドリフトで累積整合性が引き続き高まり、機能追加と基盤リファクタが交互に積み上がる健全なペースを維持。
