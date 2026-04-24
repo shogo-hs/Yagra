@@ -18,7 +18,7 @@
 |---|--------|------|:-----:|------|---------------|:----:|
 | 1 | ビジョンの「AI が AI を評価・改善」軸を再確認し、実装方針またはスコープ変更を確定する | 設計判断 | Must | - | ユーザー承認済み方針ドキュメント（実装着手する / ビジョンを「素材提供に徹する」に再定義する の二択）が `docs/product/` に反映。該当する場合はサブタスク（LLM-as-a-Judge handler、自己改善ループ walking example 等）をバックログに追加 | **done** |
 | 2 | `examples/llm-basic/workflow.yaml` を validator 通過する形に修復 | 修正 | Must | - | `yagra validate --workflow examples/llm-basic/workflow.yaml` が error 0 で通過。`version`/`start_at`/`end_at` 補完、エッジは `source:/target:` に統一。README 誘導どおり動作する | **done** |
-| 3 | `.github/workflows/validate-example.yml` を実在化（または CI 統合ガイドから参照削除） | 修正 | Must | - | ファイル実在、PR でのトリガ成功、または `docs/ci-integration-guide.md` 側の参照修正。いずれもユーザーが辿って動くサンプルになる | pending |
+| 3 | `.github/workflows/validate-example.yml` を実在化（または CI 統合ガイドから参照削除） | 修正 | Must | - | ファイル実在、PR でのトリガ成功、または `docs/ci-integration-guide.md` 側の参照修正。いずれもユーザーが辿って動くサンプルになる | **done (PR #48)** |
 | 4 | `_tool_apply_update` に「run_golden_tests 成功前提」オプションを追加しデフォルト ON | 修正 | Must | - | `apply_update(..., golden_pass_required=True)` が失敗時 apply を中止。MCP ツールスキーマと `agent-integration-guide.md` に反映。既存 E2E テスト更新 | pending |
 | 5 | 最適化サイクル E2E を実 LLM シナリオで補強（propose → golden → apply 連結） | 新規 | Must | #4 | litellm test provider または vcrpy で LLM 呼び出しを再現可能にした統合テストを追加。サイクル全連結を assert | pending |
 | 6 | Golden Test の「LLM 出力回帰を構造的に検出不能」制約をドキュメント化 | 修正 | Must | - | `docs/sphinx/source/user_guide/regression_test.md`（または golden.md）に制約と LLM-as-a-Judge 併用の推奨パスを追記 | pending |
