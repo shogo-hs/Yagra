@@ -38,7 +38,7 @@ class TestCreateStreamingLLMHandler:
     def test_returns_callable(self) -> None:
         """Returns a callable handler."""
         mock_litellm = _make_mock_litellm([])
-        with patch("yagra.handlers.streaming_llm_handler.litellm", mock_litellm):
+        with patch("yagra.adapters.outbound.llm_providers.litellm_provider.litellm", mock_litellm):
             handler = create_streaming_llm_handler()
         assert callable(handler)
 
@@ -50,7 +50,7 @@ class TestStreamingLLMHandler:
         """Handler returns a Generator under output_key."""
         chunks = [_make_chunk("Hello"), _make_chunk(" world")]
         mock_litellm = _make_mock_litellm(chunks)
-        with patch("yagra.handlers.streaming_llm_handler.litellm", mock_litellm):
+        with patch("yagra.adapters.outbound.llm_providers.litellm_provider.litellm", mock_litellm):
             handler = create_streaming_llm_handler()
             result = handler({}, _BASE_PARAMS)
             assert isinstance(result["response"], Generator)
@@ -59,7 +59,7 @@ class TestStreamingLLMHandler:
         """Generator yields chunks in the correct order."""
         chunks = [_make_chunk("Hello"), _make_chunk(","), _make_chunk(" world")]
         mock_litellm = _make_mock_litellm(chunks)
-        with patch("yagra.handlers.streaming_llm_handler.litellm", mock_litellm):
+        with patch("yagra.adapters.outbound.llm_providers.litellm_provider.litellm", mock_litellm):
             handler = create_streaming_llm_handler()
             result = handler({}, _BASE_PARAMS)
             collected = list(result["response"])
@@ -70,7 +70,7 @@ class TestStreamingLLMHandler:
         params = {k: v for k, v in _BASE_PARAMS.items() if k != "output_key"}
         chunks = [_make_chunk("hi")]
         mock_litellm = _make_mock_litellm(chunks)
-        with patch("yagra.handlers.streaming_llm_handler.litellm", mock_litellm):
+        with patch("yagra.adapters.outbound.llm_providers.litellm_provider.litellm", mock_litellm):
             handler = create_streaming_llm_handler()
             result = handler({}, params)
             assert "output" in result
@@ -84,7 +84,7 @@ class TestStreamingLLMHandler:
         }
         chunks = [_make_chunk("Hi")]
         mock_litellm = _make_mock_litellm(chunks)
-        with patch("yagra.handlers.streaming_llm_handler.litellm", mock_litellm):
+        with patch("yagra.adapters.outbound.llm_providers.litellm_provider.litellm", mock_litellm):
             handler = create_streaming_llm_handler()
             result = handler({"name": "Alice"}, params)
             list(result["response"])  # consume generator
@@ -104,7 +104,7 @@ class TestStreamingLLMHandler:
         }
         chunks = [_make_chunk("ok")]
         mock_litellm = _make_mock_litellm(chunks)
-        with patch("yagra.handlers.streaming_llm_handler.litellm", mock_litellm):
+        with patch("yagra.adapters.outbound.llm_providers.litellm_provider.litellm", mock_litellm):
             handler = create_streaming_llm_handler()
             result = handler({}, params)
             list(result["response"])
@@ -115,15 +115,20 @@ class TestStreamingLLMHandler:
         """stream=True is automatically added to litellm call."""
         chunks = [_make_chunk("ok")]
         mock_litellm = _make_mock_litellm(chunks)
-        with patch("yagra.handlers.streaming_llm_handler.litellm", mock_litellm):
+        with patch("yagra.adapters.outbound.llm_providers.litellm_provider.litellm", mock_litellm):
             handler = create_streaming_llm_handler()
             result = handler({}, _BASE_PARAMS)
             list(result["response"])
             call_kwargs = mock_litellm.completion.call_args[1]
         assert call_kwargs["stream"] is True
 
-    def test_explicit_stream_false_not_overridden(self) -> None:
-        """Explicit stream=False in model.kwargs is not overridden."""
+    def test_streaming_always_forces_stream_true(self) -> None:
+        """Streaming handler always forces ``stream=True`` at the Port boundary.
+
+        Even when the caller supplies ``model.kwargs.stream = False``, the
+        litellm streaming adapter unconditionally sets ``stream=True`` to
+        satisfy the :meth:`LLMProviderPort.complete_streaming` contract.
+        """
         params = {
             "prompt": {"system": "sys", "user": "Hello"},
             "model": {
@@ -135,12 +140,12 @@ class TestStreamingLLMHandler:
         }
         chunks = [_make_chunk("ok")]
         mock_litellm = _make_mock_litellm(chunks)
-        with patch("yagra.handlers.streaming_llm_handler.litellm", mock_litellm):
+        with patch("yagra.adapters.outbound.llm_providers.litellm_provider.litellm", mock_litellm):
             handler = create_streaming_llm_handler()
             result = handler({}, params)
             list(result["response"])
             call_kwargs = mock_litellm.completion.call_args[1]
-        assert call_kwargs["stream"] is False
+        assert call_kwargs["stream"] is True
 
     def test_none_delta_chunks_are_skipped(self) -> None:
         """Chunks with None delta.content are skipped."""
@@ -150,7 +155,7 @@ class TestStreamingLLMHandler:
             _make_chunk(" world"),
         ]
         mock_litellm = _make_mock_litellm(chunks)
-        with patch("yagra.handlers.streaming_llm_handler.litellm", mock_litellm):
+        with patch("yagra.adapters.outbound.llm_providers.litellm_provider.litellm", mock_litellm):
             handler = create_streaming_llm_handler()
             result = handler({}, _BASE_PARAMS)
             collected = list(result["response"])
@@ -160,7 +165,7 @@ class TestStreamingLLMHandler:
         """Generator can be buffered with join."""
         chunks = [_make_chunk("Hello"), _make_chunk(" world")]
         mock_litellm = _make_mock_litellm(chunks)
-        with patch("yagra.handlers.streaming_llm_handler.litellm", mock_litellm):
+        with patch("yagra.adapters.outbound.llm_providers.litellm_provider.litellm", mock_litellm):
             handler = create_streaming_llm_handler()
             result = handler({}, _BASE_PARAMS)
             full_text = "".join(result["response"])
@@ -170,7 +175,7 @@ class TestStreamingLLMHandler:
         """Missing prompt raises LLMHandlerConfigError."""
         params = {k: v for k, v in _BASE_PARAMS.items() if k != "prompt"}
         mock_litellm = _make_mock_litellm([])
-        with patch("yagra.handlers.streaming_llm_handler.litellm", mock_litellm):
+        with patch("yagra.adapters.outbound.llm_providers.litellm_provider.litellm", mock_litellm):
             handler = create_streaming_llm_handler()
             with pytest.raises(LLMHandlerConfigError, match="'prompt' must be a dict"):
                 handler({}, params)
@@ -179,7 +184,7 @@ class TestStreamingLLMHandler:
         """Missing model raises LLMHandlerConfigError."""
         params = {k: v for k, v in _BASE_PARAMS.items() if k != "model"}
         mock_litellm = _make_mock_litellm([])
-        with patch("yagra.handlers.streaming_llm_handler.litellm", mock_litellm):
+        with patch("yagra.adapters.outbound.llm_providers.litellm_provider.litellm", mock_litellm):
             handler = create_streaming_llm_handler()
             with pytest.raises(LLMHandlerConfigError, match="'model' must be a dict"):
                 handler({}, params)
@@ -191,7 +196,7 @@ class TestStreamingLLMHandler:
             Exception("API error"),
             iter([_make_chunk("ok")]),
         ]
-        with patch("yagra.handlers.streaming_llm_handler.litellm", mock_litellm):
+        with patch("yagra.adapters.outbound.llm_providers.litellm_provider.litellm", mock_litellm):
             with patch("yagra.handlers._llm_common.time.sleep"):
                 handler = create_streaming_llm_handler(retry=3)
                 result = handler({}, _BASE_PARAMS)
@@ -202,7 +207,7 @@ class TestStreamingLLMHandler:
         """Raises LLMHandlerCallError after exhausting all retries."""
         mock_litellm = MagicMock()
         mock_litellm.completion.side_effect = Exception("API error")
-        with patch("yagra.handlers.streaming_llm_handler.litellm", mock_litellm):
+        with patch("yagra.adapters.outbound.llm_providers.litellm_provider.litellm", mock_litellm):
             with patch("yagra.handlers._llm_common.time.sleep"):
                 handler = create_streaming_llm_handler(retry=2)
                 with pytest.raises(LLMHandlerCallError, match="LLM call failed after 2 attempts"):
@@ -220,7 +225,7 @@ class TestStreamingLLMHandlerModelValidation:
             "output_key": "response",
         }
         mock_litellm = _make_mock_litellm([])
-        with patch("yagra.handlers.streaming_llm_handler.litellm", mock_litellm):
+        with patch("yagra.adapters.outbound.llm_providers.litellm_provider.litellm", mock_litellm):
             handler = create_streaming_llm_handler()
             with pytest.raises(
                 LLMHandlerConfigError, match="'model' must have 'provider' and 'name' keys"
@@ -235,7 +240,7 @@ class TestStreamingLLMHandlerModelValidation:
             "output_key": "response",
         }
         mock_litellm = _make_mock_litellm([])
-        with patch("yagra.handlers.streaming_llm_handler.litellm", mock_litellm):
+        with patch("yagra.adapters.outbound.llm_providers.litellm_provider.litellm", mock_litellm):
             handler = create_streaming_llm_handler()
             with pytest.raises(
                 LLMHandlerConfigError, match="'model' must have 'provider' and 'name' keys"
@@ -250,7 +255,7 @@ class TestStreamingLLMHandlerModelValidation:
             "output_key": "response",
         }
         mock_litellm = _make_mock_litellm([])
-        with patch("yagra.handlers.streaming_llm_handler.litellm", mock_litellm):
+        with patch("yagra.adapters.outbound.llm_providers.litellm_provider.litellm", mock_litellm):
             handler = create_streaming_llm_handler()
             with pytest.raises(
                 LLMHandlerConfigError, match="'model' must have 'provider' and 'name' keys"
@@ -271,7 +276,7 @@ class TestStreamingLLMHandlerAutoExtract:
         }
         chunks = [_make_chunk("Hi")]
         mock_litellm = _make_mock_litellm(chunks)
-        with patch("yagra.handlers.streaming_llm_handler.litellm", mock_litellm):
+        with patch("yagra.adapters.outbound.llm_providers.litellm_provider.litellm", mock_litellm):
             handler = create_streaming_llm_handler()
             result = handler({"lang": "English", "name": "Alice"}, params)
             list(result["response"])  # generator を消費
@@ -295,7 +300,7 @@ class TestStreamingLLMHandlerInputKeysIgnored:
         }
         chunks = [_make_chunk("Hi")]
         mock_litellm = _make_mock_litellm(chunks)
-        with patch("yagra.handlers.streaming_llm_handler.litellm", mock_litellm):
+        with patch("yagra.adapters.outbound.llm_providers.litellm_provider.litellm", mock_litellm):
             handler = create_streaming_llm_handler()
             result = handler({"name": "Alice"}, params_with_extra)
             list(result["response"])  # consume generator
@@ -320,7 +325,7 @@ class TestStreamingLLMHandlerEmptyChoices:
             _make_chunk(" world"),
         ]
         mock_litellm = _make_mock_litellm(chunks)
-        with patch("yagra.handlers.streaming_llm_handler.litellm", mock_litellm):
+        with patch("yagra.adapters.outbound.llm_providers.litellm_provider.litellm", mock_litellm):
             handler = create_streaming_llm_handler()
             result = handler({}, _BASE_PARAMS)
             collected = list(result["response"])
@@ -344,7 +349,7 @@ class TestStreamingLLMHandlerNoneDelta:
             _make_chunk(" world"),
         ]
         mock_litellm = _make_mock_litellm(chunks)
-        with patch("yagra.handlers.streaming_llm_handler.litellm", mock_litellm):
+        with patch("yagra.adapters.outbound.llm_providers.litellm_provider.litellm", mock_litellm):
             handler = create_streaming_llm_handler()
             result = handler({}, _BASE_PARAMS)
             collected = list(result["response"])
@@ -375,7 +380,7 @@ class TestStreamingLLMHandlerTokenUsage:
         chunks = [_make_chunk("Hi")]
         mock_litellm = self._make_mock_litellm_with_usage(chunks, mock_usage)
 
-        with patch("yagra.handlers.streaming_llm_handler.litellm", mock_litellm):
+        with patch("yagra.adapters.outbound.llm_providers.litellm_provider.litellm", mock_litellm):
             handler = create_streaming_llm_handler()
 
             # TraceContext をアクティブにする
@@ -405,7 +410,7 @@ class TestStreamingLLMHandlerTokenUsage:
         chunks = [_make_chunk("Hi")]
         mock_litellm = self._make_mock_litellm_with_usage(chunks, mock_usage)
 
-        with patch("yagra.handlers.streaming_llm_handler.litellm", mock_litellm):
+        with patch("yagra.adapters.outbound.llm_providers.litellm_provider.litellm", mock_litellm):
             handler = create_streaming_llm_handler()
             # TraceContext がアクティブでない状態（デフォルト）
             result = handler({}, _BASE_PARAMS)
@@ -418,7 +423,7 @@ class TestStreamingLLMHandlerTokenUsage:
         chunks = [_make_chunk("Hi")]
         mock_litellm = self._make_mock_litellm_with_usage(chunks, usage=None)
 
-        with patch("yagra.handlers.streaming_llm_handler.litellm", mock_litellm):
+        with patch("yagra.adapters.outbound.llm_providers.litellm_provider.litellm", mock_litellm):
             handler = create_streaming_llm_handler()
             result = handler({}, _BASE_PARAMS)
             collected = list(result["response"])
@@ -438,19 +443,29 @@ class _IterableWithUsage:
 
 
 class TestStreamingLLMHandlerCallErrorReraised:
-    """Tests for LLMHandlerCallError immediate re-raise behavior."""
+    """Tests for LLMHandlerCallError immediate re-raise behavior.
 
-    def test_llm_call_error_is_reraised(self) -> None:
-        """Litellm が LLMHandlerCallError を送出した場合は retry せずに即座に再送出する。"""
-        mock_litellm = MagicMock()
-        mock_litellm.completion.side_effect = LLMHandlerCallError("direct call error")
+    Under the Port-routed implementation the litellm adapter translates any
+    SDK-native exception into :class:`LLMProviderCallError`. Direct
+    :class:`LLMHandlerCallError` can only originate from a handler-layer
+    fault, so we exercise ``llm_retry_loop`` directly to verify it
+    re-raises without consuming retries.
+    """
 
-        with patch("yagra.handlers.streaming_llm_handler.litellm", mock_litellm):
-            with patch("yagra.handlers._llm_common.time.sleep") as mock_sleep:
-                handler = create_streaming_llm_handler(retry=3)
-                with pytest.raises(LLMHandlerCallError, match="direct call error"):
-                    handler({}, _BASE_PARAMS)
+    def test_llm_handler_call_error_is_not_retried(self) -> None:
+        """``llm_retry_loop`` re-raises LLMHandlerCallError without sleeping."""
+        from yagra.handlers._llm_common import llm_retry_loop
 
-        # retry しないため completion は 1 回だけ呼ばれる
-        assert mock_litellm.completion.call_count == 1
+        call_count = 0
+
+        def _raise() -> dict[str, object]:
+            nonlocal call_count
+            call_count += 1
+            raise LLMHandlerCallError("direct call error")
+
+        with patch("yagra.handlers._llm_common.time.sleep") as mock_sleep:
+            with pytest.raises(LLMHandlerCallError, match="direct call error"):
+                llm_retry_loop(_raise, 3)
+
+        assert call_count == 1
         mock_sleep.assert_not_called()

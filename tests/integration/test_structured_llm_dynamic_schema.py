@@ -9,7 +9,7 @@ import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import yagra.handlers.structured_llm_handler as slm_module
+import yagra.adapters.outbound.llm_providers.litellm_provider as slm_module
 
 
 class TestDynamicSchemaIntegration:
