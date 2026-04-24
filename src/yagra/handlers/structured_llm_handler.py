@@ -10,7 +10,7 @@ from typing import Any
 import litellm
 from pydantic import BaseModel, ValidationError
 
-from yagra.handlers.llm_handler import LLMHandlerCallError, LLMHandlerConfigError
+from yagra.handlers.errors import LLMHandlerCallError, LLMHandlerConfigError
 from yagra.handlers.schema_builder import build_model_from_schema_yaml
 from yagra.ports.outbound.node_registry import NodeHandler
 

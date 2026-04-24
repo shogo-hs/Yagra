@@ -15,13 +15,16 @@ failure mode).
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, cast
 
 from yagra.ports.outbound.llm_provider import (
+    LLMCompletion,
     LLMProviderCallError,
     LLMProviderConfigError,
     LLMProviderPort,
+    LLMStreamChunk,
 )
 
 _DEFAULT_MODEL = "sonnet"
@@ -32,6 +35,26 @@ _IMPORT_ERROR_PAYLOAD: dict[str, Any] = {
     "message": "claude-agent-sdk is required for ClaudeAgentSDKProvider",
     "summary": {"provider": "claude_agent_sdk"},
     "hint": 'Run `uv add "yagra[judge]"` to enable Claude Agent SDK provider',
+}
+
+_COMPLETE_UNSUPPORTED_PAYLOAD: dict[str, Any] = {
+    "error": "claude_agent_sdk_complete_unsupported",
+    "message": "ClaudeAgentSDKProvider does not support plain text completion",
+    "summary": {"provider": "claude_agent_sdk", "method": "complete"},
+    "hint": (
+        "Use LiteLLMProvider for complete/complete_streaming; "
+        "claude_agent_sdk is subset-only (complete_structured)"
+    ),
+}
+
+_STREAMING_UNSUPPORTED_PAYLOAD: dict[str, Any] = {
+    "error": "claude_agent_sdk_streaming_unsupported",
+    "message": "ClaudeAgentSDKProvider does not support streaming completion",
+    "summary": {"provider": "claude_agent_sdk", "method": "complete_streaming"},
+    "hint": (
+        "Use LiteLLMProvider for complete_streaming; "
+        "claude_agent_sdk is subset-only (complete_structured)"
+    ),
 }
 
 
@@ -125,6 +148,65 @@ class ClaudeAgentSDKProvider(LLMProviderPort):
         except Exception as exc:  # noqa: BLE001 - SDK 例外はここで変換
             raise LLMProviderCallError(f"Claude Agent SDK call failed: {exc}") from exc
         return cast("dict[str, Any]", result)
+
+    def complete(
+        self,
+        *,
+        system_prompt: str,
+        user_prompt: str,
+        model: str,
+        timeout: int = 30,
+        **kwargs: Any,
+    ) -> LLMCompletion:
+        """Raises because claude_agent_sdk does not support plain completion.
+
+        The adapter is intentionally subset-only: it supports structured
+        output via :meth:`complete_structured` but not free-form text
+        completion. Callers that need ``complete`` should use
+        :class:`LiteLLMProvider` instead.
+
+        Args:
+            system_prompt: Ignored.
+            user_prompt: Ignored.
+            model: Ignored.
+            timeout: Ignored.
+            **kwargs: Ignored.
+
+        Raises:
+            LLMProviderConfigError: Always, with a 4-field structured payload
+                explaining the subset constraint.
+        """
+        raise LLMProviderConfigError(_COMPLETE_UNSUPPORTED_PAYLOAD)
+
+    def complete_streaming(
+        self,
+        *,
+        system_prompt: str,
+        user_prompt: str,
+        model: str,
+        timeout: int = 30,
+        **kwargs: Any,
+    ) -> Iterator[LLMStreamChunk]:
+        """Raises because claude_agent_sdk does not support streaming completion.
+
+        Args:
+            system_prompt: Ignored.
+            user_prompt: Ignored.
+            model: Ignored.
+            timeout: Ignored.
+            **kwargs: Ignored.
+
+        Yields:
+            Never yields — raises before the first ``yield`` statement. The
+            ``yield`` below is unreachable but ensures the method is typed
+            as a generator function.
+
+        Raises:
+            LLMProviderConfigError: Always, with a 4-field structured payload
+                explaining the subset constraint.
+        """
+        raise LLMProviderConfigError(_STREAMING_UNSUPPORTED_PAYLOAD)
+        yield  # unreachable: marks this as a generator for type-checkers
 
 
 def _run_async(coro: Any) -> Any:

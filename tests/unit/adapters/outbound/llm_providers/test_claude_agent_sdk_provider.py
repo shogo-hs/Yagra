@@ -221,3 +221,53 @@ class TestClaudeAgentSDKProviderAsyncBridge:
             model="sonnet",
         )
         assert result == expected
+
+
+class TestClaudeAgentSDKProviderSubset:
+    """Verifies that ``complete`` / ``complete_streaming`` stay subset (not implemented).
+
+    The Claude Agent SDK adapter is intentionally subset-only for #28: it
+    must raise :class:`LLMProviderConfigError` with a 4-field structured
+    payload so handlers can surface a consistent hint pointing at
+    LiteLLMProvider.
+    """
+
+    def test_complete_raises_config_error_with_structured_payload(self) -> None:
+        from yagra.adapters.outbound.llm_providers.claude_agent_sdk_provider import (
+            ClaudeAgentSDKProvider,
+        )
+        from yagra.ports.outbound.llm_provider import LLMProviderConfigError
+
+        provider = ClaudeAgentSDKProvider()
+        with pytest.raises(LLMProviderConfigError) as excinfo:
+            provider.complete(
+                system_prompt="s",
+                user_prompt="u",
+                model="sonnet",
+            )
+        payload = excinfo.value.args[0]
+        assert isinstance(payload, dict)
+        assert set(payload) == {"error", "message", "summary", "hint"}
+        assert payload["error"] == "claude_agent_sdk_complete_unsupported"
+        assert "LiteLLMProvider" in payload["hint"]
+
+    def test_complete_streaming_raises_config_error_with_structured_payload(self) -> None:
+        from yagra.adapters.outbound.llm_providers.claude_agent_sdk_provider import (
+            ClaudeAgentSDKProvider,
+        )
+        from yagra.ports.outbound.llm_provider import LLMProviderConfigError
+
+        provider = ClaudeAgentSDKProvider()
+        with pytest.raises(LLMProviderConfigError) as excinfo:
+            list(
+                provider.complete_streaming(
+                    system_prompt="s",
+                    user_prompt="u",
+                    model="sonnet",
+                )
+            )
+        payload = excinfo.value.args[0]
+        assert isinstance(payload, dict)
+        assert set(payload) == {"error", "message", "summary", "hint"}
+        assert payload["error"] == "claude_agent_sdk_streaming_unsupported"
+        assert "LiteLLMProvider" in payload["hint"]
