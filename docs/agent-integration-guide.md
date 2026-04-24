@@ -367,12 +367,16 @@ yagra golden test --workflow workflows/translate.yaml --format json
 【ステップ 4: 適用またはロールバック】
 4a. 全件 passed の場合: `apply_update` ツールで変更を適用する
     - 引数: workflow_path（YAML パス）, candidate_yaml（ステップ 2 で使った YAML）
+    - 推奨: ステップ 3 の結果を `last_golden_result` として渡すと二重実行を回避できる
     - レスポンスの backup_id を記録しておく（ロールバック時に必要）
 4b. apply 後に問題が発覚した場合: `rollback_update` で元に戻す
     - 引数: workflow_path, backup_id（apply_update レスポンスより）
 
 【重要な制約】
-- apply_update を実行する前に必ず run_golden_tests を実行する
+- apply_update はデフォルトで run_golden_tests の成功（passed == total）を要求する（`golden_pass_required=True`）。passed != total の場合は `error: "golden_not_passed"` を返し、ワークフローファイルは書き換えられない
+- ゴールデンケースが 1 件も存在しない場合は silent success を避けるため、`warnings: ["no_golden_cases_defined"]` 付きで apply が許可される。この warning が返ったらユーザーに明示し、ゴールデンケース未整備である旨を伝える
+- ステップ 3 で取得した `run_golden_tests` の戻り値をそのまま `last_golden_result` として渡すと、apply_update 側で再実行を避けられる。省略時は apply_update が内部で run_golden_tests を実行する
+- レガシーな強制スキップが必要な場合は `golden_pass_required=false` を明示する（非推奨）
 - candidate_yaml の diff をユーザーに確認なしに apply しない（ユーザーに diff を提示して承認を得る）
 - rollback_update は apply_update 後に問題が発覚した場合に使用する（テスト失敗時は apply 前に candidate_yaml を修正する）
 ```
@@ -457,13 +461,40 @@ yagra golden save \
     適用しますか?」
 
 5. ユーザー承認後:
-   run_golden_tests(workflow_path="workflow.yaml")
+   golden_result = run_golden_tests(workflow_path="workflow.yaml")
    → 1 passed, 0 failed
 
 6. apply_update(
      workflow_path="workflow.yaml",
-     candidate_yaml="version: \"1.0\"\n..."
+     candidate_yaml="version: \"1.0\"\n...",
+     last_golden_result=golden_result  # ステップ 5 の結果を再利用すると二重実行を回避できる
    )
    → success: true, backup_id: "workflow_20260222T130000_a1b2c3d4"
    → ワークフロー YAML が更新されました
 ```
+
+### `apply_update` のゴールデンゲート
+
+`apply_update` はデフォルトで `golden_pass_required=True` が有効となっており、`run_golden_tests` の `passed == total` を書き込み前に要求します。ゲートの挙動は以下の通り:
+
+| 状況 | `golden_pass_required` | `last_golden_result` | 挙動 |
+|------|:---:|:---:|------|
+| 事前 `run_golden_tests` 済み（全 pass） | True | 結果 dict | dict を再利用して即 apply |
+| 事前未実行 | True | None（省略） | 内部で `run_golden_tests` を実行して判定 |
+| 事前 `run_golden_tests` 済み（fail あり） | True | 結果 dict | `error: "golden_not_passed"` を返し、ファイルは書き換えない |
+| ゴールデンケース未定義（total == 0） | True | どちらでも | `success: true, warnings: ["no_golden_cases_defined"]` — ユーザーに明示して放置しない |
+| レガシー互換 | False | - | ゴールデンゲートを完全スキップ（非推奨） |
+
+`error: "golden_not_passed"` のレスポンスには以下のフィールドが含まれます:
+
+```json
+{
+  "error": "golden_not_passed",
+  "message": "Golden tests did not fully pass: 2/3 passed, 1 failed",
+  "summary": {"total": 3, "passed": 2, "failed": 1},
+  "hint": "run_golden_tests の失敗ケースを確認し、candidate_yaml を修正してから再度 apply_update を実行してください"
+}
+```
+
+エージェントはこの構造化エラーを受け取ったら、失敗ケースを確認したうえで `candidate_yaml` を修正し、再び `propose_update` → `run_golden_tests` → `apply_update` のサイクルに戻ることを推奨します。
+

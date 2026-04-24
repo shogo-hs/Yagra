@@ -4,16 +4,52 @@
 **現在の Phase**: 2
 
 ## バックログ概要
-完了: 3/27 タスク（#1 方針確定、#2 llm-basic 修復、#3 validate-example.yml 実在化）
+完了: 4/27 タスク（#1 方針確定、#2 llm-basic 修復、#3 validate-example.yml 実在化、#4 apply_update golden gate）
 
 ## 現在のタスク
-- タスク: #4 `_tool_apply_update` に「run_golden_tests 成功前提」オプションを追加しデフォルト ON
-- ステージ: Phase 2a（次タスク選択完了、PR #48 マージ待機 → 2b 移行予定）
+- タスク: #23 `create_judge_handler` を実装（LLM-as-a-Judge 基本版）
+- ステージ: Phase 2a 完了後（PR #49 マージ待機 → 2b 移行予定）
 
-### PO層
-- PO-PMアライメント: 未着手（#4 の Task Brief ドラフト作成予定。PR #48 マージ後に着手）
+### PO層（#23 向け）
+- PO-PMアライメント: 未着手（PR #49 マージ後に着手）
 - 契約: 未作成
-- PO検証: #3 PO検証 Accept 済み（PR #48 マージ後に main 反映）
+- PO検証: #4 PO検証 Accept 済み（PR #49 マージ後に main 反映）
+
+### PM層（#4 Phase 2c→2d 完了時点）
+- PO-PMアライメント: 完了（PM Alignment Agent 1往復で Option C + no-case warning 方針確定）
+- 契約: `tasks/20260424114514_contract-po-pm-apply-update-golden-gate.md`
+- PO検証（2026-04-24）: **Accept** — ゴール寄与 4→5 / エラー品質 4→5、累積ドリフトはポジティブ継続
+
+### PM層（Phase 2c 開始時）
+- Developer 数: M サイズだが PM 環境制約で PM が 1 Developer + PMO を sequentially 代行
+- 採用方針: Option C ハイブリッド（`last_golden_result` 明示渡し or 内部実行）+ golden case 未定義時 warning 付き apply 許可
+- 影響ファイル: mcp_server.py / test_mcp_server.py / test_optimization_cycle_e2e.py / agent-integration-guide.md / CHANGELOG.md
+
+### PM層（#4 実行開始 2026-04-24）
+- Step 1 完了: Intent 作成 `tasks/20260424114909_intent-apply-update-golden-gate.md`
+  - 成功基準 10 項目（Contract 転記）、In/Out スコープ明確化、Option C 設計採用
+- Step 2 完了: コードベース調査（PM 直接実施）
+  - 既存 `_tool_apply_update` 全体構造確認、`_tool_run_golden_tests` 戻り値形式確認（フラット `{total, passed, failed, ...}`）
+  - 既存テスト雛形 `_VALID_WORKFLOW_YAML_PROPOSE` / `_UPDATED_WORKFLOW_YAML_PROPOSE` 確認
+  - E2E テスト内で apply_update が golden なしで呼ばれる箇所特定
+- Step 3 完了: 計画作成 `tasks/20260424115020_plan-apply-update-golden-gate.md`
+  - Developer 数: PM 環境制約で 1 名（PM 代行）
+  - 変更ファイル 5 + 新規テスト 5 件 + E2E 追加 assert 1 件
+  - `_assert_golden_passed(...)` helper 抽出設計
+- Step 4 完了: Mission Brief 作成 `tasks/20260424115130_mission-apply-update-golden-gate.md`
+  - Contract 挙動仕様 / エラーフォーマット / スコープ境界を転記
+  - 実装スケッチ・チェックリスト完備
+- Step 5 完了: Developer 1（PM 代行）実装完了
+  - Developer 1 記録: `tasks/20260424115306_developer1-apply-update-golden-gate.md`
+  - 新規テスト 5 件、全 PASSED / フルスイート 952 件 PASSED / pre-commit All Passed
+  - 実装 commit: `fd67436 feat(mcp): apply_update に golden_pass_required 追加`
+  - タスクドキュメント commit: `ab0abc2 docs(tasks): #4 PM 委任ドキュメントと進捗更新`
+- Step 6 完了: PR 作成 + PMO レビュー
+  - PR: https://github.com/shogo-hs/Yagra/pull/49
+  - レビュー結果: **Accept**（Critical: 0 / Major: 0 / Minor: 0）
+  - レビュー詳細: `tasks/20260424120316_review-apply-update-golden-gate.md`
+- Step 7: PMO Accept のため差し戻しなし
+- Step 8 完了: PO への完了レポート作成
 
 ### PM層
 - #3 PM 委任開始（2026-04-24）
@@ -58,14 +94,20 @@
 ## 生成済みドキュメント
 - tasks/progress.md: 進捗記録（本ファイル）
 - tasks/vision-audit.md: ビジョン整合性監査レポート（Critical 3 / Major 13 / Minor 3）
-- tasks/vision-alignment-log.md: ビジョン体現度の累積ログ（ベースライン + Task #1-#3 エントリ）
-- tasks/backlog.md: 27 タスクのプロダクトバックログ（Must 9 / Should 11 / Could 7）。#1-#3 done
-- tasks/learnings.md: タスク間学習ログ（#3 で初期化。技術的発見 / プロジェクト固有パターン / 環境的発見）
+- tasks/vision-alignment-log.md: ビジョン体現度の累積ログ（ベースライン + Task #1-#4 エントリ）
+- tasks/backlog.md: 27 タスクのプロダクトバックログ（Must 9 / Should 11 / Could 7）。#1-#4 done
+- tasks/learnings.md: タスク間学習ログ（#3 初期化、#4 で CHANGELOG 追記昇格完了 / 構造化エラー 4 フィールド / PM 代行運用 2 回目再現性確認）
 - tasks/20260424085623_contract-po-pm-add-validate-example-workflow.md: #3 PO-PM 契約
 - tasks/20260424085835_intent-add-validate-example-workflow.md: #3 Intent
 - tasks/20260424085949_plan-add-validate-example-workflow.md: #3 Plan
 - tasks/20260424090042_mission-add-validate-example-workflow.md: #3 Mission Brief
 - tasks/20260424090931_review-add-validate-example-workflow.md: #3 PMO レビュー（Accept）
+- tasks/20260424114514_contract-po-pm-apply-update-golden-gate.md: #4 PO-PM 契約（Option C 採用）
+- tasks/20260424114909_intent-apply-update-golden-gate.md: #4 Intent
+- tasks/20260424115020_plan-apply-update-golden-gate.md: #4 Plan
+- tasks/20260424115130_mission-apply-update-golden-gate.md: #4 Mission Brief
+- tasks/20260424115306_developer1-apply-update-golden-gate.md: #4 Developer 1（PM 代行）記録
+- tasks/20260424120316_review-apply-update-golden-gate.md: #4 PMO レビュー（Accept / 0/0/0）
 
 ## 注記
 - モード: ビジョン整合性監査（Phase 1c 主軸）

@@ -193,6 +193,13 @@ def create_mcp_server() -> Any:
                 name="apply_update",
                 description=(
                     "Validate the candidate YAML and apply it to the workflow file with a backup. "
+                    "By default, requires golden tests to pass (run_golden_tests: passed == total) "
+                    "before writing the file. Pass last_golden_result from a prior run_golden_tests "
+                    "call to avoid re-running; otherwise the server runs golden tests internally "
+                    "against the current workflow_path using golden_dir. "
+                    "When no golden cases are defined (total == 0), apply succeeds with "
+                    "warnings=['no_golden_cases_defined'] instead of silently passing. "
+                    "Set golden_pass_required=false to skip the golden gate (legacy behavior). "
                     "Returns backup_id which can be used to rollback if needed."
                 ),
                 inputSchema={
@@ -216,6 +223,32 @@ def create_mcp_server() -> Any:
                         "backup_dir": {
                             "type": "string",
                             "description": "Directory for backups (default: .yagra/backups)",
+                        },
+                        "golden_pass_required": {
+                            "type": "boolean",
+                            "description": (
+                                "Require golden tests to pass before apply. Default true. "
+                                "When true, apply is blocked with error='golden_not_passed' if "
+                                "passed != total. When no golden cases exist (total == 0), "
+                                "apply succeeds with warnings=['no_golden_cases_defined']. "
+                                "Set to false to skip the golden gate (legacy behavior)."
+                            ),
+                        },
+                        "last_golden_result": {
+                            "type": "object",
+                            "description": (
+                                "Result dict from a prior run_golden_tests call (expected fields: "
+                                "total, passed, failed). If provided, the server reuses these "
+                                "values and skips running golden tests again. If omitted, the "
+                                "server runs run_golden_tests internally using golden_dir."
+                            ),
+                        },
+                        "golden_dir": {
+                            "type": "string",
+                            "description": (
+                                "Directory to search for golden cases when last_golden_result is "
+                                "not provided. Defaults to '.yagra/golden'."
+                            ),
                         },
                     },
                     "required": ["workflow_path", "candidate_yaml"],
@@ -381,6 +414,9 @@ def create_mcp_server() -> Any:
                 candidate_yaml=arguments.get("candidate_yaml", ""),
                 base_revision=arguments.get("base_revision"),
                 backup_dir=arguments.get("backup_dir", ".yagra/backups"),
+                golden_pass_required=arguments.get("golden_pass_required", True),
+                last_golden_result=arguments.get("last_golden_result"),
+                golden_dir=arguments.get("golden_dir", ".yagra/golden"),
             )
         elif name == "rollback_update":
             result = _tool_rollback_update(
@@ -826,24 +862,36 @@ def _tool_apply_update(
     candidate_yaml: str,
     base_revision: str | None = None,
     backup_dir: str = ".yagra/backups",
+    golden_pass_required: bool = True,
+    last_golden_result: dict[str, Any] | None = None,
+    golden_dir: str = ".yagra/golden",
 ) -> dict[str, Any]:
-    """Implementation of the apply_update tool.
+    """apply_update ツールの実装。
 
-    Validates the candidate YAML and writes it to the workflow file, creating a
-    backup beforehand.  When *base_revision* is omitted the current revision is
-    computed automatically so that no conflict error is raised.
+    候補 YAML をバリデーションしたうえでワークフローファイルに書き込み、書き込み前にバックアップを作成する。
+    ``base_revision`` を省略した場合は現在のリビジョンを自動計算し、競合検出を行わずに適用する。
+
+    デフォルトでは ``golden_pass_required=True`` により、apply の前に golden test の通過を要求する。
+    呼び出し側が事前に ``run_golden_tests`` を実行済みの場合は ``last_golden_result`` にその戻り値をそのまま渡すことで
+    再実行を避けられる。未指定時は内部で ``_tool_run_golden_tests`` を実行して判定する。
+    golden case が 1 件も定義されていない場合は ``warnings: ["no_golden_cases_defined"]`` を返したうえで apply を許可する
+    （silent success を避けるための明示 warning）。
 
     Args:
-        workflow_path: Path to the workflow YAML file to update.
-        candidate_yaml: New YAML content to apply.
-        base_revision: Expected current revision. When omitted the current
-            revision is calculated and used, skipping conflict detection.
-        backup_dir: Directory for backups.
+        workflow_path: 更新対象のワークフロー YAML パス。
+        candidate_yaml: 適用する新しい YAML 内容。
+        base_revision: 想定される現在のリビジョン。省略時は自動計算し、競合検出をスキップする。
+        backup_dir: バックアップ保存ディレクトリ。
+        golden_pass_required: True の場合（デフォルト）、apply 前に golden test の passed==total を要求する。
+            False を渡すと従来挙動（golden チェックなし）。
+        last_golden_result: 事前に実行した ``run_golden_tests`` の戻り値。渡された場合は ``total`` / ``passed`` /
+            ``failed`` フィールドを参照して判定に再利用する。None の場合は内部で ``_tool_run_golden_tests`` を実行する。
+        golden_dir: ``last_golden_result`` が None の場合に golden case を探索するディレクトリ。
 
     Returns:
-        Dictionary with ``success``, ``workflow_path``, ``backup_id``, and
-        ``saved_revision`` on success.  On error, returns a dict with an
-        ``error`` key.
+        成功時は ``success`` / ``workflow_path`` / ``backup_id`` / ``saved_revision`` を含む辞書。
+        golden case 未定義で warning 付き apply の場合は ``warnings`` キーも含む。
+        失敗時は ``error`` キーを含む構造化エラー辞書を返す（例: ``golden_not_passed``、``revision_conflict`` 等）。
     """
     import yaml as yaml_lib
 
@@ -860,6 +908,19 @@ def _tool_apply_update(
     resolved = Path(workflow_path).expanduser().resolve()
     if not resolved.exists():
         return {"error": f"workflow file not found: {workflow_path}"}
+
+    # Golden test gate: save_workflow_with_backup より前に判定し、
+    # fail 時は workflow ファイルを書き換えない。
+    warnings_list: list[str] = []
+    if golden_pass_required:
+        passed, error_payload, warns = _assert_golden_passed(
+            workflow_path=str(resolved),
+            golden_dir=golden_dir,
+            last_golden_result=last_golden_result,
+        )
+        if not passed and error_payload is not None:
+            return error_payload
+        warnings_list.extend(warns)
 
     effective_base_revision: str
     if base_revision is None:
@@ -896,12 +957,15 @@ def _tool_apply_update(
     except Exception as exc:
         return {"error": "apply_failed", "message": str(exc)}
 
-    return {
+    response: dict[str, Any] = {
         "success": True,
         "workflow_path": str(resolved),
         "backup_id": result.backup_id,
         "saved_revision": result.saved_revision,
     }
+    if warnings_list:
+        response["warnings"] = warnings_list
+    return response
 
 
 def _tool_rollback_update(
@@ -1031,6 +1095,85 @@ def _tool_run_golden_tests(
         "all_passed": failed == 0,
         "results": [r.model_dump(mode="json") for r in results],
     }
+
+
+def _assert_golden_passed(
+    workflow_path: str,
+    golden_dir: str,
+    last_golden_result: dict[str, Any] | None,
+) -> tuple[bool, dict[str, Any] | None, list[str]]:
+    """Golden test の通過を判定する private helper。
+
+    呼び出し側が事前に ``run_golden_tests`` を実行済みなら ``last_golden_result`` を再利用し、
+    未指定なら内部で ``_tool_run_golden_tests`` を実行する。
+    golden case が 1 件も定義されていない場合（``total == 0``）は、silent success 防止のため
+    warning を返したうえで pass 扱いとする（呼び出し側がユーザーに明示できるように）。
+
+    Args:
+        workflow_path: 判定対象のワークフロー YAML パス（絶対パス推奨）。
+        golden_dir: golden case を探索するディレクトリ。``last_golden_result`` が None の場合に使用する。
+        last_golden_result: 事前実行済みの ``run_golden_tests`` 結果。``total`` / ``passed`` / ``failed`` を参照する。
+            None の場合は内部で ``_tool_run_golden_tests`` を実行する。
+
+    Returns:
+        ``(passed, error_payload, warnings)`` の 3 要素タプル。
+
+        - ``passed`` が True かつ ``error_payload`` が None の場合: apply を続行してよい。
+        - ``passed`` が False の場合: ``error_payload`` を呼び出し元の戻り値としてそのまま使える構造化エラー辞書。
+        - ``warnings`` は pass 時の注意喚起文字列リスト（例: ``["no_golden_cases_defined"]``）。空リストも返す。
+    """
+    if last_golden_result is not None:
+        golden_result: dict[str, Any] = last_golden_result
+    else:
+        golden_result = _tool_run_golden_tests(
+            workflow_path=workflow_path,
+            golden_dir=golden_dir,
+            case_name=None,
+            fmt="json",
+        )
+        if "error" in golden_result:
+            return (
+                False,
+                {
+                    "error": "golden_check_failed",
+                    "message": (
+                        "Failed to run golden tests: "
+                        f"{golden_result.get('message', golden_result['error'])}"
+                    ),
+                    "hint": (
+                        "golden_dir を確認するか、golden_pass_required=False で明示的にスキップしてください"
+                    ),
+                },
+                [],
+            )
+
+    total = int(golden_result.get("total", 0))
+    passed_count = int(golden_result.get("passed", 0))
+    failed_count = int(golden_result.get("failed", total - passed_count))
+
+    if total == 0:
+        # golden case 未定義: silent success を避けるため warning を必ず返す
+        return True, None, ["no_golden_cases_defined"]
+
+    if passed_count == total and failed_count == 0:
+        return True, None, []
+
+    return (
+        False,
+        {
+            "error": "golden_not_passed",
+            "message": (
+                f"Golden tests did not fully pass: {passed_count}/{total} passed, "
+                f"{failed_count} failed"
+            ),
+            "summary": {"total": total, "passed": passed_count, "failed": failed_count},
+            "hint": (
+                "run_golden_tests の失敗ケースを確認し、"
+                "candidate_yaml を修正してから再度 apply_update を実行してください"
+            ),
+        },
+        [],
+    )
 
 
 async def run_mcp_server() -> None:

@@ -7,8 +7,13 @@
 ### Added
 - 🔧 **CI: `.github/workflows/validate-example.yml` 追加**: `docs/ci-integration-guide.md` から参照されていた欠落ワークフローを実在化。`pull_request` と `push (main)` で `examples/*/workflow.yaml` 全 6 個を `yagra validate --bundle-root` 付きで継続検証し、サイレント破壊を防止（マッチ 0 時の exit 1 ガード付き）。同一 PR/branch の重複実行は `concurrency` で自動キャンセル
 
+### Changed
+- 🛡️ **MCP: `apply_update` に `golden_pass_required` オプション追加（デフォルト ON）**: `run_golden_tests` の全件 pass（`passed == total`）を apply の前提条件として要求するゲートを追加。新引数は `golden_pass_required: bool = True` / `last_golden_result: dict | None = None` / `golden_dir: str = ".yagra/golden"` の 3 つ。既存 `run_golden_tests` 結果を `last_golden_result` で渡すと二重実行を回避できる。Phase 4「Approve & Update」の Safe Iteration 思想を API レベルで担保
+
 ### Fixed
 - 📚 **docs: `docs/ci-integration-guide.md` の `find` 記述を実装と整合**: サンプル workflow が `for f in examples/*/workflow.yaml` を使う実装に合わせ、ガイド本文のコマンド例を `find` から glob に差し替えて齟齬を解消
+- 🛡️ **docs: `docs/agent-integration-guide.md` の "apply_update 前に必ず run_golden_tests" 記述を実装と整合**: 既述の制約が API で強制されていなかった思想的綻びを解消。デフォルト ON のゲート挙動、構造化エラー `golden_not_passed`、ゴールデンケース未定義時の `warnings: ["no_golden_cases_defined"]`（silent success 防止）を明記
+- 🛡️ **MCP: `apply_update` がゴールデンテスト失敗時にファイル書込しない保証**: `golden_pass_required=True` のもとで `passed != total` のときは `save_workflow_with_backup` を呼ばず、構造化エラー（`error: "golden_not_passed"`、`summary: {total, passed, failed}`、`hint`）のみを返却する
 
 ## [1.2.0] - 2026-03-01
 
