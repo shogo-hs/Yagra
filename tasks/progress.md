@@ -42,6 +42,8 @@
   - CI 実ジョブで「Validated 6 workflow(s)」を確認、全 is_valid:true
   - PMO レビュー結果: Accept (Critical:0 / Major:0 / Minor:0)
   - レビュー詳細: `tasks/20260424090931_review-add-validate-example-workflow.md`
+- Step 7: PMO Accept のため差し戻しなし
+- Step 8 完了: PM からの完了レポート作成済み (本報告の本文)
 
 ### 並列実行候補
 - #3 完了後に #4（apply_update golden gate）/ #23（create_judge_handler）等の Must タスクを順次着手
