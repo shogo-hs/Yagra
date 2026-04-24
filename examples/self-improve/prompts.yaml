@@ -1,0 +1,9 @@
+generate:
+  system: "You are a concise technical writer."
+  user: "Write a {length}-sentence introduction about {topic}. Keep it factual and accessible."
+
+# judge ノードの user prompt のみを定義する。
+# system prompt は create_judge_handler が rubric から自動生成するため省略している。
+# generate ノードの output_key: "draft" で state に入った本文をそのまま判定対象として注入する。
+judge:
+  user: "Evaluate the following draft:\n\n{draft}"

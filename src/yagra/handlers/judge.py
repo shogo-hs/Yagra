@@ -74,7 +74,7 @@ def create_judge_handler(
     retry: int = 3,
     timeout: int = 30,
 ) -> NodeHandler:
-    """Creates an LLM-as-a-Judge node handler.
+    r"""Creates an LLM-as-a-Judge node handler.
 
     Accepts either a pre-built :class:`LLMProviderPort` instance (handy for
     tests and dependency injection) or falls back to resolving one from the
@@ -106,7 +106,7 @@ def create_judge_handler(
                   provider: "claude_agent_sdk"
                   model: "sonnet"
                   rubric_ref: "rubrics/quality.yaml#default"
-                  prompt_ref: "prompts/judge.yaml#system"
+                  prompt_ref: "prompts/judge.yaml#judge"
                   output_key: "judge_result"
 
         Python (dependency injection):
@@ -114,6 +114,34 @@ def create_judge_handler(
         >>> from yagra.handlers import create_judge_handler
         >>> my_provider = ...  # implements LLMProviderPort
         >>> handler = create_judge_handler(provider=my_provider)
+
+    Prompt Resolution Pitfalls:
+        Two specifications frequently trip up first-time users. Both are
+        intentional but under-documented elsewhere:
+
+        1. **Default user template is ``"{query}"``**. When ``prompt_ref`` /
+           ``prompt`` is omitted, the handler substitutes ``state["query"]``
+           into the user prompt. If the upstream node writes its output to a
+           different key (e.g. ``output_key: "draft"`` on a generate node),
+           the judge will see an empty / literal ``"{query}"`` prompt and
+           score against nothing. Either (a) name the upstream output key
+           ``query``, or (b) supply an explicit ``prompt_ref`` whose user
+           template interpolates the actual state key
+           (e.g. ``"Evaluate the following draft:\\n\\n{draft}"``). The default
+           system prompt *is* auto-generated from the rubric, so only the user
+           template needs attention in the common case.
+
+        2. **Inline ``prompt:`` in workflow YAML is rejected by the validator**.
+           The handler code itself accepts ``params["prompt"] = {"system":
+           ..., "user": ...}`` (see the runtime branch above), but
+           :mod:`yagra.application.services.reference_resolver` blocks inline
+           prompts at load time with the error ``"inline prompt is no longer
+           supported; use prompt_ref to reference an external prompt file"``.
+           In workflow YAML, always use ``prompt_ref: "<file>#<key>"`` and
+           define the template in an external prompts YAML (typical naming:
+           ``prompts.yaml`` with a ``judge:`` section). The inline form only
+           works when a handler is invoked programmatically outside the
+           workflow loader.
     """
 
     def handler(state: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
