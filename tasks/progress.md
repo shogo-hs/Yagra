@@ -7,13 +7,53 @@
 完了: 4/27 タスク（#1 方針確定、#2 llm-basic 修復、#3 validate-example.yml 実在化、#4 apply_update golden gate）
 
 ## 現在のタスク
-- タスク: #23 `create_judge_handler` を実装（LLM-as-a-Judge 基本版）
-- ステージ: Phase 2a 完了後（PR #49 マージ待機 → 2b 移行予定）
+- タスク: #23 `create_judge_handler` を実装（LLM-as-a-Judge 基本版 + Port/Adapter 抽象化）
+- ステージ: Phase 2b 完了、Phase 2c 準備完了（PM Agent 起動準備済み）
 
 ### PO層（#23 向け）
-- PO-PMアライメント: 未着手（PR #49 マージ後に着手）
-- 契約: 未作成
-- PO検証: #4 PO検証 Accept 済み（PR #49 マージ後に main 反映）
+- PO-PMアライメント: **完了**（PM Alignment Agent 1 往復で E1-E5 + SC 追加要求すべて確定）
+- 契約: `tasks/20260424143714_contract-po-pm-create-judge-handler.md`
+- 採用方針:
+  - Port: `src/yagra/ports/outbound/llm_provider.py` に `LLMProviderPort` (Protocol + runtime_checkable)
+  - Adapter: `src/yagra/adapters/outbound/llm_providers/` に 2 つ + Factory `resolve_provider()`
+  - デフォルト: `ClaudeAgentSDKProvider` + model `"sonnet"`（ユーザー指定）+ `yagra[judge]` extra
+  - 認証: `claude login` のサブスクリプション認証前提（API キー不要）
+  - 既存 `create_llm_handler` 等の段階移行は別タスク（backlog 追加予定）
+- 主要 SC: 14 項目（SC-1〜SC-14、うち SC-2 は 2a/2b/2c に分解）
+- PO検証: 未着手（PM 実装完了後に実施）
+
+### PM層（#23 向け / Phase 2c 実行中）
+- Developer 数: M サイズだが PM 環境制約で PM が 1 Developer + PMO を sequentially 代行（#3 / #4 で 2 回連続再現確認済み）
+- Feature Branch: 未作成（Step 5 直前に `feature/add-create-judge-handler` で作成）
+- 影響ファイル見込（新規 10 + 更新 5）: Intent に詳細記載
+- Step 0 完了: 環境確認（working tree clean、progress.md diff 既存のみ、contract 未追跡 OK）
+- Step 1 完了: Intent 作成 `tasks/20260424054919_intent-create-judge-handler.md`（SC-1〜SC-14 転記、In/Out Scope 明確化）
+- Step 2 完了: コードベース調査（PM 直接実施）
+  - 既存 Port / Adapter パターン確認（ABC/Protocol 両方存在、judge は Protocol + runtime_checkable 採用）
+  - `structured_llm_handler.py` / `llm_handler.py` / `_llm_common.py` 把握、prompt_interpolate を再利用可能
+  - `catalog.py` + `__init__.py` + `workflow_explainer.py` builtin_handlers セット更新箇所特定
+  - `test_handler_params_schema.py` の "3 handlers" 前提アサーション（test_json_output_contains_three_handlers 等）要修正箇所特定
+  - judge の default output_key `"judge_result"` により `workflow_explainer._extract_output_variables` に分岐追加が必要
+- Step 3 完了: 計画作成 `tasks/20260424055205_plan-create-judge-handler.md`
+  - Developer 1 + PMO を PM 代行、工程 A/B/C/D に分離
+  - 実装順序 19 ステップ、チェックリスト SC-1〜SC-14 対応付け
+- Step 4 完了: Mission Brief 作成 `tasks/20260424055332_mission-create-judge-handler.md`
+  - Contract 挙動仕様 / エラーフォーマット / スコープ境界を転記
+  - 実装スケッチ・チェックリスト完備
+  - 追加明示: judge の default output_key `"judge_result"`、_overall 自動計算、async bridge の ThreadPoolExecutor パターン
+- Step 5 完了: Developer 1（PM 代行）実装完了
+  - 工程 A: `LLMProviderPort` + `LiteLLMProvider` + `ClaudeAgentSDKProvider` + `resolve_provider` + 19 ユニットテスト全 PASS
+  - 工程 B: `create_judge_handler` + `JUDGE_HANDLER_PARAMS_SCHEMA` + 19 judge ユニットテスト全 PASS
+  - 工程 C: `catalog.py` / `__init__.py` / `workflow_explainer.py` / `pyproject.toml` / `agent-integration-guide.md` / `CHANGELOG.md` / `test_handler_params_schema.py` / `tests/integration/test_validate_judge_workflow.py` 全更新
+  - 工程 D: ユニット + 該当統合テスト 1000 PASSED（playwright 33 環境エラーは pre-existing）、`uv run pre-commit run --all-files` All Passed（ruff format / ruff check / mypy）
+  - Hexagonal 境界違反なし: `ports/` は具象 SDK 非依存、judge handler は `resolve_provider` 経由のみ（既存 `golden_test_runner.py` パターンと整合）
+  - test_handler_params_schema.py の sys.modules pollution 既存バグも合わせて修正（`patch.dict` → `setdefault` で pydantic.root_model 喪失を回避）
+
+---
+
+## Phase 2 内の完了済みタスク詳細（履歴保存）
+
+<details><summary>Task #4: apply_update golden gate（2026-04-24 完了、PR #49 merged at cc8c20e）</summary>
 
 ### PM層（#4 Phase 2c→2d 完了時点）
 - PO-PMアライメント: 完了（PM Alignment Agent 1往復で Option C + no-case warning 方針確定）
@@ -51,6 +91,10 @@
 - Step 7: PMO Accept のため差し戻しなし
 - Step 8 完了: PO への完了レポート作成
 
+</details>
+
+<details><summary>Task #3: validate-example.yml 実在化（2026-04-24 完了、PR #48 merged）</summary>
+
 ### PM層
 - #3 PM 委任開始（2026-04-24）
 - Developer 数: S サイズ → 2（skill 規定）
@@ -87,9 +131,7 @@
 - `tasks/vision-alignment-log.md` に Task #3 エントリ追記済み
 - PR #48: CI 両ジョブ SUCCESS（`quality` 1m54s / `validate-examples` 16s）、レビュー承認待機中
 
-### 並列実行候補
-- #4（apply_update golden gate） / #23（create_judge_handler）等の Must タスクを順次着手
-- #4 → #23 の順が整合性高い（#4 で apply サイクル思想の綻び補正 → #23 で差別化軸実装の起点）
+</details>
 
 ## 生成済みドキュメント
 - tasks/progress.md: 進捗記録（本ファイル）
@@ -97,6 +139,7 @@
 - tasks/vision-alignment-log.md: ビジョン体現度の累積ログ（ベースライン + Task #1-#4 エントリ）
 - tasks/backlog.md: 27 タスクのプロダクトバックログ（Must 9 / Should 11 / Could 7）。#1-#4 done
 - tasks/learnings.md: タスク間学習ログ（#3 初期化、#4 で CHANGELOG 追記昇格完了 / 構造化エラー 4 フィールド / PM 代行運用 2 回目再現性確認）
+- tasks/20260424143714_contract-po-pm-create-judge-handler.md: #23 PO-PM 契約（Port/Adapter + Claude Agent SDK + sonnet default）
 - tasks/20260424085623_contract-po-pm-add-validate-example-workflow.md: #3 PO-PM 契約
 - tasks/20260424085835_intent-add-validate-example-workflow.md: #3 Intent
 - tasks/20260424085949_plan-add-validate-example-workflow.md: #3 Plan
