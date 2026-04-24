@@ -105,3 +105,47 @@ PM 委任（general-purpose + opus）で完了。PR #48（Accept判定、Critica
 | 累積ドリフト | ポジティブ | docs ↔ 実装の乖離が 0 に |
 
 **PO 判定: Accept**。PR #48 マージ後に main 反映。
+
+---
+
+### Task #4: `apply_update` に `golden_pass_required` オプション追加（デフォルト ON）— 2026-04-24
+
+PM 委任（general-purpose + opus）で完了。PR #49（PMO Accept、Critical:0 / Major:0 / Minor:0）。Option C ハイブリッド採用（`last_golden_result` 明示渡し or 未指定時は内部で `_tool_run_golden_tests` 実行）。golden case 未定義時は `warnings: ["no_golden_cases_defined"]` 付き apply 許可で silent success を防止。`_assert_golden_passed` helper を切り出し SRP 遵守、構造化エラー `golden_not_passed` + `summary` + `hint` で AI エージェントの自己修復を支援。docs / MCP schema / CHANGELOG 完全同期。フルスイート 952/952 PASSED（playwright 33 件 pre-existing 除外）。
+
+| 観点 | スコア | 前回差分 |
+|------|:------:|:-------:|
+| ゴール寄与 | 5/5 | +1（Phase 4 Safe Iteration を API レベルで担保、サイクル思想綻び解消） |
+| 原則遵守 | 5/5 | ±0（Local-First 維持、silent success 禁止を warnings で担保） |
+| UX 一貫性 | 5/5 | ±0（docs / MCP description / 実装の三者整合、エラーメッセージに hint 付き） |
+| 誤魔化し耐性 | 5/5 | ±0（強制ゲート化で「docs には書いてあるが API は守らない」綻びが消失） |
+| Hexagonal 純度 | 2/5 | ±0（private helper 抽出で SRP は改善したが adapters → application の経由は維持、レイヤ境界変化なし） |
+| SRP 遵守 | 1/5 | ±0（helper 抽出は局所改善、mcp_server.py の肥大 1000+ 行は未解決） |
+| API 一貫性 | 4/5 | ±0（構造化エラー形式が本タスクで確立、#16 で全 MCP tool 統一する際の雛形になる） |
+| エラーメッセージ品質 | 5/5 | +1（`error` / `message` / `summary` / `hint` の 4 フィールド構造化、AI エージェントが解釈可能） |
+| 差別化軸の実装度 | 2/5 | ±0（#23 judge handler 未実装のまま。ただし #23 完了後の「propose→judge→golden→apply」サイクルの前提は本タスクで整備） |
+
+- **体現が進んだ点**:
+  - Phase 4「Safe Iteration」の思想を **API で強制** するレベルに到達。docs と実装の乖離 0 を #3 に続き維持
+  - 構造化エラー（`error` / `message` / `summary` / `hint`）の形式が確立。#16 (MCP エラー統一) の雛形として他 tool に展開できる
+  - `last_golden_result` 再利用設計により「二重実行を避けたい AI エージェント」の UX 向上
+  - golden case 未定義時の warning 付き apply 許可で「未検証だが使いたい」を安全に受け止めつつ silent success を防止（「誤魔化さない」思想の体現）
+- **残課題・新規課題**:
+  - `mcp_server.py` の SRP（1000+ 行）は本タスクでは解決しない。#19（mcp_server.py のツール分割）で取る
+  - `_assert_golden_passed` は adapter 内 helper のまま。CLI (`yagra apply`) で共通利用する段になれば application/use_cases/ へ昇格
+  - `propose_update` / `rollback_update` の構造化エラー形式は未統一（#16 で一括整理）
+- **累積ドリフト所見**: ポジティブ継続。#3 (docs↔実装整合) → #4 (API↔思想整合) の流れで「綻びの沈殿」が減っている
+- **次タスクへの示唆**:
+  - 差別化軸スコア 2/5 を動かすために **#23 (create_judge_handler)** へ着手する。Must / 依存 #1 解消済み / ビジョン根幹
+  - #5（E2E 実 LLM 補強）は #4 の成果で前提条件が揃った。#23 で handler を実装した後に自己改善サイクル E2E（#26）と統合できる順序が自然
+  - Mission Brief の CHANGELOG 追記チェックリスト組み込みが #4 で標準化された（PMO 指摘 0 件）
+
+### PO 検証（Phase 2d / Task #4）
+
+| 観点 | 判定 | 根拠 |
+|------|:----:|------|
+| ゴール寄与 | ✓ | Phase 4 Safe Iteration を API レベルで担保、サイクル思想綻び完全解消 |
+| 原則遵守 | ✓ | Local-First 維持、silent success 禁止を warnings で担保、外部送信なし |
+| UX 一貫性 | ✓ | docs / MCP description / 実装の三者整合、エラーに hint で AI self-repair 支援 |
+| 累積ドリフト | ポジティブ | #3 (docs↔実装整合) → #4 (API↔思想整合) の連鎖、綻びの沈殿が減少 |
+
+**PO 判定: Accept**。PR #49 マージ後に main 反映。

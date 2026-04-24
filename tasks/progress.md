@@ -4,16 +4,21 @@
 **現在の Phase**: 2
 
 ## バックログ概要
-完了: 3/27 タスク（#1 方針確定、#2 llm-basic 修復、#3 validate-example.yml 実在化）
+完了: 4/27 タスク（#1 方針確定、#2 llm-basic 修復、#3 validate-example.yml 実在化、#4 apply_update golden gate）
 
 ## 現在のタスク
-- タスク: #4 `_tool_apply_update` に「run_golden_tests 成功前提」オプションを追加しデフォルト ON
-- ステージ: Phase 2c（PM Agent 起動予定）
+- タスク: #23 `create_judge_handler` を実装（LLM-as-a-Judge 基本版）
+- ステージ: Phase 2a 完了後（PR #49 マージ待機 → 2b 移行予定）
 
-### PO層
+### PO層（#23 向け）
+- PO-PMアライメント: 未着手（PR #49 マージ後に着手）
+- 契約: 未作成
+- PO検証: #4 PO検証 Accept 済み（PR #49 マージ後に main 反映）
+
+### PM層（#4 Phase 2c→2d 完了時点）
 - PO-PMアライメント: 完了（PM Alignment Agent 1往復で Option C + no-case warning 方針確定）
 - 契約: `tasks/20260424114514_contract-po-pm-apply-update-golden-gate.md`
-- PO検証: 未着手（PM 結果レポート受領後に実施）
+- PO検証（2026-04-24）: **Accept** — ゴール寄与 4→5 / エラー品質 4→5、累積ドリフトはポジティブ継続
 
 ### PM層（Phase 2c 開始時）
 - Developer 数: M サイズだが PM 環境制約で PM が 1 Developer + PMO を sequentially 代行
@@ -89,14 +94,20 @@
 ## 生成済みドキュメント
 - tasks/progress.md: 進捗記録（本ファイル）
 - tasks/vision-audit.md: ビジョン整合性監査レポート（Critical 3 / Major 13 / Minor 3）
-- tasks/vision-alignment-log.md: ビジョン体現度の累積ログ（ベースライン + Task #1-#3 エントリ）
-- tasks/backlog.md: 27 タスクのプロダクトバックログ（Must 9 / Should 11 / Could 7）。#1-#3 done
-- tasks/learnings.md: タスク間学習ログ（#3 で初期化。技術的発見 / プロジェクト固有パターン / 環境的発見）
+- tasks/vision-alignment-log.md: ビジョン体現度の累積ログ（ベースライン + Task #1-#4 エントリ）
+- tasks/backlog.md: 27 タスクのプロダクトバックログ（Must 9 / Should 11 / Could 7）。#1-#4 done
+- tasks/learnings.md: タスク間学習ログ（#3 初期化、#4 で CHANGELOG 追記昇格完了 / 構造化エラー 4 フィールド / PM 代行運用 2 回目再現性確認）
 - tasks/20260424085623_contract-po-pm-add-validate-example-workflow.md: #3 PO-PM 契約
 - tasks/20260424085835_intent-add-validate-example-workflow.md: #3 Intent
 - tasks/20260424085949_plan-add-validate-example-workflow.md: #3 Plan
 - tasks/20260424090042_mission-add-validate-example-workflow.md: #3 Mission Brief
 - tasks/20260424090931_review-add-validate-example-workflow.md: #3 PMO レビュー（Accept）
+- tasks/20260424114514_contract-po-pm-apply-update-golden-gate.md: #4 PO-PM 契約（Option C 採用）
+- tasks/20260424114909_intent-apply-update-golden-gate.md: #4 Intent
+- tasks/20260424115020_plan-apply-update-golden-gate.md: #4 Plan
+- tasks/20260424115130_mission-apply-update-golden-gate.md: #4 Mission Brief
+- tasks/20260424115306_developer1-apply-update-golden-gate.md: #4 Developer 1（PM 代行）記録
+- tasks/20260424120316_review-apply-update-golden-gate.md: #4 PMO レビュー（Accept / 0/0/0）
 
 ## 注記
 - モード: ビジョン整合性監査（Phase 1c 主軸）
