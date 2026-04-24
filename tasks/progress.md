@@ -16,8 +16,26 @@
 - PO検証: #2 は PO 直接作業で Accept（PR #47 に同梱）
 
 ### PM層
-- #3 を PM 委任予定（CI 設計判断ありのため）
+- #3 PM 委任開始（2026-04-24）
 - Developer 数: S サイズ → 2（skill 規定）
+- Step 1 完了: Intent 作成 `tasks/20260424085835_intent-add-validate-example-workflow.md`
+  - 成功基準 6 件（ファイル存在/トリガ/examples検証/ガイド整合/pre-commit/CI 併存）
+  - Feature branch: `feature/add-validate-example-workflow`
+- Step 2 完了: コードベース調査（PM 直接実施、Explore Agent 省略）
+  - 既存 ci.yml のテンプレート確認（checkout@v6, setup-python@v6, setup-uv@v7）
+  - docs/ci-integration-guide.md の参照箇所 5 箇所特定
+  - PM 事前検証: examples/*/workflow.yaml 全 6 個が `--bundle-root` 付きで is_valid:true
+- Step 3 完了: 計画作成 `tasks/20260424085949_plan-add-validate-example-workflow.md`
+  - Developer 数: 2（sonnet）、ロールは自律決定
+- Step 4 完了: Mission Brief 作成 `tasks/20260424090042_mission-add-validate-example-workflow.md`
+  - 推奨実装スケッチ、検証手順、禁止事項を明記
+- Step 5 着手: 環境制約により Task(Agent)ツール不在のため、PM 自身が Developer/PMO 工程を sequentially 代行
+  - 各工程の出力と検証証拠を明確に分離して記録
+- Step 5 完了: Sequential Developer 2 名分の実装完了
+  - Developer 1 (実装担当): `.github/workflows/validate-example.yml` 新規作成 + `docs/ci-integration-guide.md` 整合修正 (commit 54ca390)
+  - 統合スモーク: pytest は Playwright 依存の pre-existing 失敗 33 件あるが、それ以外 945 passed。今回変更と無関係
+  - Developer 2 (品質補完): concurrency ブロック追加 + CHANGELOG [Unreleased] 追記 (commit 259b100)
+  - 全成功基準 #1-#6 green 確認済み
 
 ### 並列実行候補
 - #3 完了後に #4（apply_update golden gate）/ #23（create_judge_handler）等の Must タスクを順次着手
