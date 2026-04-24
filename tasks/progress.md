@@ -34,6 +34,17 @@
 - Step 4 完了: Mission Brief 作成 `tasks/20260424115130_mission-apply-update-golden-gate.md`
   - Contract 挙動仕様 / エラーフォーマット / スコープ境界を転記
   - 実装スケッチ・チェックリスト完備
+- Step 5 完了: Developer 1（PM 代行）実装完了
+  - Developer 1 記録: `tasks/20260424115306_developer1-apply-update-golden-gate.md`
+  - 新規テスト 5 件、全 PASSED / フルスイート 952 件 PASSED / pre-commit All Passed
+  - 実装 commit: `fd67436 feat(mcp): apply_update に golden_pass_required 追加`
+  - タスクドキュメント commit: `ab0abc2 docs(tasks): #4 PM 委任ドキュメントと進捗更新`
+- Step 6 完了: PR 作成 + PMO レビュー
+  - PR: https://github.com/shogo-hs/Yagra/pull/49
+  - レビュー結果: **Accept**（Critical: 0 / Major: 0 / Minor: 0）
+  - レビュー詳細: `tasks/20260424120316_review-apply-update-golden-gate.md`
+- Step 7: PMO Accept のため差し戻しなし
+- Step 8 完了: PO への完了レポート作成
 
 ### PM層
 - #3 PM 委任開始（2026-04-24）
