@@ -1,19 +1,19 @@
 # 実行進捗
 
-**最終更新**: 2026-04-23
+**最終更新**: 2026-04-24
 **現在の Phase**: 2
 
 ## バックログ概要
-完了: 2/27 タスク（#1 方針確定、#2 llm-basic 修復 done）
+完了: 3/27 タスク（#1 方針確定、#2 llm-basic 修復、#3 validate-example.yml 実在化）
 
 ## 現在のタスク
-- タスク: #3 `.github/workflows/validate-example.yml` の実在化（CI 統合）
-- ステージ: Phase 2b（PO-PM アライメント）開始予定
+- タスク: #4 `_tool_apply_update` に「run_golden_tests 成功前提」オプションを追加しデフォルト ON
+- ステージ: Phase 2a（次タスク選択完了、PR #48 マージ待機 → 2b 移行予定）
 
 ### PO層
-- PO-PMアライメント: 未着手（#3 の Task Brief ドラフト作成予定）
+- PO-PMアライメント: 未着手（#4 の Task Brief ドラフト作成予定。PR #48 マージ後に着手）
 - 契約: 未作成
-- PO検証: #2 は PO 直接作業で Accept（PR #47 に同梱）
+- PO検証: #3 PO検証 Accept 済み（PR #48 マージ後に main 反映）
 
 ### PM層
 - #3 PM 委任開始（2026-04-24）
@@ -43,17 +43,29 @@
   - PMO レビュー結果: Accept (Critical:0 / Major:0 / Minor:0)
   - レビュー詳細: `tasks/20260424090931_review-add-validate-example-workflow.md`
 - Step 7: PMO Accept のため差し戻しなし
-- Step 8 完了: PM からの完了レポート作成済み (本報告の本文)
+- Step 8 完了: PM からの完了レポート作成済み
+
+### PO検証（2026-04-24）
+- **判定: Accept**（全観点 ✓、累積ドリフトはポジティブ）
+- 根拠: Phase 4 CI Integration の実証サンプル整備、docs↔実装の乖離が 0 に、Local-First 維持、既存 ci.yml と併存
+- `tasks/vision-alignment-log.md` に Task #3 エントリ追記済み
+- PR #48: CI 両ジョブ SUCCESS（`quality` 1m54s / `validate-examples` 16s）、レビュー承認待機中
 
 ### 並列実行候補
-- #3 完了後に #4（apply_update golden gate）/ #23（create_judge_handler）等の Must タスクを順次着手
-- #3 の独立性が高いため先に PR マージ可能
+- #4（apply_update golden gate） / #23（create_judge_handler）等の Must タスクを順次着手
+- #4 → #23 の順が整合性高い（#4 で apply サイクル思想の綻び補正 → #23 で差別化軸実装の起点）
 
 ## 生成済みドキュメント
 - tasks/progress.md: 進捗記録（本ファイル）
 - tasks/vision-audit.md: ビジョン整合性監査レポート（Critical 3 / Major 13 / Minor 3）
-- tasks/vision-alignment-log.md: ベースラインスコア記録
-- tasks/backlog.md: 22 タスクのプロダクトバックログ（Must 7 / Should 8 / Could 7）
+- tasks/vision-alignment-log.md: ビジョン体現度の累積ログ（ベースライン + Task #1-#3 エントリ）
+- tasks/backlog.md: 27 タスクのプロダクトバックログ（Must 9 / Should 11 / Could 7）。#1-#3 done
+- tasks/learnings.md: タスク間学習ログ（#3 で初期化。技術的発見 / プロジェクト固有パターン / 環境的発見）
+- tasks/20260424085623_contract-po-pm-add-validate-example-workflow.md: #3 PO-PM 契約
+- tasks/20260424085835_intent-add-validate-example-workflow.md: #3 Intent
+- tasks/20260424085949_plan-add-validate-example-workflow.md: #3 Plan
+- tasks/20260424090042_mission-add-validate-example-workflow.md: #3 Mission Brief
+- tasks/20260424090931_review-add-validate-example-workflow.md: #3 PMO レビュー（Accept）
 
 ## 注記
 - モード: ビジョン整合性監査（Phase 1c 主軸）

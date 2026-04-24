@@ -77,3 +77,31 @@ PO 直接作業で修復。`version`/`start_at`/`end_at` 追加、`edges: []`。
 - **残課題・新規課題**: #3 の validate-example.yml 欠落は未対応（次タスクで解消予定）
 - **累積ドリフト所見**: なし。llm-basic が放置されていた原因は M-15/M-16 実装時に引き継ぎ漏れたものと推定（他 examples は v1.0 化済）
 - **次タスクへの示唆**: #3（validate-example.yml 実在化）を PM 委任で進める。CI 経由で llm-basic 含む全 examples を継続検証する仕組みに繋げる
+
+---
+
+### Task #3: `.github/workflows/validate-example.yml` を実在化（Critical C3 解消）— 2026-04-24
+
+PM 委任（general-purpose + opus）で完了。PR #48（Accept判定、Critical:0/Major:0/Minor:0）。CI 実ジョブで `validate-examples` 16 秒 pass、examples/ 全 6 個が `is_valid: true`。Developer 2 名（PM 代行）で concurrency ブロック + 0 マッチガード + CHANGELOG 更新まで拡張。`docs/ci-integration-guide.md` の `find` 記述も glob 実装と整合化。
+
+| 観点 | スコア | 前回差分 |
+|------|:------:|:-------:|
+| UX 一貫性 | 5/5 | +1（Critical C3 解消で入口〜CI の一貫性が整った） |
+| 誤魔化し耐性 | 5/5 | +1（docs と実装の乖離を完全解消） |
+| 差別化軸 / Hexagonal / SRP | 2/5 / 2/5 / 1/5 | ±0（本タスクはスコープ外） |
+
+- **体現が進んだ点**: Phase 4 (Approve & Update) の CI Integration が実証サンプルとして機能。Yagra 自身のリポジトリが「例を自分で検証している」状態になり、Dogfooding が整う
+- **残課題・新規課題**: なし。Critical 3 件すべて本 Phase で解消完了
+- **累積ドリフト所見**: 良い方向へのドリフト。docs ↔ 実装の乖離が 0 に
+- **次タスクへの示唆**: Must 残り 6 件（#4 apply_update golden gate, #5 E2E 実 LLM, #6 Golden Test 制約ドキュメント, #7 studio UI 外出し, #23 judge handler, #24 self-improve example）。#4 は apply サイクル思想の綻び補正、#23 は差別化軸実装の起点。#4 → #23 の順が整合性高い
+
+### PO 検証（Phase 2d / Task #3）
+
+| 観点 | 判定 | 根拠 |
+|------|:----:|------|
+| ゴール寄与 | ✓ | Phase 4 CI Integration の実証サンプル整備 |
+| 原則遵守 | ✓ | Local-First 維持、外部送信なし、既存 `ci.yml` と併存 |
+| UX 一貫性 | ✓ | ガイドとコードの整合、クイックスタートが辿れる |
+| 累積ドリフト | ポジティブ | docs ↔ 実装の乖離が 0 に |
+
+**PO 判定: Accept**。PR #48 マージ後に main 反映。
