@@ -48,7 +48,7 @@ class TestStructuredLLMHandler:
         json_content = json.dumps({"name": "Alice", "age": 30})
         mock_litellm.completion.return_value = self._make_mock_response(json_content)
 
-        with patch("yagra.handlers.structured_llm_handler.litellm", mock_litellm):
+        with patch("yagra.adapters.outbound.llm_providers.litellm_provider.litellm", mock_litellm):
             from yagra.handlers.structured_llm_handler import (
                 create_structured_llm_handler,
             )
@@ -76,7 +76,7 @@ class TestStructuredLLMHandler:
         json_content = json.dumps({"name": "Bob", "age": 25})
         mock_litellm.completion.return_value = self._make_mock_response(json_content)
 
-        with patch("yagra.handlers.structured_llm_handler.litellm", mock_litellm):
+        with patch("yagra.adapters.outbound.llm_providers.litellm_provider.litellm", mock_litellm):
             from yagra.handlers.structured_llm_handler import (
                 create_structured_llm_handler,
             )
@@ -98,7 +98,7 @@ class TestStructuredLLMHandler:
         json_content = json.dumps({"name": "Charlie", "age": 40})
         mock_litellm.completion.return_value = self._make_mock_response(json_content)
 
-        with patch("yagra.handlers.structured_llm_handler.litellm", mock_litellm):
+        with patch("yagra.adapters.outbound.llm_providers.litellm_provider.litellm", mock_litellm):
             from yagra.handlers.structured_llm_handler import (
                 create_structured_llm_handler,
             )
@@ -121,7 +121,7 @@ class TestStructuredLLMHandler:
         json_content = json.dumps({"name": "Dave", "age": 20})
         mock_litellm.completion.return_value = self._make_mock_response(json_content)
 
-        with patch("yagra.handlers.structured_llm_handler.litellm", mock_litellm):
+        with patch("yagra.adapters.outbound.llm_providers.litellm_provider.litellm", mock_litellm):
             from yagra.handlers.structured_llm_handler import (
                 create_structured_llm_handler,
             )
@@ -149,7 +149,7 @@ class TestStructuredLLMHandler:
         json_content = json.dumps({"name": "Eve", "age": 28})
         mock_litellm.completion.return_value = self._make_mock_response(json_content)
 
-        with patch("yagra.handlers.structured_llm_handler.litellm", mock_litellm):
+        with patch("yagra.adapters.outbound.llm_providers.litellm_provider.litellm", mock_litellm):
             from yagra.handlers.structured_llm_handler import (
                 create_structured_llm_handler,
             )
@@ -174,7 +174,7 @@ class TestStructuredLLMHandler:
 
         custom_format = {"type": "text"}
 
-        with patch("yagra.handlers.structured_llm_handler.litellm", mock_litellm):
+        with patch("yagra.adapters.outbound.llm_providers.litellm_provider.litellm", mock_litellm):
             from yagra.handlers.structured_llm_handler import (
                 create_structured_llm_handler,
             )
@@ -197,25 +197,31 @@ class TestStructuredLLMHandler:
         assert call_kwargs["response_format"] == custom_format
 
     def test_json_parse_failure_raises_call_error(self, mock_litellm: MagicMock) -> None:
-        """Confirms that LLMHandlerCallError is raised when JSON parsing fails."""
+        """Confirms that LLMHandlerCallError is raised when JSON parsing fails.
+
+        Under the Port-routed pipeline, invalid JSON is detected inside the
+        litellm adapter and surfaced as :class:`LLMProviderCallError`, which
+        ``llm_retry_loop`` finally wraps into :class:`LLMHandlerCallError`.
+        """
         mock_litellm.completion.return_value = self._make_mock_response("This is not valid JSON")
 
-        with patch("yagra.handlers.structured_llm_handler.litellm", mock_litellm):
-            from yagra.handlers.llm_handler import LLMHandlerCallError
-            from yagra.handlers.structured_llm_handler import (
-                create_structured_llm_handler,
-            )
-
-            handler = create_structured_llm_handler(schema=PersonInfo, retry=1)
-            with pytest.raises(LLMHandlerCallError, match="Failed to parse"):
-                handler(
-                    state={},
-                    params={
-                        "prompt": {"system": "Extract", "user": "Extract"},
-                        "model": {"provider": "openai", "name": "gpt-4o"},
-                        "output_key": "person",
-                    },
+        with patch("yagra.adapters.outbound.llm_providers.litellm_provider.litellm", mock_litellm):
+            with patch("yagra.handlers._llm_common.time.sleep"):
+                from yagra.handlers.llm_handler import LLMHandlerCallError
+                from yagra.handlers.structured_llm_handler import (
+                    create_structured_llm_handler,
                 )
+
+                handler = create_structured_llm_handler(schema=PersonInfo, retry=1)
+                with pytest.raises(LLMHandlerCallError, match="litellm response is not valid JSON"):
+                    handler(
+                        state={},
+                        params={
+                            "prompt": {"system": "Extract", "user": "Extract"},
+                            "model": {"provider": "openai", "name": "gpt-4o"},
+                            "output_key": "person",
+                        },
+                    )
 
     def test_pydantic_validation_failure_raises_call_error(self, mock_litellm: MagicMock) -> None:
         """Confirms that LLMHandlerCallError is raised when Pydantic validation fails."""
@@ -223,7 +229,7 @@ class TestStructuredLLMHandler:
         invalid_json = json.dumps({"name": "Grace"})
         mock_litellm.completion.return_value = self._make_mock_response(invalid_json)
 
-        with patch("yagra.handlers.structured_llm_handler.litellm", mock_litellm):
+        with patch("yagra.adapters.outbound.llm_providers.litellm_provider.litellm", mock_litellm):
             from yagra.handlers.llm_handler import LLMHandlerCallError
             from yagra.handlers.structured_llm_handler import (
                 create_structured_llm_handler,
@@ -242,7 +248,7 @@ class TestStructuredLLMHandler:
 
     def test_missing_prompt_raises_config_error(self, mock_litellm: MagicMock) -> None:
         """Confirms that LLMHandlerConfigError is raised when prompt is not set."""
-        with patch("yagra.handlers.structured_llm_handler.litellm", mock_litellm):
+        with patch("yagra.adapters.outbound.llm_providers.litellm_provider.litellm", mock_litellm):
             from yagra.handlers.llm_handler import LLMHandlerConfigError
             from yagra.handlers.structured_llm_handler import (
                 create_structured_llm_handler,
@@ -260,7 +266,7 @@ class TestStructuredLLMHandler:
 
     def test_missing_model_raises_config_error(self, mock_litellm: MagicMock) -> None:
         """Confirms that LLMHandlerConfigError is raised when model is not set."""
-        with patch("yagra.handlers.structured_llm_handler.litellm", mock_litellm):
+        with patch("yagra.adapters.outbound.llm_providers.litellm_provider.litellm", mock_litellm):
             from yagra.handlers.llm_handler import LLMHandlerConfigError
             from yagra.handlers.structured_llm_handler import (
                 create_structured_llm_handler,
@@ -284,7 +290,7 @@ class TestStructuredLLMHandler:
             self._make_mock_response(json_content),
         ]
 
-        with patch("yagra.handlers.structured_llm_handler.litellm", mock_litellm):
+        with patch("yagra.adapters.outbound.llm_providers.litellm_provider.litellm", mock_litellm):
             with patch("yagra.handlers._llm_common.time.sleep") as mock_sleep:
                 from yagra.handlers.structured_llm_handler import (
                     create_structured_llm_handler,
@@ -308,7 +314,7 @@ class TestStructuredLLMHandler:
         """Confirms that LLMHandlerCallError is raised after the maximum number of retries."""
         mock_litellm.completion.side_effect = Exception("Persistent Error")
 
-        with patch("yagra.handlers.structured_llm_handler.litellm", mock_litellm):
+        with patch("yagra.adapters.outbound.llm_providers.litellm_provider.litellm", mock_litellm):
             with patch("yagra.handlers._llm_common.time.sleep"):
                 from yagra.handlers.llm_handler import LLMHandlerCallError
                 from yagra.handlers.structured_llm_handler import (
@@ -331,7 +337,7 @@ class TestStructuredLLMHandler:
         json_content = json.dumps({"names": ["Alice", "Bob"], "locations": ["Tokyo", "Osaka"]})
         mock_litellm.completion.return_value = self._make_mock_response(json_content)
 
-        with patch("yagra.handlers.structured_llm_handler.litellm", mock_litellm):
+        with patch("yagra.adapters.outbound.llm_providers.litellm_provider.litellm", mock_litellm):
             from yagra.handlers.structured_llm_handler import (
                 create_structured_llm_handler,
             )
@@ -355,7 +361,7 @@ class TestStructuredLLMHandler:
         json_content = json.dumps({"name": "Ivy", "age": 22})
         mock_litellm.completion.return_value = self._make_mock_response(json_content)
 
-        with patch("yagra.handlers.structured_llm_handler.litellm", mock_litellm):
+        with patch("yagra.adapters.outbound.llm_providers.litellm_provider.litellm", mock_litellm):
             from yagra.handlers.structured_llm_handler import (
                 create_structured_llm_handler,
             )
@@ -395,7 +401,7 @@ class TestDynamicSchemaHandler:
         json_content = json.dumps({"name": "Alice", "age": 30})
         mock_litellm.completion.return_value = self._make_mock_response(json_content)
 
-        with patch("yagra.handlers.structured_llm_handler.litellm", mock_litellm):
+        with patch("yagra.adapters.outbound.llm_providers.litellm_provider.litellm", mock_litellm):
             from yagra.handlers.structured_llm_handler import (
                 create_structured_llm_handler,
             )
@@ -423,7 +429,7 @@ class TestDynamicSchemaHandler:
         json_content = json.dumps({"title": "Hello"})
         mock_litellm.completion.return_value = self._make_mock_response(json_content)
 
-        with patch("yagra.handlers.structured_llm_handler.litellm", mock_litellm):
+        with patch("yagra.adapters.outbound.llm_providers.litellm_provider.litellm", mock_litellm):
             from yagra.handlers.structured_llm_handler import (
                 create_structured_llm_handler,
             )
@@ -446,7 +452,7 @@ class TestDynamicSchemaHandler:
 
     def test_no_schema_and_no_schema_yaml_raises_config_error(self) -> None:
         """Confirms that LLMHandlerConfigError is raised with schema=None and no schema_yaml."""
-        with patch("yagra.handlers.structured_llm_handler.litellm", MagicMock()):
+        with patch("yagra.adapters.outbound.llm_providers.litellm_provider.litellm", MagicMock()):
             from yagra.handlers.llm_handler import LLMHandlerConfigError
             from yagra.handlers.structured_llm_handler import (
                 create_structured_llm_handler,
@@ -467,7 +473,7 @@ class TestDynamicSchemaHandler:
 
     def test_invalid_schema_yaml_raises_schema_yaml_error(self) -> None:
         """Confirms that SchemaYamlError is raised with schema=None and invalid schema_yaml."""
-        with patch("yagra.handlers.structured_llm_handler.litellm", MagicMock()):
+        with patch("yagra.adapters.outbound.llm_providers.litellm_provider.litellm", MagicMock()):
             from yagra.handlers.schema_builder import SchemaYamlError
             from yagra.handlers.structured_llm_handler import (
                 create_structured_llm_handler,
@@ -492,7 +498,7 @@ class TestDynamicSchemaHandler:
         json_content = json.dumps({"name": "Bob", "age": 25})
         mock_litellm.completion.return_value = self._make_mock_response(json_content)
 
-        with patch("yagra.handlers.structured_llm_handler.litellm", mock_litellm):
+        with patch("yagra.adapters.outbound.llm_providers.litellm_provider.litellm", mock_litellm):
             from yagra.handlers.structured_llm_handler import (
                 create_structured_llm_handler,
             )
@@ -529,7 +535,7 @@ class TestStructuredLLMHandlerEdgeCases:
 
     def test_missing_provider_raises_config_error(self, mock_litellm: MagicMock) -> None:
         """Covers lines 149-150: model dict missing 'provider' raises LLMHandlerConfigError."""
-        with patch("yagra.handlers.structured_llm_handler.litellm", mock_litellm):
+        with patch("yagra.adapters.outbound.llm_providers.litellm_provider.litellm", mock_litellm):
             from yagra.handlers.llm_handler import LLMHandlerConfigError
             from yagra.handlers.structured_llm_handler import (
                 create_structured_llm_handler,
@@ -549,7 +555,7 @@ class TestStructuredLLMHandlerEdgeCases:
 
     def test_missing_model_name_raises_config_error(self, mock_litellm: MagicMock) -> None:
         """Covers lines 149-150: model dict missing 'name' raises LLMHandlerConfigError."""
-        with patch("yagra.handlers.structured_llm_handler.litellm", mock_litellm):
+        with patch("yagra.adapters.outbound.llm_providers.litellm_provider.litellm", mock_litellm):
             from yagra.handlers.llm_handler import LLMHandlerConfigError
             from yagra.handlers.structured_llm_handler import (
                 create_structured_llm_handler,
@@ -572,7 +578,7 @@ class TestStructuredLLMHandlerEdgeCases:
         json_content = json.dumps({"name": "Tom", "age": 50})
         mock_litellm.completion.return_value = self._make_mock_response(json_content)
 
-        with patch("yagra.handlers.structured_llm_handler.litellm", mock_litellm):
+        with patch("yagra.adapters.outbound.llm_providers.litellm_provider.litellm", mock_litellm):
             from yagra.handlers.structured_llm_handler import (
                 create_structured_llm_handler,
             )
@@ -600,7 +606,7 @@ class TestStructuredLLMHandlerEdgeCases:
         mock_response.usage = None
         mock_litellm.completion.return_value = mock_response
 
-        with patch("yagra.handlers.structured_llm_handler.litellm", mock_litellm):
+        with patch("yagra.adapters.outbound.llm_providers.litellm_provider.litellm", mock_litellm):
             from yagra.handlers.structured_llm_handler import (
                 create_structured_llm_handler,
             )
@@ -621,58 +627,70 @@ class TestStructuredLLMHandlerEdgeCases:
             assert "output" in result
 
     def test_empty_choices_raises_call_error(self, mock_litellm: MagicMock) -> None:
-        """Covers lines 210-211: empty choices list raises LLMHandlerCallError."""
+        """Empty provider choices surface as LLMHandlerCallError via Port.
+
+        Under the Port-routed implementation, empty choices are raised as
+        :class:`LLMProviderCallError` inside the adapter and wrapped by
+        ``llm_retry_loop``.
+        """
         mock_response = MagicMock()
         mock_response.choices = []  # empty choices
         mock_litellm.completion.return_value = mock_response
 
-        with patch("yagra.handlers.structured_llm_handler.litellm", mock_litellm):
-            from yagra.handlers.llm_handler import LLMHandlerCallError
-            from yagra.handlers.structured_llm_handler import (
-                create_structured_llm_handler,
-            )
-
-            handler = create_structured_llm_handler(schema=PersonInfo, retry=1)
-            with pytest.raises(LLMHandlerCallError, match="LLM returned empty response"):
-                handler(
-                    state={},
-                    params={
-                        "prompt": {"system": "Extract", "user": "Extract"},
-                        "model": {"provider": "openai", "name": "gpt-4o"},
-                    },
+        with patch("yagra.adapters.outbound.llm_providers.litellm_provider.litellm", mock_litellm):
+            with patch("yagra.handlers._llm_common.time.sleep"):
+                from yagra.handlers.llm_handler import LLMHandlerCallError
+                from yagra.handlers.structured_llm_handler import (
+                    create_structured_llm_handler,
                 )
 
+                handler = create_structured_llm_handler(schema=PersonInfo, retry=1)
+                with pytest.raises(LLMHandlerCallError, match="litellm returned empty choices"):
+                    handler(
+                        state={},
+                        params={
+                            "prompt": {"system": "Extract", "user": "Extract"},
+                            "model": {"provider": "openai", "name": "gpt-4o"},
+                        },
+                    )
+
     def test_none_content_raises_call_error(self, mock_litellm: MagicMock) -> None:
-        """Covers lines 215-216: None content raises LLMHandlerCallError."""
+        """None content surfaces as LLMHandlerCallError via Port."""
         mock_response = MagicMock()
         mock_response.choices = [MagicMock(message=MagicMock(content=None))]
         mock_litellm.completion.return_value = mock_response
 
-        with patch("yagra.handlers.structured_llm_handler.litellm", mock_litellm):
-            from yagra.handlers.llm_handler import LLMHandlerCallError
-            from yagra.handlers.structured_llm_handler import (
-                create_structured_llm_handler,
-            )
-
-            handler = create_structured_llm_handler(schema=PersonInfo, retry=1)
-            with pytest.raises(LLMHandlerCallError, match="LLM returned None content"):
-                handler(
-                    state={},
-                    params={
-                        "prompt": {"system": "Extract", "user": "Extract"},
-                        "model": {"provider": "openai", "name": "gpt-4o"},
-                    },
+        with patch("yagra.adapters.outbound.llm_providers.litellm_provider.litellm", mock_litellm):
+            with patch("yagra.handlers._llm_common.time.sleep"):
+                from yagra.handlers.llm_handler import LLMHandlerCallError
+                from yagra.handlers.structured_llm_handler import (
+                    create_structured_llm_handler,
                 )
 
-    def test_token_usage_recorded_when_trace_context_active(self, mock_litellm: MagicMock) -> None:
-        """Covers line 233: TraceContext.current() returns a context and record_llm_call is called."""
+                handler = create_structured_llm_handler(schema=PersonInfo, retry=1)
+                with pytest.raises(LLMHandlerCallError, match="litellm returned None content"):
+                    handler(
+                        state={},
+                        params={
+                            "prompt": {"system": "Extract", "user": "Extract"},
+                            "model": {"provider": "openai", "name": "gpt-4o"},
+                        },
+                    )
+
+    def test_structured_handler_does_not_record_token_usage(self, mock_litellm: MagicMock) -> None:
+        """Structured handler does not emit TraceContext token usage.
+
+        The :class:`LLMProviderPort.complete_structured` contract returns a
+        plain dict without token usage, so the handler cannot forward usage
+        to TraceContext. This is by design (Contract #28 SC-8).
+        """
         json_content = json.dumps({"name": "Zara", "age": 27})
         mock_response = MagicMock()
         mock_response.choices = [MagicMock(message=MagicMock(content=json_content))]
         mock_response.usage = MagicMock(prompt_tokens=10, completion_tokens=20, total_tokens=30)
         mock_litellm.completion.return_value = mock_response
 
-        with patch("yagra.handlers.structured_llm_handler.litellm", mock_litellm):
+        with patch("yagra.adapters.outbound.llm_providers.litellm_provider.litellm", mock_litellm):
             from yagra.application.use_cases.trace_collector import TraceContext
             from yagra.handlers.structured_llm_handler import (
                 create_structured_llm_handler,
@@ -696,13 +714,7 @@ class TestStructuredLLMHandlerEdgeCases:
                 )
 
         assert result["person"].name == "Zara"
-        mock_ctx.record_llm_call.assert_called_once_with(
-            model="openai/gpt-4o",
-            provider="openai",
-            prompt_tokens=10,
-            completion_tokens=20,
-            total_tokens=30,
-        )
+        mock_ctx.record_llm_call.assert_not_called()
 
     def test_token_usage_not_recorded_when_usage_is_none(self, mock_litellm: MagicMock) -> None:
         """Covers the response.usage is not None guard: no call when usage is None."""
@@ -712,7 +724,7 @@ class TestStructuredLLMHandlerEdgeCases:
         mock_response.usage = None  # no usage data
         mock_litellm.completion.return_value = mock_response
 
-        with patch("yagra.handlers.structured_llm_handler.litellm", mock_litellm):
+        with patch("yagra.adapters.outbound.llm_providers.litellm_provider.litellm", mock_litellm):
             from yagra.handlers.structured_llm_handler import (
                 create_structured_llm_handler,
             )

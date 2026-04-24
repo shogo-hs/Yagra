@@ -330,6 +330,44 @@ print(result["judge_result"])
 
 `claude_agent_sdk` は `claude-agent-sdk` パッケージを必要とします。未インストール時は構造化エラー `claude_agent_sdk_not_installed`（hint 付き）を fail-fast で返します。
 
+#### LLM handlers (`llm` / `structured_llm` / `streaming_llm`) の provider 切り替え
+
+judge handler と同じ Hybrid 解決は、`create_llm_handler` / `create_structured_llm_handler` / `create_streaming_llm_handler` にも適用されます。
+
+```yaml
+nodes:
+  - id: "chat"
+    handler: "llm"
+    params:
+      prompt_ref: "prompts/chat.yaml#default"
+      model:
+        provider: "openai"
+        name: "gpt-4o"
+      output_key: "response"
+      provider: "litellm"   # default; 省略可。"claude_agent_sdk" は structured_llm のみ対応
+```
+
+Python 側で dependency injection も可能です:
+
+```python
+from yagra.handlers import create_llm_handler
+from yagra.adapters.outbound.llm_providers.litellm_provider import LiteLLMProvider
+
+# 明示的な provider 注入（例: テスト時の fake 注入）
+handler = create_llm_handler(provider=LiteLLMProvider(), retry=3, timeout=30)
+```
+
+サポート対応表:
+
+| Handler | `litellm` | `claude_agent_sdk` |
+|---|---|---|
+| `llm` | ✅ | ❌（`complete_unsupported` で fail-fast） |
+| `structured_llm` | ✅ | ✅ |
+| `streaming_llm` | ✅ | ❌（`streaming_unsupported` で fail-fast） |
+| `judge` | ✅ | ✅（default） |
+
+未知の provider 名は構造化エラー `unknown_provider`（4-field payload: `{error, message, summary, hint}`）を返し、silent success を防ぎます。
+
 ### 出力構造とスコア集約
 
 - `score`: 各 criterion 名をキーとした数値マップ。複数 criterion の場合は `_overall`（算術平均）が自動で付与されます。

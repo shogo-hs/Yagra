@@ -207,9 +207,7 @@ class LiteLLMProvider(LLMProviderPort):
                 **call_kwargs,
             )
         except Exception as exc:  # noqa: BLE001
-            raise LLMProviderCallError(
-                f"litellm.completion (stream) failed: {exc}"
-            ) from exc
+            raise LLMProviderCallError(f"litellm.completion (stream) failed: {exc}") from exc
 
         yield from _iterate_stream(response)
 

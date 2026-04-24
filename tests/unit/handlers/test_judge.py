@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sys
 import textwrap
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 from unittest.mock import patch
@@ -11,9 +12,11 @@ from unittest.mock import patch
 import pytest
 
 from yagra.ports.outbound.llm_provider import (
+    LLMCompletion,
     LLMProviderCallError,
     LLMProviderConfigError,
     LLMProviderPort,
+    LLMStreamChunk,
 )
 
 
@@ -53,6 +56,35 @@ class _FakeProvider(LLMProviderPort):
         if self.raise_error is not None:
             raise self.raise_error
         return self.response
+
+    def complete(
+        self,
+        *,
+        system_prompt: str,
+        user_prompt: str,
+        model: str,
+        timeout: int = 30,
+        **kwargs: Any,
+    ) -> LLMCompletion:
+        """Not used by judge tests; implemented for Protocol conformance."""
+        raise NotImplementedError("judge handler only uses complete_structured")
+
+    def complete_streaming(
+        self,
+        *,
+        system_prompt: str,
+        user_prompt: str,
+        model: str,
+        timeout: int = 30,
+        **kwargs: Any,
+    ) -> Iterator[LLMStreamChunk]:
+        """Not used by judge tests; implemented for Protocol conformance."""
+
+        def _gen() -> Iterator[LLMStreamChunk]:
+            raise NotImplementedError("judge handler only uses complete_structured")
+            yield  # pragma: no cover
+
+        return _gen()
 
 
 _BASIC_RUBRIC = {

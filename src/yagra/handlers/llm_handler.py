@@ -1,34 +1,46 @@
-"""LLM handler implementation using litellm.
+"""LLM handler implementation routed through :class:`LLMProviderPort`.
 
-This module provides a generic LLM invocation handler using litellm.
-It supports over 100 LLM providers through a unified API.
+This module provides a generic LLM invocation handler that delegates all
+LLM calls to an :class:`LLMProviderPort` implementation. Callers may
+inject a concrete provider (dependency injection) or let the workflow YAML
+select one by name via ``params.provider``. No litellm import lives here
+anymore — the adapter layer owns that boundary.
 """
 
 from typing import Any
-
-import litellm
 
 from yagra.handlers.errors import (
     LLMHandlerCallError,
     LLMHandlerConfigError,
     LLMHandlerError,
 )
+from yagra.ports.outbound.llm_provider import LLMProviderPort
 from yagra.ports.outbound.node_registry import NodeHandler
 
 
 def create_llm_handler(
+    provider: LLMProviderPort | None = None,
     retry: int = 3,
     timeout: int = 30,
 ) -> NodeHandler:
-    """Creates an LLM invocation handler.
+    """Creates an LLM invocation handler routed through :class:`LLMProviderPort`.
 
-    Generates a handler that supports over 100 LLM providers using litellm.
-    Simply specify `prompt_ref`, `model`, and `output_key` in the YAML
-    definition to enable LLM invocation. Variables in the prompt template
-    (e.g. ``{query}``) are automatically extracted from state.
+    Generates a handler that delegates text completion to any
+    :class:`LLMProviderPort` implementation — typically
+    :class:`~yagra.adapters.outbound.llm_providers.litellm_provider.LiteLLMProvider`
+    which supports 100+ upstream providers. Simply specify ``prompt_ref``,
+    ``model``, and ``output_key`` in the YAML definition to enable LLM
+    invocation. Variables in the prompt template (e.g. ``{query}``) are
+    automatically extracted from state.
+
+    Hybrid signature: pass an explicit ``provider`` for dependency
+    injection (e.g. tests), or omit it and let the handler resolve one
+    from ``params["provider"]`` (default ``"litellm"``).
 
     Args:
-        retry: Number of retries on API errors (default: 3).
+        provider: Explicit provider instance. When ``None``, resolved from
+            ``params["provider"]`` (default ``"litellm"``).
+        retry: Number of retries on transient errors (default: 3).
         timeout: Timeout in seconds (default: 30).
 
     Returns:
@@ -69,21 +81,22 @@ def create_llm_handler(
 
         Args:
             state: Workflow state dictionary.
-            params: Node parameters (prompt, model, output_key).
+            params: Node parameters (prompt, model, provider, output_key).
 
         Returns:
             dict: Response in the format {output_key: response_text}.
 
         Raises:
-            LLMHandlerConfigError: If required parameters are missing.
+            LLMHandlerConfigError: If required parameters are missing or
+                if ``params["provider"]`` is unknown.
             LLMHandlerCallError: If LLM invocation fails.
         """
         from yagra.handlers._llm_common import (
-            build_messages,
             extract_llm_params,
             interpolate_prompt,
             llm_retry_loop,
-            report_token_usage,
+            report_completion_usage,
+            resolve_handler_provider,
         )
 
         p = extract_llm_params(params, default_retry=retry)
@@ -92,29 +105,19 @@ def create_llm_handler(
             p.user_prompt_template,
             state,
         )
-        messages = build_messages(system_prompt, user_prompt)
+
+        resolved_provider = resolve_handler_provider(provider, params.get("provider"))
 
         def _call() -> dict[str, Any]:
-            response = litellm.completion(
+            completion = resolved_provider.complete(
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
                 model=p.litellm_model,
-                messages=messages,
                 timeout=timeout,
                 **p.model_kwargs,
             )
-
-            if not response.choices:
-                msg = "LLM returned empty response"
-                raise LLMHandlerCallError(msg)
-
-            content = response.choices[0].message.content
-            if content is None:
-                msg = "LLM returned None content"
-                raise LLMHandlerCallError(msg)
-
-            if response.usage is not None:
-                report_token_usage(response.usage, p.litellm_model, p.provider)
-
-            return {p.output_key: content}
+            report_completion_usage(completion.usage, p.litellm_model, p.provider)
+            return {p.output_key: completion.content}
 
         return llm_retry_loop(_call, p.effective_retry)
 
@@ -177,6 +180,15 @@ LLM_HANDLER_PARAMS_SCHEMA: dict = {
             "description": "State key name to store the LLM output. Defaults to 'output'",
             "default": "output",
             "examples": ["translation", "summary", "result"],
+        },
+        "provider": {
+            "type": "string",
+            "description": (
+                "LLMProviderPort adapter to route calls through. Defaults to 'litellm'. "
+                "Use 'claude_agent_sdk' for the Claude Agent SDK (requires yagra[judge])."
+            ),
+            "enum": ["litellm", "claude_agent_sdk"],
+            "default": "litellm",
         },
     },
     "required": ["model"],

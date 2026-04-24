@@ -215,9 +215,7 @@ def _build_response_mock(
     response = MagicMock(spec_set=["choices", "usage", "model_dump"])
     response.choices = [MagicMock(message=MagicMock(content=content))]
     if usage is not None:
-        usage_mock = MagicMock(
-            spec_set=["prompt_tokens", "completion_tokens", "total_tokens"]
-        )
+        usage_mock = MagicMock(spec_set=["prompt_tokens", "completion_tokens", "total_tokens"])
         usage_mock.prompt_tokens = usage["prompt_tokens"]
         usage_mock.completion_tokens = usage["completion_tokens"]
         usage_mock.total_tokens = usage["total_tokens"]
@@ -292,7 +290,9 @@ class TestLiteLLMProviderComplete:
 
             with pytest.raises(LLMProviderCallError, match="empty choices"):
                 LiteLLMProvider().complete(
-                    system_prompt="s", user_prompt="u", model="openai/gpt-4o",
+                    system_prompt="s",
+                    user_prompt="u",
+                    model="openai/gpt-4o",
                 )
 
     def test_none_content_raises_call_error(self) -> None:
@@ -310,7 +310,9 @@ class TestLiteLLMProviderComplete:
 
             with pytest.raises(LLMProviderCallError, match="None content"):
                 LiteLLMProvider().complete(
-                    system_prompt="s", user_prompt="u", model="openai/gpt-4o",
+                    system_prompt="s",
+                    user_prompt="u",
+                    model="openai/gpt-4o",
                 )
 
     def test_completion_exception_wrapped(self) -> None:
@@ -326,7 +328,9 @@ class TestLiteLLMProviderComplete:
 
             with pytest.raises(LLMProviderCallError, match="litellm.completion failed"):
                 LiteLLMProvider().complete(
-                    system_prompt="s", user_prompt="u", model="openai/gpt-4o",
+                    system_prompt="s",
+                    user_prompt="u",
+                    model="openai/gpt-4o",
                 )
 
 
@@ -335,7 +339,6 @@ class TestLiteLLMProviderCompleteStreaming:
 
     def _stream_chunks(self, deltas: list[str]) -> MagicMock:
         """Builds a streaming-response iterable of chunk mocks."""
-
         chunks: list[MagicMock] = []
         for delta in deltas:
             chunk = MagicMock(spec_set=["choices"])
@@ -349,9 +352,7 @@ class TestLiteLLMProviderCompleteStreaming:
 
     def test_emits_each_delta_and_terminal_chunk(self) -> None:
         mock_litellm = MagicMock()
-        mock_litellm.completion.return_value = self._stream_chunks(
-            ["Hello", " ", "world"]
-        )
+        mock_litellm.completion.return_value = self._stream_chunks(["Hello", " ", "world"])
 
         with patch(
             "yagra.adapters.outbound.llm_providers.litellm_provider.litellm",
@@ -392,7 +393,9 @@ class TestLiteLLMProviderCompleteStreaming:
 
             chunks = list(
                 LiteLLMProvider().complete_streaming(
-                    system_prompt="s", user_prompt="u", model="openai/gpt-4o",
+                    system_prompt="s",
+                    user_prompt="u",
+                    model="openai/gpt-4o",
                 )
             )
 
@@ -415,7 +418,9 @@ class TestLiteLLMProviderCompleteStreaming:
             with pytest.raises(LLMProviderCallError, match="stream.*failed"):
                 list(
                     LiteLLMProvider().complete_streaming(
-                        system_prompt="s", user_prompt="u", model="openai/gpt-4o",
+                        system_prompt="s",
+                        user_prompt="u",
+                        model="openai/gpt-4o",
                     )
                 )
 

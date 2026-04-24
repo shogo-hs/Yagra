@@ -32,7 +32,9 @@ class TestLLMHandler:
         mock_response = MagicMock()
         mock_response.choices = [MagicMock(message=MagicMock(content="Hello, world!"))]
 
-        with patch("yagra.handlers.llm_handler.litellm") as mock_litellm:
+        with patch(
+            "yagra.adapters.outbound.llm_providers.litellm_provider.litellm"
+        ) as mock_litellm:
             mock_litellm.completion.return_value = mock_response
 
             state = {"query": "こんにちは"}
@@ -54,7 +56,9 @@ class TestLLMHandler:
         mock_response = MagicMock()
         mock_response.choices = [MagicMock(message=MagicMock(content="Test response"))]
 
-        with patch("yagra.handlers.llm_handler.litellm") as mock_litellm:
+        with patch(
+            "yagra.adapters.outbound.llm_providers.litellm_provider.litellm"
+        ) as mock_litellm:
             mock_litellm.completion.return_value = mock_response
 
             state = {"name": "Alice", "age": 30}
@@ -77,7 +81,7 @@ class TestLLMHandler:
 
     def test_handler_missing_prompt_raises_error(self) -> None:
         """Confirms that an error is raised when the prompt parameter is missing."""
-        with patch("yagra.handlers.llm_handler.litellm"):
+        with patch("yagra.adapters.outbound.llm_providers.litellm_provider.litellm"):
             handler = create_llm_handler()
 
             state: dict[str, Any] = {}
@@ -90,7 +94,7 @@ class TestLLMHandler:
 
     def test_handler_missing_model_raises_error(self) -> None:
         """Confirms that an error is raised when the model parameter is missing."""
-        with patch("yagra.handlers.llm_handler.litellm"):
+        with patch("yagra.adapters.outbound.llm_providers.litellm_provider.litellm"):
             handler = create_llm_handler()
 
             state: dict[str, Any] = {}
@@ -103,7 +107,7 @@ class TestLLMHandler:
 
     def test_handler_missing_model_provider_raises_error(self) -> None:
         """Confirms that an error is raised when model.provider is missing."""
-        with patch("yagra.handlers.llm_handler.litellm"):
+        with patch("yagra.adapters.outbound.llm_providers.litellm_provider.litellm"):
             handler = create_llm_handler()
 
             state: dict[str, Any] = {}
@@ -121,7 +125,9 @@ class TestLLMHandler:
         """Confirms that retry is executed on failure."""
         handler = create_llm_handler(retry=3, timeout=10)
 
-        with patch("yagra.handlers.llm_handler.litellm") as mock_litellm:
+        with patch(
+            "yagra.adapters.outbound.llm_providers.litellm_provider.litellm"
+        ) as mock_litellm:
             # First 2 attempts fail, 3rd succeeds
             mock_response = MagicMock()
             mock_response.choices = [MagicMock(message=MagicMock(content="Success"))]
@@ -147,7 +153,9 @@ class TestLLMHandler:
 
     def test_handler_fails_after_max_retry(self) -> None:
         """Confirms that an error is raised when the maximum retry count is reached."""
-        with patch("yagra.handlers.llm_handler.litellm") as mock_litellm:
+        with patch(
+            "yagra.adapters.outbound.llm_providers.litellm_provider.litellm"
+        ) as mock_litellm:
             handler = create_llm_handler(retry=2, timeout=10)
             mock_litellm.completion.side_effect = Exception("Persistent error")
 
@@ -169,7 +177,9 @@ class TestLLMHandler:
         mock_response = MagicMock()
         mock_response.choices = [MagicMock(message=MagicMock(content="Response"))]
 
-        with patch("yagra.handlers.llm_handler.litellm") as mock_litellm:
+        with patch(
+            "yagra.adapters.outbound.llm_providers.litellm_provider.litellm"
+        ) as mock_litellm:
             mock_litellm.completion.return_value = mock_response
 
             state = {"query": "test"}
@@ -195,7 +205,9 @@ class TestLLMHandler:
         mock_response = MagicMock()
         mock_response.choices = [MagicMock(message=MagicMock(content="Default output"))]
 
-        with patch("yagra.handlers.llm_handler.litellm") as mock_litellm:
+        with patch(
+            "yagra.adapters.outbound.llm_providers.litellm_provider.litellm"
+        ) as mock_litellm:
             mock_litellm.completion.return_value = mock_response
 
             state = {"query": "test"}
@@ -215,7 +227,9 @@ class TestLLMHandler:
         mock_response = MagicMock()
         mock_response.choices = []
 
-        with patch("yagra.handlers.llm_handler.litellm") as mock_litellm:
+        with patch(
+            "yagra.adapters.outbound.llm_providers.litellm_provider.litellm"
+        ) as mock_litellm:
             handler = create_llm_handler(retry=1, timeout=10)
             mock_litellm.completion.return_value = mock_response
 
@@ -225,7 +239,7 @@ class TestLLMHandler:
                 "model": {"provider": "openai", "name": "gpt-4"},
             }
 
-            with pytest.raises(LLMHandlerCallError, match="LLM returned empty response"):
+            with pytest.raises(LLMHandlerCallError, match="litellm returned empty choices"):
                 handler(state, params)
 
     def test_handler_none_content_raises_error(self) -> None:
@@ -233,7 +247,9 @@ class TestLLMHandler:
         mock_response = MagicMock()
         mock_response.choices = [MagicMock(message=MagicMock(content=None))]
 
-        with patch("yagra.handlers.llm_handler.litellm") as mock_litellm:
+        with patch(
+            "yagra.adapters.outbound.llm_providers.litellm_provider.litellm"
+        ) as mock_litellm:
             handler = create_llm_handler(retry=1, timeout=10)
             mock_litellm.completion.return_value = mock_response
 
@@ -243,7 +259,7 @@ class TestLLMHandler:
                 "model": {"provider": "openai", "name": "gpt-4"},
             }
 
-            with pytest.raises(LLMHandlerCallError, match="LLM returned None content"):
+            with pytest.raises(LLMHandlerCallError, match="litellm returned None content"):
                 handler(state, params)
 
 
@@ -257,7 +273,9 @@ class TestLLMHandlerSystemPromptInterpolation:
         mock_response = MagicMock()
         mock_response.choices = [MagicMock(message=MagicMock(content="Response"))]
 
-        with patch("yagra.handlers.llm_handler.litellm") as mock_litellm:
+        with patch(
+            "yagra.adapters.outbound.llm_providers.litellm_provider.litellm"
+        ) as mock_litellm:
             mock_litellm.completion.return_value = mock_response
 
             state = {"language": "Japanese", "query": "Hello"}
@@ -286,7 +304,9 @@ class TestLLMHandlerSystemPromptInterpolation:
         mock_response = MagicMock()
         mock_response.choices = [MagicMock(message=MagicMock(content="Response"))]
 
-        with patch("yagra.handlers.llm_handler.litellm") as mock_litellm:
+        with patch(
+            "yagra.adapters.outbound.llm_providers.litellm_provider.litellm"
+        ) as mock_litellm:
             mock_litellm.completion.return_value = mock_response
 
             state = {"role": "translator"}
@@ -312,7 +332,9 @@ class TestLLMHandlerSystemPromptInterpolation:
         mock_response = MagicMock()
         mock_response.choices = [MagicMock(message=MagicMock(content="Response"))]
 
-        with patch("yagra.handlers.llm_handler.litellm") as mock_litellm:
+        with patch(
+            "yagra.adapters.outbound.llm_providers.litellm_provider.litellm"
+        ) as mock_litellm:
             mock_litellm.completion.return_value = mock_response
 
             state = {"lang": "French"}
@@ -338,7 +360,9 @@ class TestLLMHandlerSystemPromptInterpolation:
         mock_response = MagicMock()
         mock_response.choices = [MagicMock(message=MagicMock(content="Response"))]
 
-        with patch("yagra.handlers.llm_handler.litellm") as mock_litellm:
+        with patch(
+            "yagra.adapters.outbound.llm_providers.litellm_provider.litellm"
+        ) as mock_litellm:
             mock_litellm.completion.return_value = mock_response
 
             state = {"lang": "Spanish", "text": "Hello world"}
@@ -369,7 +393,9 @@ class TestLLMHandlerAutoDetect:
         mock_response = MagicMock()
         mock_response.choices = [MagicMock(message=MagicMock(content="Auto detect response"))]
 
-        with patch("yagra.handlers.llm_handler.litellm") as mock_litellm:
+        with patch(
+            "yagra.adapters.outbound.llm_providers.litellm_provider.litellm"
+        ) as mock_litellm:
             mock_litellm.completion.return_value = mock_response
 
             state = {"query": "Hello"}
@@ -394,7 +420,9 @@ class TestLLMHandlerAutoDetect:
         mock_response = MagicMock()
         mock_response.choices = [MagicMock(message=MagicMock(content="Multi var response"))]
 
-        with patch("yagra.handlers.llm_handler.litellm") as mock_litellm:
+        with patch(
+            "yagra.adapters.outbound.llm_providers.litellm_provider.litellm"
+        ) as mock_litellm:
             mock_litellm.completion.return_value = mock_response
 
             state = {"name": "Alice", "age": "30"}
@@ -417,7 +445,9 @@ class TestLLMHandlerAutoDetect:
         mock_response = MagicMock()
         mock_response.choices = [MagicMock(message=MagicMock(content="Explicit keys response"))]
 
-        with patch("yagra.handlers.llm_handler.litellm") as mock_litellm:
+        with patch(
+            "yagra.adapters.outbound.llm_providers.litellm_provider.litellm"
+        ) as mock_litellm:
             mock_litellm.completion.return_value = mock_response
 
             state = {"query": "Hello"}
@@ -441,7 +471,9 @@ class TestLLMHandlerAutoDetect:
         mock_response = MagicMock()
         mock_response.choices = [MagicMock(message=MagicMock(content="No interpolation"))]
 
-        with patch("yagra.handlers.llm_handler.litellm") as mock_litellm:
+        with patch(
+            "yagra.adapters.outbound.llm_providers.litellm_provider.litellm"
+        ) as mock_litellm:
             mock_litellm.completion.return_value = mock_response
 
             state = {"query": "Hello"}
@@ -465,7 +497,9 @@ class TestLLMHandlerAutoDetect:
         mock_response = MagicMock()
         mock_response.choices = [MagicMock(message=MagicMock(content="Empty key response"))]
 
-        with patch("yagra.handlers.llm_handler.litellm") as mock_litellm:
+        with patch(
+            "yagra.adapters.outbound.llm_providers.litellm_provider.litellm"
+        ) as mock_litellm:
             mock_litellm.completion.return_value = mock_response
 
             state: dict[str, str] = {}  # query does not exist
@@ -488,7 +522,9 @@ class TestLLMHandlerValidationErrors:
 
     def test_handler_prompt_not_dict_raises_config_error(self) -> None:
         """Confirms that LLMHandlerConfigError is raised when prompt is not a dict."""
-        with patch("yagra.handlers.llm_handler.litellm") as _mock_litellm:
+        with patch(
+            "yagra.adapters.outbound.llm_providers.litellm_provider.litellm"
+        ) as _mock_litellm:
             handler = create_llm_handler(retry=1, timeout=10)
 
             state: dict[str, Any] = {}
@@ -502,7 +538,9 @@ class TestLLMHandlerValidationErrors:
 
     def test_handler_model_not_dict_raises_config_error(self) -> None:
         """Confirms that LLMHandlerConfigError is raised when model is not a dict."""
-        with patch("yagra.handlers.llm_handler.litellm") as _mock_litellm:
+        with patch(
+            "yagra.adapters.outbound.llm_providers.litellm_provider.litellm"
+        ) as _mock_litellm:
             handler = create_llm_handler(retry=1, timeout=10)
 
             state: dict[str, Any] = {}
@@ -516,7 +554,9 @@ class TestLLMHandlerValidationErrors:
 
     def test_handler_model_missing_provider_raises_config_error(self) -> None:
         """Confirms that LLMHandlerConfigError is raised when provider is missing from model."""
-        with patch("yagra.handlers.llm_handler.litellm") as _mock_litellm:
+        with patch(
+            "yagra.adapters.outbound.llm_providers.litellm_provider.litellm"
+        ) as _mock_litellm:
             handler = create_llm_handler(retry=1, timeout=10)
 
             state: dict[str, Any] = {}
@@ -533,7 +573,9 @@ class TestLLMHandlerValidationErrors:
 
     def test_handler_model_missing_name_raises_config_error(self) -> None:
         """Confirms that LLMHandlerConfigError is raised when name is missing from model."""
-        with patch("yagra.handlers.llm_handler.litellm") as _mock_litellm:
+        with patch(
+            "yagra.adapters.outbound.llm_providers.litellm_provider.litellm"
+        ) as _mock_litellm:
             handler = create_llm_handler(retry=1, timeout=10)
 
             state: dict[str, Any] = {}
@@ -554,7 +596,9 @@ class TestLLMHandlerValidationErrors:
         With auto-extraction, {b} in user template is resolved from state (defaulting to "").
         The input_keys parameter is no longer consulted.
         """
-        with patch("yagra.handlers.llm_handler.litellm") as mock_litellm:
+        with patch(
+            "yagra.adapters.outbound.llm_providers.litellm_provider.litellm"
+        ) as mock_litellm:
             handler = create_llm_handler(retry=1, timeout=10)
 
             mock_response = MagicMock()
@@ -578,8 +622,15 @@ class TestLLMHandlerCallErrors:
     """Tests for LLM call errors (verified in patch context)."""
 
     def test_handler_empty_choices_raises_call_error(self) -> None:
-        """Confirms that LLMHandlerCallError is raised when LLM returns empty choices."""
-        with patch("yagra.handlers.llm_handler.litellm") as mock_litellm:
+        """Confirms that LLMHandlerCallError is raised when LLM returns empty choices.
+
+        Under the Port-routed implementation, empty choices surface as an
+        :class:`LLMProviderCallError` which is retried by ``llm_retry_loop``
+        and finally wrapped into :class:`LLMHandlerCallError`.
+        """
+        with patch(
+            "yagra.adapters.outbound.llm_providers.litellm_provider.litellm"
+        ) as mock_litellm:
             handler = create_llm_handler(retry=1, timeout=10)
 
             mock_response = MagicMock()
@@ -592,12 +643,14 @@ class TestLLMHandlerCallErrors:
                 "model": {"provider": "openai", "name": "gpt-4"},
             }
 
-            with pytest.raises(LLMHandlerCallError, match="LLM returned empty response"):
+            with pytest.raises(LLMHandlerCallError, match="litellm returned empty choices"):
                 handler(state, params)
 
     def test_handler_none_content_raises_call_error(self) -> None:
         """Confirms that LLMHandlerCallError is raised when LLM returns None content."""
-        with patch("yagra.handlers.llm_handler.litellm") as mock_litellm:
+        with patch(
+            "yagra.adapters.outbound.llm_providers.litellm_provider.litellm"
+        ) as mock_litellm:
             handler = create_llm_handler(retry=1, timeout=10)
 
             mock_response = MagicMock()
@@ -610,37 +663,44 @@ class TestLLMHandlerCallErrors:
                 "model": {"provider": "openai", "name": "gpt-4"},
             }
 
-            with pytest.raises(LLMHandlerCallError, match="LLM returned None content"):
+            with pytest.raises(LLMHandlerCallError, match="litellm returned None content"):
                 handler(state, params)
 
-    def test_handler_call_error_not_retried(self) -> None:
-        """Confirms that LLMHandlerCallError is raised immediately without retry.
+    def test_provider_call_error_is_retried(self) -> None:
+        """Port-level call errors are retried by ``llm_retry_loop``.
 
-        Even with retry=3, confirms that completion is only called once
-        for empty choices (the ``raise`` branch at line 187).
+        Confirms the Port-routed retry contract: an
+        :class:`LLMProviderCallError` raised by the adapter (empty choices)
+        is retried ``effective_retry`` times before finally surfacing as
+        :class:`LLMHandlerCallError`.
         """
-        with patch("yagra.handlers.llm_handler.litellm") as mock_litellm:
-            handler = create_llm_handler(retry=3, timeout=10)
+        with patch(
+            "yagra.adapters.outbound.llm_providers.litellm_provider.litellm"
+        ) as mock_litellm:
+            with patch("yagra.handlers._llm_common.time.sleep"):
+                handler = create_llm_handler(retry=3, timeout=10)
 
-            mock_response = MagicMock()
-            mock_response.choices = []  # triggers LLMHandlerCallError
-            mock_litellm.completion.return_value = mock_response
+                mock_response = MagicMock()
+                mock_response.choices = []  # empty choices -> LLMProviderCallError
+                mock_litellm.completion.return_value = mock_response
 
-            state = {"query": "test"}
-            params = {
-                "prompt": {"system": "Test", "user": "{query}"},
-                "model": {"provider": "openai", "name": "gpt-4"},
-            }
+                state = {"query": "test"}
+                params = {
+                    "prompt": {"system": "Test", "user": "{query}"},
+                    "model": {"provider": "openai", "name": "gpt-4"},
+                }
 
-            with pytest.raises(LLMHandlerCallError):
-                handler(state, params)
+                with pytest.raises(LLMHandlerCallError):
+                    handler(state, params)
 
-            # Confirms called only once without retry
-            assert mock_litellm.completion.call_count == 1
+                # Port-level call errors retry up to retry= count
+                assert mock_litellm.completion.call_count == 3
 
     def test_handler_api_error_retried_and_finally_fails(self) -> None:
         """Confirms that API call failures are retried and finally raise LLMHandlerCallError."""
-        with patch("yagra.handlers.llm_handler.litellm") as mock_litellm:
+        with patch(
+            "yagra.adapters.outbound.llm_providers.litellm_provider.litellm"
+        ) as mock_litellm:
             with patch("yagra.handlers._llm_common.time.sleep"):
                 handler = create_llm_handler(retry=2, timeout=10)
 

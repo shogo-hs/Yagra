@@ -1,18 +1,25 @@
-"""Streaming LLM handler using litellm.
+"""Streaming LLM handler routed through :class:`LLMProviderPort`.
 
-This module provides an LLM handler that returns a streaming response
-as a Generator, allowing callers to process chunks incrementally.
+This module provides an LLM handler that returns a streaming response as a
+:class:`~collections.abc.Generator` of ``str`` chunks. The streaming
+provider contract internally uses ``LLMStreamChunk`` dataclass, but the
+public API keeps the simpler ``Generator[str, None, None]`` shape so
+existing callers and examples remain unchanged.
 """
 
-from collections.abc import Generator
+from collections.abc import Generator, Iterator
 from typing import Any
 
-import litellm
-
+from yagra.ports.outbound.llm_provider import (
+    LLMProviderPort,
+    LLMStreamChunk,
+    LLMTokenUsage,
+)
 from yagra.ports.outbound.node_registry import NodeHandler
 
 
 def create_streaming_llm_handler(
+    provider: LLMProviderPort | None = None,
     retry: int = 3,
     timeout: int = 60,
 ) -> NodeHandler:
@@ -23,6 +30,9 @@ def create_streaming_llm_handler(
     callers to process output incrementally or buffer it with ``"".join(...)``.
 
     Args:
+        provider: Explicit :class:`LLMProviderPort` instance. When ``None``,
+            the handler resolves one from ``params["provider"]`` (default
+            ``"litellm"``).
         retry: Number of retries on API errors before streaming starts (default: 3).
         timeout: Timeout in seconds (default: 60, longer than non-streaming).
 
@@ -86,11 +96,11 @@ def create_streaming_llm_handler(
             LLMHandlerCallError: If LLM invocation fails after all retries.
         """
         from yagra.handlers._llm_common import (
-            build_messages,
             extract_llm_params,
             interpolate_prompt,
             llm_retry_loop,
-            report_streaming_token_usage,
+            report_streaming_usage,
+            resolve_handler_provider,
         )
 
         p = extract_llm_params(params, default_retry=retry)
@@ -99,53 +109,68 @@ def create_streaming_llm_handler(
             p.user_prompt_template,
             state,
         )
-        messages = build_messages(system_prompt, user_prompt)
 
-        # Force stream=True unless explicitly overridden
-        model_kwargs = dict(p.model_kwargs)
-        if "stream" not in model_kwargs:
-            model_kwargs["stream"] = True
+        resolved_provider = resolve_handler_provider(provider, params.get("provider"))
 
         def _call() -> dict[str, Any]:
-            response = litellm.completion(
+            stream = resolved_provider.complete_streaming(
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
                 model=p.litellm_model,
-                messages=messages,
                 timeout=timeout,
-                **model_kwargs,
+                **p.model_kwargs,
             )
 
-            _bound_model: str = p.litellm_model
-            _bound_provider: str = p.provider
+            # Prime the stream so connection failures surface synchronously
+            # and are retried by ``llm_retry_loop``. Without this, adapter
+            # generators defer their internal ``try`` until the first
+            # ``next()`` call, which would bypass the retry contract.
+            iterator = iter(stream)
+            primed: list[LLMStreamChunk] = []
+            try:
+                head = next(iterator)
+            except StopIteration:
+                head = None
+            if head is not None:
+                primed.append(head)
 
-            def _stream(
-                resp: Any,
-                bound_model: str = _bound_model,
-                bound_provider: str = _bound_provider,
+            def _stream_and_report(
+                preloaded: list[LLMStreamChunk],
+                tail: Iterator[LLMStreamChunk],
+                bound_model: str = p.litellm_model,
+                bound_provider: str = p.provider,
             ) -> Generator[str, None, None]:
-                """Yields string chunks from the LLM streaming response.
+                """Unwraps port-level chunks into a plain string generator.
 
-                Reports token usage to TraceContext after the stream is fully consumed.
+                Accumulates the terminal :class:`LLMTokenUsage` if the
+                provider emits one and reports it to TraceContext after the
+                stream is exhausted. Reporting failures are silently ignored
+                inside :func:`report_streaming_usage` so they never break the
+                caller's iteration.
 
                 Args:
-                    resp: Litellm streaming response object (iterable).
-                    bound_model: litellm model string, bound at definition time.
+                    preloaded: Chunks already consumed by the priming step.
+                    tail: Remaining iterator of :class:`LLMStreamChunk`.
+                    bound_model: litellm model string, bound at definition
+                        time to keep the generator reentrant-safe.
                     bound_provider: Provider name, bound at definition time.
 
                 Yields:
-                    str: Non-empty content chunks from the LLM response.
+                    str: Non-empty delta strings from the LLM response.
                 """
-                for chunk in resp:
-                    if not chunk.choices:
-                        continue
-                    delta = chunk.choices[0].delta
-                    if delta is None:
-                        continue
-                    content = delta.content
-                    if content is not None:
-                        yield content
-                report_streaming_token_usage(resp, bound_model, bound_provider)
+                last_usage: LLMTokenUsage | None = None
+                import itertools as _itertools  # noqa: PLC0415
 
-            return {p.output_key: _stream(response)}
+                for chunk in _itertools.chain(preloaded, tail):
+                    if chunk.usage is not None:
+                        last_usage = chunk.usage
+                    if chunk.delta:
+                        yield chunk.delta
+                    if chunk.done:
+                        break
+                report_streaming_usage(last_usage, bound_model, bound_provider)
+
+            return {p.output_key: _stream_and_report(primed, iterator)}
 
         return llm_retry_loop(_call, p.effective_retry)
 
@@ -204,6 +229,15 @@ STREAMING_LLM_HANDLER_PARAMS_SCHEMA: dict = {
             "type": "boolean",
             "description": "Whether to enable streaming. If false, buffers the output and returns it all at once",
             "default": True,
+        },
+        "provider": {
+            "type": "string",
+            "description": (
+                "LLMProviderPort adapter to route calls through. Defaults to 'litellm'. "
+                "The Claude Agent SDK does not support streaming."
+            ),
+            "enum": ["litellm"],
+            "default": "litellm",
         },
     },
     "required": ["model"],

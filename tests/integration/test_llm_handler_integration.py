@@ -48,7 +48,9 @@ params:
             workflow_path.write_text(workflow_yaml)
             prompts_path.write_text(prompts_yaml)
 
-            with patch("yagra.handlers.llm_handler.litellm") as mock_litellm:
+            with patch(
+                "yagra.adapters.outbound.llm_providers.litellm_provider.litellm"
+            ) as mock_litellm:
                 mock_response = MagicMock()
                 mock_response.choices = [MagicMock(message=MagicMock(content="Hi Bob!"))]
                 mock_litellm.completion.return_value = mock_response
@@ -109,7 +111,9 @@ edges: []
             workflow_path.write_text(workflow_yaml)
             prompts_path.write_text(prompts_yaml)
 
-            with patch("yagra.handlers.llm_handler.litellm") as mock_litellm:
+            with patch(
+                "yagra.adapters.outbound.llm_providers.litellm_provider.litellm"
+            ) as mock_litellm:
                 mock_response = MagicMock()
                 mock_response.choices = [MagicMock(message=MagicMock(content="Response"))]
                 mock_litellm.completion.return_value = mock_response
@@ -169,7 +173,9 @@ params:
             workflow_path.write_text(workflow_yaml)
             prompts_path.write_text(prompts_yaml)
 
-            with patch("yagra.handlers.llm_handler.litellm") as mock_litellm:
+            with patch(
+                "yagra.adapters.outbound.llm_providers.litellm_provider.litellm"
+            ) as mock_litellm:
                 mock_response = MagicMock()
                 mock_response.choices = [MagicMock(message=MagicMock(content="OK"))]
                 mock_litellm.completion.return_value = mock_response

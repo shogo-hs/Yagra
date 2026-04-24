@@ -53,7 +53,9 @@ params:
             workflow_path.write_text(workflow_yaml)
             prompts_path.write_text(prompts_yaml)
 
-            with patch("yagra.handlers.streaming_llm_handler.litellm") as mock_litellm:
+            with patch(
+                "yagra.adapters.outbound.llm_providers.litellm_provider.litellm"
+            ) as mock_litellm:
                 chunks = [_make_chunk("Hello"), _make_chunk(" world"), _make_chunk("!")]
                 mock_litellm.completion.return_value = iter(chunks)
 
@@ -105,7 +107,9 @@ params:
             workflow_path.write_text(workflow_yaml)
             prompts_path.write_text(prompts_yaml)
 
-            with patch("yagra.handlers.streaming_llm_handler.litellm") as mock_litellm:
+            with patch(
+                "yagra.adapters.outbound.llm_providers.litellm_provider.litellm"
+            ) as mock_litellm:
                 chunks = [
                     _make_chunk("This"),
                     _make_chunk(" is"),
@@ -164,7 +168,9 @@ edges: []
             workflow_path.write_text(workflow_yaml)
             prompts_path.write_text(prompts_yaml)
 
-            with patch("yagra.handlers.streaming_llm_handler.litellm") as mock_litellm:
+            with patch(
+                "yagra.adapters.outbound.llm_providers.litellm_provider.litellm"
+            ) as mock_litellm:
                 mock_litellm.completion.return_value = iter([_make_chunk("ok")])
 
                 from yagra import Yagra

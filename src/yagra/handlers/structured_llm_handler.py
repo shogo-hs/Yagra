@@ -1,22 +1,24 @@
-"""Structured output LLM handler using litellm and Pydantic.
+"""Structured output LLM handler routed through :class:`LLMProviderPort`.
 
 This module provides an LLM handler that returns type-safe structured data
-by parsing LLM responses with a Pydantic model.
+by parsing LLM responses with a Pydantic model. LLM calls are delegated to
+an :class:`LLMProviderPort` implementation, keeping the handler free of
+SDK-specific code.
 """
 
-import json
 from typing import Any
 
-import litellm
 from pydantic import BaseModel, ValidationError
 
 from yagra.handlers.errors import LLMHandlerCallError, LLMHandlerConfigError
 from yagra.handlers.schema_builder import build_model_from_schema_yaml
+from yagra.ports.outbound.llm_provider import LLMProviderPort
 from yagra.ports.outbound.node_registry import NodeHandler
 
 
 def create_structured_llm_handler(
     schema: type[BaseModel] | None = None,
+    provider: LLMProviderPort | None = None,
     retry: int = 3,
     timeout: int = 30,
 ) -> NodeHandler:
@@ -41,6 +43,9 @@ def create_structured_llm_handler(
     Args:
         schema: Pydantic BaseModel subclass. If omitted, dynamically generates
             the model from ``params["schema_yaml"]`` at runtime.
+        provider: Explicit :class:`LLMProviderPort` instance. When ``None``,
+            the handler resolves one from ``params["provider"]`` (default
+            ``"litellm"``).
         retry: Number of retries on API errors (default: 3).
         timeout: Timeout in seconds (default: 30).
 
@@ -103,11 +108,10 @@ def create_structured_llm_handler(
             SchemaYamlError: If parsing schema_yaml or generating the model fails.
         """
         from yagra.handlers._llm_common import (
-            build_messages,
             extract_llm_params,
             interpolate_prompt,
             llm_retry_loop,
-            report_token_usage,
+            resolve_handler_provider,
         )
 
         # 0. Resolve schema (static > dynamic)
@@ -128,47 +132,23 @@ def create_structured_llm_handler(
             state,
         )
 
-        # Append JSON schema instruction to system prompt
-        json_system_prompt = (
-            f"{system_prompt}\n\nRespond with valid JSON only. "
-            f"The JSON must conform to the following schema:\n"
-            f"{json.dumps(resolved_schema.model_json_schema(), ensure_ascii=False)}"
-        ).strip()
-
-        messages = build_messages(json_system_prompt, user_prompt)
-
-        # Force response_format=json_object unless explicitly overridden
-        model_kwargs = dict(p.model_kwargs)
-        if "response_format" not in model_kwargs:
-            model_kwargs["response_format"] = {"type": "json_object"}
+        resolved_provider = resolve_handler_provider(provider, params.get("provider"))
+        schema_dict = resolved_schema.model_json_schema()
 
         def _call() -> dict[str, Any]:
-            response = litellm.completion(
+            raw = resolved_provider.complete_structured(
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+                schema=schema_dict,
                 model=p.litellm_model,
-                messages=messages,
                 timeout=timeout,
-                **model_kwargs,
+                **p.model_kwargs,
             )
-
-            if not response.choices:
-                msg = "LLM returned empty response"
-                raise LLMHandlerCallError(msg)
-
-            content = response.choices[0].message.content
-            if content is None:
-                msg = "LLM returned None content"
-                raise LLMHandlerCallError(msg)
-
-            # JSON parse and Pydantic validation
             try:
-                instance = resolved_schema.model_validate_json(content)
+                instance = resolved_schema.model_validate(raw)
             except (ValidationError, ValueError) as e:
                 msg = f"Failed to parse LLM response as {resolved_schema.__name__}: {e}"
                 raise LLMHandlerCallError(msg) from e
-
-            if response.usage is not None:
-                report_token_usage(response.usage, p.litellm_model, p.provider)
-
             return {p.output_key: instance}
 
         return llm_retry_loop(_call, p.effective_retry)
@@ -225,6 +205,15 @@ STRUCTURED_LLM_HANDLER_PARAMS_SCHEMA: dict = {
             "type": "string",
             "description": "Field definitions for the Pydantic model. Write 'field_name: type' separated by newlines. Supported types: str, int, float, bool, list, dict",
             "examples": ["name: str\nage: int\ncity: str", "title: str\nsummary: str\ntags: list"],
+        },
+        "provider": {
+            "type": "string",
+            "description": (
+                "LLMProviderPort adapter to route calls through. Defaults to 'litellm'. "
+                "Use 'claude_agent_sdk' for the Claude Agent SDK (requires yagra[judge])."
+            ),
+            "enum": ["litellm", "claude_agent_sdk"],
+            "default": "litellm",
         },
     },
     "required": ["model"],
