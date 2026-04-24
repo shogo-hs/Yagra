@@ -1,30 +1,66 @@
 # 実行進捗
 
-**最終更新**: 2026-04-24
+**最終更新**: 2026-04-24 18:10 JST（#24 Phase 2b 完了、PM Agent 起動準備完了）
 **現在の Phase**: 2
 
 ## バックログ概要
-完了: 4/27 タスク（#1 方針確定、#2 llm-basic 修復、#3 validate-example.yml 実在化、#4 apply_update golden gate）
+完了: 5/28 タスク（#1 方針確定、#2 llm-basic 修復、#3 validate-example.yml 実在化、#4 apply_update golden gate、#23 create_judge_handler [PR #50 merged 780e246]）
+
+新規タスク追加: #28（既存 LLM handler を LLMProviderPort 経由に段階移行、Should）
 
 ## 現在のタスク
-- タスク: #23 `create_judge_handler` を実装（LLM-as-a-Judge 基本版 + Port/Adapter 抽象化）
-- ステージ: Phase 2b 完了、Phase 2c 準備完了（PM Agent 起動準備済み）
+- タスク: #24 `examples/self-improve/` walking example
+- ステージ: **Phase 2b 完了 / Phase 2c 準備完了**（PM Alignment Agent 1 往復で Contract 確定）
 
-### PO層（#23 向け）
-- PO-PMアライメント: **完了**（PM Alignment Agent 1 往復で E1-E5 + SC 追加要求すべて確定）
-- 契約: `tasks/20260424143714_contract-po-pm-create-judge-handler.md`
+### PO層（#24 向け）
+- PO-PMアライメント: **完了**（PM Alignment Agent が Q1-Q5 + R1-R4 + E6-E8 を指摘、Brief v2 に更新）
+- 契約: `tasks/20260424180122_contract-po-pm-self-improve-example.md`
 - 採用方針:
-  - Port: `src/yagra/ports/outbound/llm_provider.py` に `LLMProviderPort` (Protocol + runtime_checkable)
-  - Adapter: `src/yagra/adapters/outbound/llm_providers/` に 2 つ + Factory `resolve_provider()`
-  - デフォルト: `ClaudeAgentSDKProvider` + model `"sonnet"`（ユーザー指定）+ `yagra[judge]` extra
-  - 認証: `claude login` のサブスクリプション認証前提（API キー不要）
-  - 既存 `create_llm_handler` 等の段階移行は別タスク（backlog 追加予定）
-- 主要 SC: 14 項目（SC-1〜SC-14、うち SC-2 は 2a/2b/2c に分解）
+  - Approach A'（generate→judge 2 ノード walking example）
+  - generate: OpenAI gpt-4o-mini（LiteLLM 体系、API key 要求）
+  - judge: `claude_agent_sdk` + `sonnet`（subscription auth、default system prompt 活用 = prompt_ref なし）
+  - rubric: inline のみ（2 criteria: clarity, accuracy）、参考 `rubric.yaml` 非同梱
+  - README: 日本語主体、propose→judge→apply の擬似対話スクリプト、#25 未完了注記は issue 番号書かず機能名のみ
+- 主要 SC: 14 項目（2.1 structure 3 / 2.2 files 5 / 2.3 CI-quality 5 / 2.4 smoke 1）
+- 主要リスク: R3/R4（CI 可用性）は PM が Step 1 の `yagra validate` dry-run で初手確認
 - PO検証: 未着手（PM 実装完了後に実施）
 
-### PM層（#23 向け / Phase 2c 実行中）
-- Developer 数: M サイズだが PM 環境制約で PM が 1 Developer + PMO を sequentially 代行（#3 / #4 で 2 回連続再現確認済み）
-- Feature Branch: 未作成（Step 5 直前に `feature/add-create-judge-handler` で作成）
+### PM層（#24 向け / Phase 2c 起動待機）
+- Developer 数: S〜M 想定（PM Alignment 見積もり）だが PM 環境制約で PM が Developer + PMO を sequentially 代行（#3 / #4 / #23 で 3 回連続確認済み）
+- Feature Branch: 未作成（PM Step 2 で `feature/add-self-improve-example` 作成予定）
+- 影響ファイル見込: 新規 4（workflow.yaml / prompts.yaml / run_example.py / README.md）+ 更新 1（CHANGELOG.md）
+- 技術的注意: generate (LiteLLM 体系、`model.provider`) と judge (claude_agent_sdk provider、`params.provider`) は別スキーマ。README で混同させない
+
+---
+
+## Phase 2 内の完了済みタスク詳細（履歴保存・#23 追加）
+
+<details><summary>Task #23: create_judge_handler + LLM Port/Adapter（2026-04-24 完了、PR #50 merged at 780e246）</summary>
+
+### PO層（#23）
+- PO-PMアライメント: 完了（PM Alignment Agent 1 往復で E1-E5 + SC 追加要求すべて確定）
+- 契約: `tasks/20260424143714_contract-po-pm-create-judge-handler.md`
+- 採用方針: Port/Adapter 切替（`LLMProviderPort` + LiteLLM + ClaudeAgentSDK + `resolve_provider` Factory）、Claude SDK + sonnet default、`yagra[judge]` extra
+- PO検証（2026-04-24）: **Accept** — 差別化軸 2→4 で +2 大幅ジャンプ、Hexagonal 純度 +1、API 一貫性 +1、累積ドリフトは強いポジティブ
+- 体現度記録: `tasks/vision-alignment-log.md` に Task #23 エントリ追記済み
+- 知見蓄積: `tasks/learnings.md` に Port 新設・hybrid signature・lazy SDK import・async bridge・sys.modules setdefault パターンを追記
+
+### PM層（#23 Phase 2c）
+- Developer 数: M サイズだが PM 環境制約で PM が 1 Developer + PMO を sequentially 代行
+- Step 0-5 完了: Intent / Plan / Mission Brief / 実装すべて PM 単独
+- Step 6 完了: PR #50 作成 + PMO レビュー **Accept**（DoD 14/14 / Critical:0 / Major:0 / Minor:0）
+- Step 7-8 完了: 完了レポート + PO 報告
+- 生成成果物: `ports/outbound/llm_provider.py` / `adapters/outbound/llm_providers/` / `handlers/judge.py` / 41 新規テスト / docs / CHANGELOG
+
+</details>
+
+### PM層（#23 Phase 2c 完了 / Step 8 完了）【参考：PR #50 時点状態】
+
+### PM層（#23 向け / Phase 2c 完了 / Step 8 完了）
+- Developer 数: M サイズだが PM 環境制約で PM が 1 Developer + PMO を sequentially 代行（#3 / #4 / #23 で 3 回連続再現確認済み）
+- Feature Branch: `feature/add-create-judge-handler`（Step 5 直前作成）
+- PR: https://github.com/shogo-hs/Yagra/pull/50（REVIEW_REQUIRED、CI quality / build / validate-examples / deploy SKIPPED の構成で成功確認済み、ユーザーマージ待機）
+- PMO レビュー: **Accept**（DoD 14/14 PASS / Critical:0 / Major:0 / Minor:0）`tasks/20260424145000_review-create-judge-handler.md`
 - 影響ファイル見込（新規 10 + 更新 5）: Intent に詳細記載
 - Step 0 完了: 環境確認（working tree clean、progress.md diff 既存のみ、contract 未追跡 OK）
 - Step 1 完了: Intent 作成 `tasks/20260424054919_intent-create-judge-handler.md`（SC-1〜SC-14 転記、In/Out Scope 明確化）

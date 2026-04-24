@@ -1,6 +1,6 @@
 # タスク間学習ログ
 
-**最終更新**: 2026-04-24（Task #4 完了時）
+**最終更新**: 2026-04-24（Task #23 完了時）
 **蓄積開始**: 2026-04-24（Task #3 完了時）
 
 > agent-company-v2 Phase 2f の知見蓄積ルールに従う。PMの結果レポートから「技術的発見 / プロジェクト固有パターン / PMO指摘パターン / 環境的発見」を体系的に記録する。2回以上繰り返されるパターンは Developer Spec のデフォルトに昇格する。
@@ -18,6 +18,10 @@
 | #4 | Option C ハイブリッド設計: 「事前実行結果 dict を明示渡し」と「未指定時の内部実行」を両立する API パラメータ設計。backward-compat と「ゼロ設定で安全側」を同時に満たせる | MCP tool / CLI の「検証→適用」系 API（今後の `yagra apply` CLI 等） |
 | #4 | 構造化エラー 4 フィールド `{error, message, summary, hint}`: `error` = マシン可読コード、`message` = 人間向け要約、`summary` = 数値コンテキスト、`hint` = 次のアクション提案。AI エージェントの自己修復サイクルを回すための最小フィールド集合 | 全 MCP tool（#16 で全体統一する際の雛形）/ 他プロジェクトの AI-Ready API |
 | #4 | 「検証対象 0 件」時は `warnings: ["no_<entity>_defined"]` 付きで success を返すパターン。silent success を防ぎながら過度に blocking しない中庸解 | 全 MCP tool / CI workflow / 検証系 API 全般 |
+| #23 | Hybrid signature パターン: `provider: LLMProviderPort \| None = None` で DI を受け付けつつ、`params["provider"]` 文字列でも resolve 可能にする。DI > params の優先順位を固定。`create_structured_llm_handler` と同一の設計 | 複数の解決経路を持つ handler ファクトリ全般 |
+| #23 | Lazy SDK import + 構造化 ImportError 昇格: `resolve_provider("claude_agent_sdk")` は SDK 未インストールでも成功、実際の `complete_structured` 呼出時に 4 フィールド構造化エラー (`claude_agent_sdk_not_installed` + `pip install yagra[judge]` hint) を返す。silent failure 防止 + 遅延検査で factory が optional deps のゲートで失敗しない | optional extras を持つ全 provider adapter |
+| #23 | Async→sync bridge via ThreadPoolExecutor: SDK の `query()` が async 専用の場合、event loop running 時は dedicated worker thread で `asyncio.run(...)` を実行。Jupyter / pytest-asyncio 配下からの呼出も透過対応 | async-only SDK を sync handler から呼ぶケース全般 |
+| #23 | `patch.dict(sys.modules, {...})` で pydantic サブモジュール（`root_model` など）を差し替えると、test 後に import キャッシュが汚染され後続テストが失敗する。`sys.modules.setdefault(name, mock)` に置換し、既存 pydantic モジュールを尊重しつつ欠落分のみ補う | mock を `sys.modules` に差し込む全テスト |
 
 ## プロジェクト固有パターン
 
@@ -29,6 +33,10 @@
 | #3, #4 | 機能追加・修正は CHANGELOG.md の `[Unreleased]` セクションに Added / Changed / Fixed 等のカテゴリで追記する。**Mission Brief のチェックリスト標準項目として昇格済み**（#3 で PMO 指摘 → #4 で Contract 事前組込で指摘 0 件を実現） | すべての user-visible 変更 |
 | #4 | `adapters/inbound/mcp_server.py` 内で tool 間の呼び出しをする際は private helper（`_assert_golden_passed` 等）に抽出して SRP を維持する。将来 CLI からも同一仕様を使う場合は application/use_cases/ への昇格を検討 | MCP tool 間で共通ロジックが発生した場合 |
 | #4 | MCP tool の Pydantic `inputSchema` description と docs（agent-integration-guide.md）は同一内容で同期させる。AI エージェントが両方を参照する可能性があるため、挙動テーブル形式で docs にも書く | 新 MCP tool 追加 / 既存 tool API 変更時 |
+| #23 | 新 Port は `ports/outbound/<noun>.py` に 1 ファイル 1 Port + 専用例外階層の構成で配置する（`llm_provider.py` が `LLMProviderPort` + `LLMProviderError` / `LLMProviderConfigError` / `LLMProviderCallError` の 3 段）。config error（即時 raise）と call error（retry 可）を境界で振り分けできる | 新規 Port 追加時の標準構成 |
+| #23 | Port 実装 adapter は `adapters/outbound/<noun>s/` にパッケージ化し、`__init__.py` に `resolve_provider(name: str) -> Port` Factory を同居させる。unknown name は `ValueError` + hint、毎回新規インスタンス返却（mutable state 回避） | 新規 Port を複数 adapter で実装する場合 |
+| #23 | Claude Agent SDK の Python SDK は subscription auth（`claude login` 済み）で動作。API key 不要でローカル実行可能。default model は `"sonnet"` を採用（Yagra のビジョン「ローカル動作」と整合） | Claude SDK 経由の handler 追加時 |
+| #23 | `pyproject.toml` の optional extra は `yagra[judge]` のように機能単位で切り分ける。`claude-agent-sdk>=0.1.0` のような重量依存は base から分離し、core install を軽量に保つ | 新規 optional 依存追加時 |
 
 ## PMO指摘パターン分析
 
@@ -36,10 +44,11 @@
 |-------------|:----:|------|----------|
 | concurrency 制御の追加（#3 で 1 回） | 1 | 2 回目以降出たら Developer Spec の CI workflow テンプレートに必須項目として昇格 | 監視中 |
 | 0-match 時の silent success 防止（#3 で 1 回） | 1 | 2 回目以降出たら同様に昇格 | 監視中（#4 で類似パターン「no-case warning」を先取り実装。明示 warning 付き許可で無指摘） |
-| CHANGELOG 追記（#3 で 1 回 → #4 で事前組込み無指摘） | 1 | **#4 で Contract に事前組込 → Mission Brief チェックリスト標準項目に昇格済み** | **昇格完了**（#4 PMO 指摘 0 件で効果確認） |
+| CHANGELOG 追記（#3 で 1 回 → #4 で事前組込み無指摘 → #23 でも事前組込み無指摘） | 1 | **#4 で Contract に事前組込 → Mission Brief チェックリスト標準項目に昇格済み** | **昇格完了・効果持続**（#4 / #23 で 2 連続 PMO 指摘 0 件） |
 
-> #4 の PMO レビュー結果: Critical 0 / Major 0 / Minor 0。Contract 段階で前回 PMO 指摘パターンを事前に反映する運用が有効であることが確認できた。
+> #4 / #23 の PMO レビュー結果: いずれも Critical 0 / Major 0 / Minor 0。Contract 段階で前回 PMO 指摘パターンを事前に反映する運用が **3 タスク連続で効果を維持**。
 > 「2 回以上繰り返したら昇格」の原則は、「1 回出たら次タスクの Contract で先回り反映」で実質的に先取りできる（ハーネス改善）。
+> #23 で確認された追加の標準事項: 「optional deps の構造化 ImportError 昇格」「Port + 専用例外階層」「rubric/schema の oneOf 排他検証」「4 フィールドエラーの全失敗経路採用」を #24 以降の LLM 機能拡張タスクの Contract に事前組込する。
 
 ## 環境的発見
 

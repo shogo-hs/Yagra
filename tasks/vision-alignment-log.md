@@ -149,3 +149,54 @@ PM 委任（general-purpose + opus）で完了。PR #49（PMO Accept、Critical:
 | 累積ドリフト | ポジティブ | #3 (docs↔実装整合) → #4 (API↔思想整合) の連鎖、綻びの沈殿が減少 |
 
 **PO 判定: Accept**。PR #49 マージ後に main 反映。
+
+---
+
+### Task #23: `create_judge_handler` を実装（LLM-as-a-Judge 基本版、Port/Adapter 切替可）— 2026-04-24
+
+PM 委任（general-purpose + opus）で完了。PR #50（PMO Accept、DoD 14/14 PASS、Critical:0 / Major:0 / Minor:0）。**差別化軸「AI が AI を評価」が src/ に初めて結実**。Port/Adapter パターンで LLM provider を切替可能に設計（`LLMProviderPort` Protocol + `LiteLLMProvider` + `ClaudeAgentSDKProvider` + `resolve_provider` Factory）。`claude_agent_sdk` 経由時は sonnet を default model、subscription auth でローカル動作（API キー不要）。rubric inline / rubric_ref（`path#key` 形式）の両方対応、複数 criterion 時は `_overall` を算術平均で自動付与。構造化 4 フィールドエラー（`error` / `message` / `summary` / `hint`）を全失敗経路で維持。`yagra[judge]` optional extra で `claude-agent-sdk>=0.1.0` をゲート。新規テスト 41 件（judge 19 / litellm 8 / claude_agent_sdk 7 / resolve 4 / integration 3）全 PASS、unit+integration 1000 PASSED（playwright 除く）。docs (agent-integration-guide.md) + CHANGELOG 同期。
+
+| 観点 | スコア | 前回差分 |
+|------|:------:|:-------:|
+| 差別化軸の実装度（AI が AI を評価） | 4/5 | **+2**（handler 実装で差別化軸が初めて src/ に結実。残り 1 は #24 self-improve walking example + #26 E2E 統合が未着手のため） |
+| ゴール寄与 | 5/5 | ±0（vision.md Phase 3 の `create_judge_handler()` 実装コミットを達成） |
+| 原則遵守（Local-First / 人間ダッシュボード排除） | 5/5 | ±0（Claude SDK は subscription auth でローカル完結、外部送信は evaluation prompt のみ、人間ダッシュボード依存なし） |
+| UX 一貫性 | 5/5 | ±0（rubric YAML / Python 登録例 / provider 切替表 / 出力構造を agent-integration-guide に明示、CHANGELOG 3 項目同期） |
+| スコープ境界 | 5/5 | ±0（judge handler のみ、self-improve example や E2E は別タスクに分離） |
+| 誤魔化し耐性 | 5/5 | ±0（4 フィールド構造化エラー全面採用、rubric 空 / scale 不正 / rubric_ref 不在 / oneOf 違反すべて fail-fast、SDK 未インストール時は silent success せず 4 フィールドエラー昇格） |
+| Hexagonal 純度 | 3/5 | **+1**（`ports/outbound/llm_provider.py` を新設し、Protocol + 例外階層を SDK 非依存で定義。handler は `resolve_provider` Factory 経由で具象を取得し、直接 `new` しない。既存 `golden_test_runner.py` と同一の合成パターンに整合。domain/application の逆依存は本タスクでは未対応のため +1 に留める） |
+| SRP 遵守 | 1/5 | ±0（judge.py は責務分離されているが、mcp_server.py 1000+ 行 god class は未着手） |
+| API 一貫性 | 5/5 | **+1**（#4 で確立した 4 フィールド構造化エラーが judge handler / 全 provider 例外で一貫再利用。provider 切替 API が hybrid signature（DI or params）で `create_structured_llm_handler` と統一パターン） |
+| エラーメッセージ品質 | 5/5 | ±0（hint 付き、SDK 未インストール時の `pip install yagra[judge]` 誘導まで実装） |
+| Golden Test 実効性 | 4/5 | ±0（本タスクはスコープ外） |
+| E2E 実走性 | 2/5 | ±0（本タスクはスコープ外、#5 / #26 で取る） |
+
+- **体現が進んだ点**:
+  - **差別化軸「AI が AI を評価」が handler として src/ に実装された**。vision.md L70 の「Phase 3 Analyze & Propose における `create_judge_handler()`」が初めて動く形で成立。ベースライン監査で差別化軸スコア 2 → 現在 4 へ、+2 のジャンプ
+  - Port/Adapter 切替可能設計により、ビジョンの「AI-Ready / IDE 完結」と「OSS として誰でも拡張可能」を両立。将来 OpenAI provider 追加も `resolve_provider` への登録 1 行で済む
+  - `claude_agent_sdk` 経由の sonnet default により、API キー不要で ローカル動作可能（subscription auth でオンプレ評価が可能）。Local-First 原則の体現
+  - 既存 #4 の 4 フィールド構造化エラーが自然に全箇所に伝播し、AI エージェントが自己修復できる error contract が provider 横断で統一された
+  - rubric oneOf / scale / criteria unique validation で silent success を完全排除（#4 の「検証 0 件 warning」思想の応用）
+- **残課題・新規課題**:
+  - #24 `examples/self-improve/` walking example が未実装。judge handler は提供したが、propose → judge → apply の連結サイクルは別タスク
+  - #26 自己改善サイクル E2E 統合テストが未実装（#5 + #26 で連鎖着手予定）
+  - #25 MCP tool `evaluate_traces` 未実装（judge handler の MCP 露出はまだ）
+  - 既存 `create_llm_handler` / `create_structured_llm_handler` / `create_streaming_llm_handler` は `litellm` 直接呼び出しのまま（Port 経由に段階移行する追加タスクをバックログに追加すべき）
+  - Hexagonal 純度 3/5 に留まる理由: #9 (domain→application 逆依存) / #10 (domain entity の I/O) / #11 (application → adapters 具象 new 他箇所) が未着手
+- **累積ドリフト所見**: **強いポジティブ**。#3 (docs↔実装整合) → #4 (API↔思想整合) → #23 (差別化軸↔実装整合) の流れで、ビジョンで約束した要素が 3 連続で src/ に結実する「綻びの沈殿減少」トレンドが継続。特に #23 はビジョン根幹の最大課題だったため、整合性の底上げ効果が大きい
+- **次タスクへの示唆**:
+  - **最優先**: #24 (examples/self-improve/) と #25 (MCP `evaluate_traces`)。どちらも #23 の依存関係が解消され即着手可能。#24 は「walking example がないと judge 機能が体験できない」UX 課題、#25 は「MCP 経由で評価できないと AI エージェントが使えない」AI-Ready 課題
+  - **並行**: #5 (E2E 実 LLM) は #26 (judge 統合 E2E) と統合して実装すれば効率的
+  - **リファクタ候補**: 既存 `create_llm_handler` / `create_structured_llm_handler` / `create_streaming_llm_handler` を Port 経由に段階移行する新規 Should タスクをバックログに追加。#23 で雛形ができたため、同一パターンで拡張可能
+  - **構造負債**: Hexagonal 純度を 3 → 4 以上に上げるには #9 / #10 / #11 のリファクタ着手が必要。Should 優先度で機能改修の合間に取る
+
+### PO 検証（Phase 2d / Task #23）
+
+| 観点 | 判定 | 根拠 |
+|------|:----:|------|
+| ゴール寄与 | ✓ | ビジョン差別化軸 src/ 初実装、vision.md Phase 3 の handler 実装コミットを達成 |
+| 原則遵守 | ✓ | Local-First 維持（Claude SDK subscription auth）、人間ダッシュボード排除、silent success 防止 |
+| UX 一貫性 | ✓ | docs / CHANGELOG / schema / handler 出力の四者整合、provider 切替表明示 |
+| 累積ドリフト | **強いポジティブ** | #3→#4→#23 で「ビジョン約束の src/ 結実」3 連続、整合性底上げ継続 |
+
+**PO 判定: Accept**。PR #50 マージ後に main 反映。差別化軸が初めて実装として動く節目のタスク。
