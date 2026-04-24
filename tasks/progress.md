@@ -8,12 +8,32 @@
 
 ## 現在のタスク
 - タスク: #4 `_tool_apply_update` に「run_golden_tests 成功前提」オプションを追加しデフォルト ON
-- ステージ: Phase 2a（次タスク選択完了、PR #48 マージ待機 → 2b 移行予定）
+- ステージ: Phase 2c（PM Agent 起動予定）
 
 ### PO層
-- PO-PMアライメント: 未着手（#4 の Task Brief ドラフト作成予定。PR #48 マージ後に着手）
-- 契約: 未作成
-- PO検証: #3 PO検証 Accept 済み（PR #48 マージ後に main 反映）
+- PO-PMアライメント: 完了（PM Alignment Agent 1往復で Option C + no-case warning 方針確定）
+- 契約: `tasks/20260424114514_contract-po-pm-apply-update-golden-gate.md`
+- PO検証: 未着手（PM 結果レポート受領後に実施）
+
+### PM層（Phase 2c 開始時）
+- Developer 数: M サイズだが PM 環境制約で PM が 1 Developer + PMO を sequentially 代行
+- 採用方針: Option C ハイブリッド（`last_golden_result` 明示渡し or 内部実行）+ golden case 未定義時 warning 付き apply 許可
+- 影響ファイル: mcp_server.py / test_mcp_server.py / test_optimization_cycle_e2e.py / agent-integration-guide.md / CHANGELOG.md
+
+### PM層（#4 実行開始 2026-04-24）
+- Step 1 完了: Intent 作成 `tasks/20260424114909_intent-apply-update-golden-gate.md`
+  - 成功基準 10 項目（Contract 転記）、In/Out スコープ明確化、Option C 設計採用
+- Step 2 完了: コードベース調査（PM 直接実施）
+  - 既存 `_tool_apply_update` 全体構造確認、`_tool_run_golden_tests` 戻り値形式確認（フラット `{total, passed, failed, ...}`）
+  - 既存テスト雛形 `_VALID_WORKFLOW_YAML_PROPOSE` / `_UPDATED_WORKFLOW_YAML_PROPOSE` 確認
+  - E2E テスト内で apply_update が golden なしで呼ばれる箇所特定
+- Step 3 完了: 計画作成 `tasks/20260424115020_plan-apply-update-golden-gate.md`
+  - Developer 数: PM 環境制約で 1 名（PM 代行）
+  - 変更ファイル 5 + 新規テスト 5 件 + E2E 追加 assert 1 件
+  - `_assert_golden_passed(...)` helper 抽出設計
+- Step 4 完了: Mission Brief 作成 `tasks/20260424115130_mission-apply-update-golden-gate.md`
+  - Contract 挙動仕様 / エラーフォーマット / スコープ境界を転記
+  - 実装スケッチ・チェックリスト完備
 
 ### PM層
 - #3 PM 委任開始（2026-04-24）
