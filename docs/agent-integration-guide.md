@@ -272,10 +272,32 @@ nodes:
       rubric_ref: "rubrics/quality.yaml#default"
       provider: "claude_agent_sdk"   # default; "litellm" でも可
       model: "sonnet"                # provider に応じて識別子を変える
+      prompt_ref: "prompts/judge.yaml#judge"  # user prompt の参照（下記注意事項を必ず参照）
       output_key: "judge_result"
 
 edges: []
 ```
+
+### ⚠ Prompt 解決の落とし穴（必読）
+
+`judge` ハンドラーの prompt 仕様には、初見で間違えやすいポイントが 2 つある。walking example や新規ワークフロー生成で agent がつまずかないよう、必ず以下を把握する。
+
+1. **default の user template は `"{query}"`**。`prompt_ref` / `prompt` を省略した場合、judge は `state["query"]` を user prompt に展開する。直前のノードが `output_key: "draft"` のように `query` 以外のキーに書き出していると、judge は空の入力を評価し「No content was provided」といった低スコアの reasoning を返す。対処は次のいずれか:
+   - 直前ノードの `output_key` を `query` にする
+   - `prompt_ref` を指定し、user template で実際の state key を参照する（例: `"Evaluate the following draft:\n\n{draft}"`）
+
+   なお default の **system prompt は rubric から自動生成される**ため、user template だけを与えれば済むケースが多い。
+
+2. **workflow YAML に inline `prompt:` を書くと validator が拒否する**。ハンドラー本体（`create_judge_handler` 内部）は `params["prompt"] = {"system": ..., "user": ...}` を受け付けるが、`yagra validate` / `Yagra.from_workflow` が通る前段の validator（`application/services/reference_resolver.py`）が inline 形式をブロックし、`"inline prompt is no longer supported; use prompt_ref to reference an external prompt file"` のエラーを返す。workflow YAML では必ず `prompt_ref: "<file>#<key>"` を使い、テンプレートは外部の prompts YAML（通例 `prompts.yaml` の `judge:` セクション）に置く。
+
+```yaml
+# prompts.yaml（judge の user prompt 例）
+judge:
+  user: "Evaluate the following draft:\n\n{draft}"
+  # system は省略可（rubric から自動生成される）
+```
+
+walking example の実装例は `examples/self-improve/` を参照。
 
 ### Python 側の登録
 
