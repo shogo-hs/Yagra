@@ -39,7 +39,7 @@
 | 21 | timeout 実装の daemon スレッド制約をドキュメント化（または multiprocessing 化） | 修正 | Could | - | 制約が `docs/sphinx` に明記、または `cancel_futures` ベース実装に置換 | pending |
 | 22 | `workflow_persistence` にプロセス間ロック（fcntl.flock）追加 or 制約明示 | 修正 | Could | - | 多プロセス競合テスト追加 or ドキュメント注記 | pending |
 | 23 | `create_judge_handler` を実装（LLM-as-a-Judge 基本版、Port/Adapter 切替可） | 新規 | Must | #1 | `src/yagra/handlers/judge.py` に handler 実装。evaluation rubric YAML 読込、LLM 呼び出し、スコア + 根拠の構造化返却。ユニットテストで ≥3 ケース網羅。`yagra handlers` 出力に表示 | **done (PR #50)** |
-| 24 | `examples/self-improve/` walking example を追加 | 新規 | Must | #23 | `examples/self-improve/workflow.yaml` + README。propose → judge → apply の自己改善ループを E2E で実走可能。validator 通過 | pending |
+| 24 | `examples/self-improve/` walking example を追加 | 新規 | Must | #23 | `examples/self-improve/workflow.yaml` + README。propose → judge → apply の自己改善ループを E2E で実走可能。validator 通過 | **done (PR #51)** |
 | 25 | MCP tool `evaluate_traces` を追加 | 新規 | Should | #23 | `mcp_server.py` に `_tool_evaluate_traces` 追加。LLM 評価を既存 trace に対して実行し、スコア/根拠/改善提案を返却。`agent-integration-guide.md` 更新 | pending |
 | 26 | 自己改善サイクル E2E 統合テスト | 新規 | Should | #23, #5 | propose → judge → run_golden_tests → apply_update のサイクル連結を E2E で assert。litellm test provider または vcrpy で再現可能 | pending |
 | 27 | LLM-as-a-Judge ドキュメント | 新規 | Could | #23 | `docs/sphinx/source/user_guide/llm_as_a_judge.md` 追加。評価 rubric、metrics、best practices、Langfuse 等との差別化点を記述 | pending |

@@ -200,3 +200,56 @@ PM 委任（general-purpose + opus）で完了。PR #50（PMO Accept、DoD 14/14
 | 累積ドリフト | **強いポジティブ** | #3→#4→#23 で「ビジョン約束の src/ 結実」3 連続、整合性底上げ継続 |
 
 **PO 判定: Accept**。PR #50 マージ後に main 反映。差別化軸が初めて実装として動く節目のタスク。
+
+---
+
+### Task #24: `examples/self-improve/` walking example を追加 — 2026-04-24
+
+PM 委任（general-purpose + opus）で完了。PR #51（PMO Accept、DoD 13/14 PASS + SC-14 blocked-on-env、Critical:0 / Major:0 / Minor:3 すべて情報レベル）。**差別化軸「AI が AI を評価」がユーザーが実走できる walking example として結実**。`examples/self-improve/` 配下 4 ファイル（`workflow.yaml` / `prompts.yaml` / `run_example.py` / `README.md`）構成。generate (OpenAI gpt-4o-mini, LiteLLM) → judge (claude_agent_sdk + sonnet, prompt_ref 省略で default system prompt 活用) の 2 ノード、inline rubric（clarity / accuracy、scale 1-5）。`run_example.py` は `_overall` を強調表示（`">>> Overall score: {overall:.2f} <<<"`）、per-criterion スコアと `rubric_items` の内訳も表示、`JudgeHandlerError.payload` の 4 フィールド（`error` / `message` / `summary` / `hint`）を整形して出力。README は日本語主体で 5 ブロック（概要 / Prerequisites + Setup / 実行 / 自己改善サイクル（擬似対話）/ Customization）、将来拡張として `evaluate_traces` 機能名のみ言及（issue 番号なし）。`src/` 変更 0 行、`validate-examples.yml` で自動検証緑、`yagra validate` が `is_valid: true` 通過、CHANGELOG [Unreleased] Added に 1 行追記、pre-commit 全通過、pytest 1000 PASSED（playwright 33 pre-existing 除外）。
+
+| 観点 | スコア | 前回差分 |
+|------|:------:|:-------:|
+| 差別化軸の実装度（AI が AI を評価） | 5/5 | **+1**（handler 実装（#23）に加え、ユーザーが実走できる walking example が揃い、differentiating claim が「論」から「体感」へ移行。#25 / #26 の MCP 露出と E2E 統合が未着手のため 5 としつつも「例としての閉じた最小体験」は完成） |
+| ゴール寄与 | 5/5 | ±0（vision.md L109 の「LLM-as-a-Judge handler と自己改善ループの walking example を提供」Phase 3 obligation を直接達成） |
+| 原則遵守（Local-First / 人間ダッシュボード排除） | 5/5 | ±0（judge 側は Claude SDK subscription auth で API キー不要、generate 側は OpenAI key だが既存 llm-basic と同水準、人間ダッシュボード依存なし） |
+| UX 一貫性 | 5/5 | ±0（docs / README / CHANGELOG / 出力スクリプトの四者整合、`_overall` 強調・4 フィールドエラー表示で handler 仕様を可視化） |
+| スコープ境界 | 5/5 | ±0（self-improve/ 配下のみ、`rubric.yaml` 参考ファイル不同梱、propose→judge→apply 連結は擬似対話（README）のみで別タスクに分離） |
+| 誤魔化し耐性 | 5/5 | ±0（`OPENAI_API_KEY` 未設定時は early exit + 明示メッセージ、`JudgeHandlerError` 捕捉で silent failure 禁止、docs と実装の乖離 0） |
+| Hexagonal 純度 | 3/5 | ±0（`src/` 変更 0 件、スコープ外） |
+| SRP 遵守 | 1/5 | ±0（スコープ外） |
+| API 一貫性 | 5/5 | ±0（#23 で確立した hybrid signature と 4 フィールドエラーを walking example が自然に踏襲） |
+| エラーメッセージ品質 | 5/5 | ±0（`JudgeHandlerError.payload` の 4 フィールドを `run_example.py` が整形表示する教材的実装で強化） |
+| Golden Test 実効性 | 4/5 | ±0（スコープ外） |
+| E2E 実走性 | 3/5 | **+1**（`python run_example.py` で generate→judge 2 ノード連結を手動実走可能。`OPENAI_API_KEY` + `claude login` で完全動作。#26（judge 統合 E2E 自動化）で残り +2 予定） |
+
+- **体現が進んだ点**:
+  - **差別化軸がユーザーの手元で動く walking example として結実**。`examples/self-improve/` に cd して `python run_example.py` を叩けば「AI が AI を評価」を 2 分で体感できる状態に到達
+  - vision.md L109 の "LLM-as-a-Judge handler と自己改善ループの walking example を提供" という Phase 3 成果物約束が物理的に成立（#23 = handler、#24 = walking example）
+  - README の 5 ブロック構成で「動かす（Prerequisites → 実行）」と「理解する（自己改善サイクル擬似対話）」と「広げる（Customization）」を分離、judge 機能の教材として自律的に機能
+  - `run_example.py` が `JudgeHandlerError.payload` の 4 フィールドを整形表示する実装になっており、#4 / #23 で確立した構造化エラー形式を **ユーザーに見せるレベル** で貫徹。AI エージェントだけでなく人間も structured error を読む習慣が根付く
+  - Contract 事前組込（CHANGELOG / pre-commit / `src/` 変更禁止 / 4 フィールドエラー整形 / 日本語主体）で **PMO 指摘 Critical/Major 0 件を 3 タスク連続**（#4 / #23 / #24）で達成。ハーネス学習効果が定着
+- **残課題・新規課題**:
+  - #25 (MCP `evaluate_traces`) 未着手。AI エージェントから judge 機能を MCP 経由で呼ぶ経路がまだ整わない
+  - #26 (自己改善 E2E 統合テスト) 未着手。walking example は手動実走のみで、CI 自動化は別タスク
+  - SC-14 手動スモーク（draft / `_overall` / rubric_items の実際値確認）は PM 環境に API キーなしで blocked-on-env。**user 側で `export OPENAI_API_KEY=... && cd examples/self-improve && uv add "yagra[llm,judge]" && python run_example.py` を実行して最終確認を依頼**
+  - PMO Minor M1: llm-structured README が英語主体で、llm-basic / self-improve が日本語主体と不整合。ユーザー判断で将来整理
+  - PMO Minor M2: pytest 並列実行時の 3 件 flaky（`test_run_mcp_server_calls_server_run` / `test_run_mcp_server_version_fallback` / `test_runs_inside_running_event_loop_via_executor`）は #24 と無関係な pre-existing。学習ログに記録して後続タスクで対処
+  - PMO Minor M3: `prompt_state_warning`（state_schema 未定義）3 件は info レベル、既存 example と同水準
+- **累積ドリフト所見**: **強いポジティブ継続**。#3 (docs↔実装整合) → #4 (API↔思想整合) → #23 (差別化軸↔実装整合) → #24 (差別化軸↔体感整合) で 4 タスク連続の「綻び沈殿減少」トレンド。特に #24 は「実装したものをユーザーが触れる」という最後の一歩を踏んだ意味で、ベースライン監査の Critical「差別化軸コード 0 件」が UX レベルでも完全解消
+- **次タスクへの示唆**:
+  - **最優先**: #25 (MCP `evaluate_traces`)。walking example は手動で動くが、AI エージェント（Claude Code 等）から MCP 経由で judge を呼べないと AI-Ready 軸の価値が半減。#23 / #24 の成果を MCP 層に露出するタスク
+  - **高優先**: #26 (自己改善サイクル E2E 統合テスト)。walking example は手動スモーク留まり、#5 (E2E 実 LLM) と統合して CI 自動化する構成が理想的
+  - **並行**: #28 (既存 3 handler の Port 経由移行)。#23 で確立した雛形を適用するリファクタ。機能改修の合間に取る
+  - **PMO 指摘集約**: Minor M2（pytest parallel flaky 3 件）を新規 Should タスクとしてバックログ追加候補。再現性が確認されているため放置するほど sediment が溜まる
+  - **README 言語ポリシー統一**: M1 の llm-structured（英語）/ llm-basic / self-improve（日本語）不整合を全 examples 通しで整理する小タスクも検討（Could）
+
+### PO 検証（Phase 2d / Task #24）
+
+| 観点 | 判定 | 根拠 |
+|------|:----:|------|
+| ゴール寄与 | ✓ | vision.md L109 の walking example 提供 obligation 達成、差別化軸を実装から体感に昇格 |
+| 原則遵守 | ✓ | Local-First 維持（judge は subscription auth）、silent failure 禁止、`src/` 変更 0 |
+| UX 一貫性 | ✓ | README 5 ブロック日本語主体、`_overall` 強調、4 フィールドエラー整形で handler 仕様可視化 |
+| 累積ドリフト | **強いポジティブ** | #3→#4→#23→#24 の「綻び沈殿減少」4 連続、差別化軸 Critical を体感レベルで完全解消 |
+
+**PO 判定: Accept**。PR #51 マージ後に main 反映。SC-14 はユーザー環境での実走確認を別途依頼。walking example が揃ったことで「Yagra = AI が AI を評価する」というビジョンのピッチが 2 分で伝わる状態に到達。

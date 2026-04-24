@@ -1,16 +1,16 @@
 # 実行進捗
 
-**最終更新**: 2026-04-24 18:10 JST（#24 Phase 2b 完了、PM Agent 起動準備完了）
+**最終更新**: 2026-04-24 18:35 JST（#24 Phase 2d 完了、PR #51 merge 待機）
 **現在の Phase**: 2
 
 ## バックログ概要
-完了: 5/28 タスク（#1 方針確定、#2 llm-basic 修復、#3 validate-example.yml 実在化、#4 apply_update golden gate、#23 create_judge_handler [PR #50 merged 780e246]）
+完了: 6/28 タスク（#1 方針確定、#2 llm-basic 修復、#3 validate-example.yml 実在化、#4 apply_update golden gate、#23 create_judge_handler [PR #50 merged 780e246]、#24 self-improve walking example [PR #51 CI green, merge 待機]）
 
 新規タスク追加: #28（既存 LLM handler を LLMProviderPort 経由に段階移行、Should）
 
 ## 現在のタスク
 - タスク: #24 `examples/self-improve/` walking example
-- ステージ: **Phase 2b 完了 / Phase 2c 準備完了**（PM Alignment Agent 1 往復で Contract 確定）
+- ステージ: **Phase 2d 完了 / Phase 2e PR merge 待機**（PO Accept、SC-14 のみ user 環境実走依頼中）
 
 ### PO層（#24 向け）
 - PO-PMアライメント: **完了**（PM Alignment Agent が Q1-Q5 + R1-R4 + E6-E8 を指摘、Brief v2 に更新）
@@ -22,14 +22,18 @@
   - rubric: inline のみ（2 criteria: clarity, accuracy）、参考 `rubric.yaml` 非同梱
   - README: 日本語主体、propose→judge→apply の擬似対話スクリプト、#25 未完了注記は issue 番号書かず機能名のみ
 - 主要 SC: 14 項目（2.1 structure 3 / 2.2 files 5 / 2.3 CI-quality 5 / 2.4 smoke 1）
-- 主要リスク: R3/R4（CI 可用性）は PM が Step 1 の `yagra validate` dry-run で初手確認
-- PO検証: 未着手（PM 実装完了後に実施）
+- PO検証（2026-04-24 Phase 2d）: **Accept** — 差別化軸 4→5 で +1（walking example として体感レベル到達）、E2E 実走性 2→3 で +1（手動実走可）、累積ドリフトは強いポジティブ 4 連続
+- 体現度記録: `tasks/vision-alignment-log.md` に Task #24 エントリ追記済み
+- 知見蓄積: `tasks/learnings.md` に walking example 4 ファイル標準 / README 5 ブロック標準 / structured error user-facing 整形 / validate-example CI 検証範囲 / parallel pytest flaky 3 件を追記
 
-### PM層（#24 向け / Phase 2c 起動待機）
-- Developer 数: S〜M 想定（PM Alignment 見積もり）だが PM 環境制約で PM が Developer + PMO を sequentially 代行（#3 / #4 / #23 で 3 回連続確認済み）
-- Feature Branch: 未作成（PM Step 2 で `feature/add-self-improve-example` 作成予定）
-- 影響ファイル見込: 新規 4（workflow.yaml / prompts.yaml / run_example.py / README.md）+ 更新 1（CHANGELOG.md）
-- 技術的注意: generate (LiteLLM 体系、`model.provider`) と judge (claude_agent_sdk provider、`params.provider`) は別スキーマ。README で混同させない
+### PM層（#24 Phase 2c 完了 / Step 9 完了）
+- Developer 数: M サイズだが PM 環境制約で PM が 1 Developer + PMO を sequentially 代行（#3 / #4 / #23 / #24 で 4 回連続再現確認済み）
+- Feature Branch: `feature/add-self-improve-example`
+- PR: https://github.com/shogo-hs/Yagra/pull/51（REVIEW_REQUIRED、CI quality 2m5s / validate-examples 18s 両方 green、ユーザーマージ待機）
+- PMO レビュー: **Accept**（DoD 13/14 PASS + SC-14 blocked-on-env / Critical:0 / Major:0 / Minor:3 すべて情報レベル）`tasks/20260424182358_review-self-improve-example.md`
+- 影響ファイル: 新規 4（`examples/self-improve/workflow.yaml` / `prompts.yaml` / `run_example.py` / `README.md`）+ 更新 1（CHANGELOG.md）+ tasks/ 4（intent / plan / mission-brief / review）
+- `src/` 変更: 0 行（Hexagonal 境界遵守、`git diff main -- src/` 空で確認）
+- 主要残: SC-14 手動スモーク（`OPENAI_API_KEY` + `claude login` + `python run_example.py` で draft / `_overall` / rubric_items の実際値確認）— user 環境での実走を依頼
 
 ---
 
