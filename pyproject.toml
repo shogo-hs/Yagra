@@ -26,6 +26,9 @@ dependencies = [
 mcp = [
     "mcp>=1.26.0",
 ]
+judge = [
+    "claude-agent-sdk>=0.1.0",
+]
 
 [project.scripts]
 yagra = "yagra:main"
@@ -81,6 +84,10 @@ exclude = ["examples/"]
 
 [[tool.mypy.overrides]]
 module = ["mcp", "mcp.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["claude_agent_sdk", "claude_agent_sdk.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
