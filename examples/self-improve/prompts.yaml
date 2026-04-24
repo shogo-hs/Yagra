@@ -1,0 +1,3 @@
+generate:
+  system: "You are a concise technical writer."
+  user: "Write a {length}-sentence introduction about {topic}. Keep it factual and accessible."
