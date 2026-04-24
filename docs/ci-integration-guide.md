@@ -24,14 +24,15 @@ cp .github/workflows/validate-example.yml .github/workflows/yagra-validate.yml
 
 ### 2. ワークフローファイルのパスを設定
 
-`validate-example.yml` の `find` コマンドのパスを、実際のワークフローファイルの場所に合わせます。
+`validate-example.yml` の検証対象パスを、実際のワークフローファイルの場所に合わせます。
+デフォルトでは `examples/*/workflow.yaml` を検証する glob を使用しています。
 
 ```yaml
-# デフォルト: リポジトリ全体から workflow.yaml を検索
-WORKFLOW_FILES=$(find . -name "workflow.yaml" ...)
+# デフォルト: examples/ 配下の workflow.yaml を検証（Yagra リポジトリ準拠）
+for f in examples/*/workflow.yaml; do ... done
 
-# 特定ディレクトリのみ検索する場合
-WORKFLOW_FILES=$(find ./workflows -name "workflow.yaml" ...)
+# 特定ディレクトリを検索する場合（find で再帰検索する例）
+WORKFLOW_FILES=$(find ./workflows -name "workflow.yaml")
 ```
 
 ### 3. yagra をインストール
