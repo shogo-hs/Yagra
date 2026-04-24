@@ -1176,6 +1176,195 @@ def test_tool_apply_update_generic_exception(tmp_path, monkeypatch):
 
 
 # ---------------------------------------------------------------------------
+# _tool_apply_update: golden_pass_required gate (#4)
+# ---------------------------------------------------------------------------
+
+
+def test_tool_apply_update_golden_gate_pass_with_result(tmp_path, monkeypatch):
+    """golden_pass_required=True + last_golden_result pass: apply succeeds without internal run."""
+    from yagra.adapters.inbound import mcp_server
+    from yagra.application.use_cases.workflow_persistence import WorkflowSaveResult
+
+    wf = tmp_path / "workflow.yaml"
+    wf.write_text(_VALID_WORKFLOW_YAML_PROPOSE)
+
+    # Guard: internal _tool_run_golden_tests must NOT be invoked when last_golden_result is passed.
+    def _raise_if_called(*args: object, **kwargs: object) -> dict[str, object]:
+        raise AssertionError(
+            "_tool_run_golden_tests must not be called when last_golden_result is supplied"
+        )
+
+    monkeypatch.setattr(mcp_server, "_tool_run_golden_tests", _raise_if_called)
+
+    mock_result = WorkflowSaveResult(saved_revision="rev-ok", backup_id="bk-ok")
+    monkeypatch.setattr(mcp_server, "save_workflow_with_backup", lambda *a, **k: mock_result)
+
+    result = mcp_server._tool_apply_update(
+        workflow_path=str(wf),
+        candidate_yaml=_UPDATED_WORKFLOW_YAML_PROPOSE,
+        golden_pass_required=True,
+        last_golden_result={"total": 2, "passed": 2, "failed": 0},
+    )
+
+    assert result.get("success") is True
+    assert result["backup_id"] == "bk-ok"
+    # passed == total → no warnings
+    assert "warnings" not in result
+
+
+def test_tool_apply_update_golden_gate_fail_blocks_apply(tmp_path, monkeypatch):
+    """golden_pass_required=True + last_golden_result fail: apply is blocked, file untouched."""
+    from yagra.adapters.inbound import mcp_server
+
+    wf = tmp_path / "workflow.yaml"
+    wf.write_text(_VALID_WORKFLOW_YAML_PROPOSE)
+    original_content = wf.read_text()
+
+    # Guard: save_workflow_with_backup must NOT be called when golden fails.
+    def _raise_if_save(*args: object, **kwargs: object) -> None:
+        raise AssertionError(
+            "save_workflow_with_backup must not be called when golden tests do not pass"
+        )
+
+    monkeypatch.setattr(mcp_server, "save_workflow_with_backup", _raise_if_save)
+
+    result = mcp_server._tool_apply_update(
+        workflow_path=str(wf),
+        candidate_yaml=_UPDATED_WORKFLOW_YAML_PROPOSE,
+        golden_pass_required=True,
+        last_golden_result={"total": 3, "passed": 2, "failed": 1},
+    )
+
+    assert result.get("error") == "golden_not_passed"
+    assert "summary" in result
+    assert result["summary"] == {"total": 3, "passed": 2, "failed": 1}
+    assert "message" in result
+    assert "2/3" in result["message"]
+    assert "hint" in result
+
+    # File must not have been written.
+    assert wf.read_text() == original_content
+
+
+def test_tool_apply_update_golden_gate_no_cases_warning(tmp_path, monkeypatch):
+    """No golden cases defined (total=0): apply succeeds with explicit warning."""
+    from yagra.adapters.inbound import mcp_server
+    from yagra.application.use_cases.workflow_persistence import WorkflowSaveResult
+
+    wf = tmp_path / "workflow.yaml"
+    wf.write_text(_VALID_WORKFLOW_YAML_PROPOSE)
+
+    # Empty golden_dir (directory exists but no cases inside)
+    empty_golden_dir = tmp_path / ".yagra" / "golden"
+    empty_golden_dir.mkdir(parents=True, exist_ok=True)
+
+    mock_result = WorkflowSaveResult(saved_revision="rev-warn", backup_id="bk-warn")
+    monkeypatch.setattr(mcp_server, "save_workflow_with_backup", lambda *a, **k: mock_result)
+
+    result = mcp_server._tool_apply_update(
+        workflow_path=str(wf),
+        candidate_yaml=_UPDATED_WORKFLOW_YAML_PROPOSE,
+        golden_pass_required=True,
+        golden_dir=str(empty_golden_dir),
+    )
+
+    assert result.get("success") is True
+    assert result.get("warnings") == ["no_golden_cases_defined"], (
+        f"expected warning 'no_golden_cases_defined', got: {result.get('warnings')!r}"
+    )
+    assert result["backup_id"] == "bk-warn"
+
+
+def test_tool_apply_update_golden_gate_opt_out(tmp_path, monkeypatch):
+    """golden_pass_required=False: legacy behavior — skip golden gate entirely."""
+    from yagra.adapters.inbound import mcp_server
+    from yagra.application.use_cases.workflow_persistence import WorkflowSaveResult
+
+    wf = tmp_path / "workflow.yaml"
+    wf.write_text(_VALID_WORKFLOW_YAML_PROPOSE)
+
+    # Guard: _tool_run_golden_tests must NOT be invoked when opt-out.
+    def _raise_if_called(*args: object, **kwargs: object) -> dict[str, object]:
+        raise AssertionError(
+            "_tool_run_golden_tests must not be called when golden_pass_required=False"
+        )
+
+    monkeypatch.setattr(mcp_server, "_tool_run_golden_tests", _raise_if_called)
+
+    mock_result = WorkflowSaveResult(saved_revision="rev-legacy", backup_id="bk-legacy")
+    monkeypatch.setattr(mcp_server, "save_workflow_with_backup", lambda *a, **k: mock_result)
+
+    result = mcp_server._tool_apply_update(
+        workflow_path=str(wf),
+        candidate_yaml=_UPDATED_WORKFLOW_YAML_PROPOSE,
+        golden_pass_required=False,
+    )
+
+    assert result.get("success") is True
+    assert result["backup_id"] == "bk-legacy"
+    # No golden gate → no warnings.
+    assert "warnings" not in result
+
+
+def test_tool_apply_update_golden_gate_tool_schema_description():
+    """Tool schema for apply_update documents golden_pass_required / last_golden_result / golden_dir."""
+    import asyncio
+
+    try:
+        import mcp  # noqa: F401
+    except ImportError:
+        pytest.skip("mcp package not installed")
+
+    from yagra.adapters.inbound.mcp_server import create_mcp_server
+
+    try:
+        server = create_mcp_server()
+    except ImportError:
+        pytest.skip("mcp package not installed (create_mcp_server)")
+
+    list_tools_handler = None
+    for handler_name, handler_fn in server.request_handlers.items():
+        if "ListTools" in str(handler_name):
+            list_tools_handler = handler_fn
+            break
+    if list_tools_handler is None:
+        pytest.skip("ListTools handler not found")
+
+    async def _run() -> object:
+        from mcp.types import ListToolsRequest
+
+        request = ListToolsRequest(method="tools/list")
+        return await list_tools_handler(request)
+
+    try:
+        result = asyncio.run(_run())
+    except Exception:
+        pytest.skip("could not invoke list_tools handler")
+
+    tools = result.root.tools if hasattr(result, "root") else []
+    apply_tool = next((t for t in tools if t.name == "apply_update"), None)
+    assert apply_tool is not None, "apply_update Tool missing from list_tools"
+
+    # Tool-level description must mention the golden gate contract.
+    assert "golden" in apply_tool.description.lower(), (
+        f"apply_update description must mention golden gate; got: {apply_tool.description!r}"
+    )
+    assert "golden_pass_required" in apply_tool.description, (
+        "apply_update description must reference golden_pass_required explicitly"
+    )
+    assert "no_golden_cases_defined" in apply_tool.description, (
+        "apply_update description must document the no-case warning contract"
+    )
+
+    # InputSchema must expose all three new properties with descriptions.
+    props = apply_tool.inputSchema.get("properties", {})
+    for key in ("golden_pass_required", "last_golden_result", "golden_dir"):
+        assert key in props, f"apply_update inputSchema missing '{key}' property"
+        desc = props[key].get("description", "")
+        assert desc, f"apply_update inputSchema '{key}' must include a description"
+
+
+# ---------------------------------------------------------------------------
 # _tool_rollback_update: generic exception path
 # ---------------------------------------------------------------------------
 

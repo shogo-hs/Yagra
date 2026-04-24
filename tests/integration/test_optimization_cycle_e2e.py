@@ -189,16 +189,26 @@ class TestOptimizationCycleE2E:
         backup_dir = tmp_path / ".yagra" / "backups"
 
         # MCP _tool_apply_update で YAML を適用（バックアップ付き）
+        # NOTE: この E2E では golden case を意図的に作成していないため、新デフォルト
+        # golden_pass_required=True でも total=0 として扱われ、warnings 付きで apply
+        # が許可されることを確認する（silent success 防止の契約）。
+        golden_dir = tmp_path / ".yagra" / "golden"
         apply_result = _tool_apply_update(
             workflow_path=str(workflow_path),
             candidate_yaml=_WORKFLOW_YAML_V2,
             backup_dir=str(backup_dir),
+            golden_dir=str(golden_dir),
         )
         assert "error" not in apply_result, (
             f"Phase 4: _tool_apply_update returned error: {apply_result.get('error')}"
         )
         assert apply_result.get("success") is True, (
             f"Phase 4: apply_update did not return success=True: {apply_result}"
+        )
+        # golden case 未定義 → warnings=['no_golden_cases_defined'] が返ることを明示
+        assert apply_result.get("warnings") == ["no_golden_cases_defined"], (
+            "Phase 4: expected warnings=['no_golden_cases_defined'] when no golden cases are "
+            f"defined, got: {apply_result.get('warnings')!r}"
         )
 
         # バックアップ ID が返ることを確認
