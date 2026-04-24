@@ -1,6 +1,6 @@
 # Product Backlog
 
-**最終更新**: 2026-04-23
+**最終更新**: 2026-04-24（#24 完了、#28 着手）
 **ビジョン**: Yagra = AI が AI を評価・改善するための AI-Friendly な OSS エージェント開発・最適化ライブラリ（IDE 完結 / LangGraph 拡張 / MCP 特化）
 **正本**: `docs/product/vision.md`
 

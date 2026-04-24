@@ -8,25 +8,12 @@ from typing import Any
 
 import litellm
 
+from yagra.handlers.errors import (
+    LLMHandlerCallError,
+    LLMHandlerConfigError,
+    LLMHandlerError,
+)
 from yagra.ports.outbound.node_registry import NodeHandler
-
-
-class LLMHandlerError(Exception):
-    """Base exception class for LLM handler execution errors."""
-
-    pass
-
-
-class LLMHandlerConfigError(LLMHandlerError):
-    """Configuration error for LLM handler."""
-
-    pass
-
-
-class LLMHandlerCallError(LLMHandlerError):
-    """Error during LLM invocation."""
-
-    pass
 
 
 def create_llm_handler(
@@ -198,3 +185,12 @@ LLM_HANDLER_PARAMS_SCHEMA: dict = {
         {"required": ["prompt_ref"]},
     ],
 }
+
+
+__all__ = [
+    "LLM_HANDLER_PARAMS_SCHEMA",
+    "LLMHandlerCallError",
+    "LLMHandlerConfigError",
+    "LLMHandlerError",
+    "create_llm_handler",
+]

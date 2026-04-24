@@ -10,7 +10,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
-from yagra.handlers.llm_handler import LLMHandlerCallError, LLMHandlerConfigError
+from yagra.handlers.errors import LLMHandlerCallError, LLMHandlerConfigError
 
 
 @dataclass(frozen=True, slots=True)
