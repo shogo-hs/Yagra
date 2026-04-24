@@ -1,0 +1,50 @@
+name: Validate Example Workflows
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate-examples:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Sync dependencies
+        run: uv sync --locked --dev
+
+      - name: Validate examples/*/workflow.yaml
+        run: |
+          set -e
+          found=0
+          for f in examples/*/workflow.yaml; do
+            if [ -f "$f" ]; then
+              echo "::group::$f"
+              uv run yagra validate \
+                --workflow "$f" \
+                --bundle-root "$(dirname "$f")" \
+                --format json
+              echo "::endgroup::"
+              found=$((found + 1))
+            fi
+          done
+          if [ "$found" -eq 0 ]; then
+            echo "::error::No examples/*/workflow.yaml matched the glob"
+            exit 1
+          fi
+          echo "Validated $found workflow(s)"
