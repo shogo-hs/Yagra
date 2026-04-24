@@ -1,6 +1,6 @@
 # Product Backlog
 
-**最終更新**: 2026-04-24（#24 完了、#28 着手）
+**最終更新**: 2026-04-24（#28 完了、#5 候補）
 **ビジョン**: Yagra = AI が AI を評価・改善するための AI-Friendly な OSS エージェント開発・最適化ライブラリ（IDE 完結 / LangGraph 拡張 / MCP 特化）
 **正本**: `docs/product/vision.md`
 
@@ -43,7 +43,7 @@
 | 25 | MCP tool `evaluate_traces` を追加 | 新規 | Should | #23 | `mcp_server.py` に `_tool_evaluate_traces` 追加。LLM 評価を既存 trace に対して実行し、スコア/根拠/改善提案を返却。`agent-integration-guide.md` 更新 | pending |
 | 26 | 自己改善サイクル E2E 統合テスト | 新規 | Should | #23, #5 | propose → judge → run_golden_tests → apply_update のサイクル連結を E2E で assert。litellm test provider または vcrpy で再現可能 | pending |
 | 27 | LLM-as-a-Judge ドキュメント | 新規 | Could | #23 | `docs/sphinx/source/user_guide/llm_as_a_judge.md` 追加。評価 rubric、metrics、best practices、Langfuse 等との差別化点を記述 | pending |
-| 28 | 既存 `create_llm_handler` / `create_structured_llm_handler` / `create_streaming_llm_handler` を `LLMProviderPort` 経由に段階移行 | リファクタ | Should | #23 | 3 ハンドラが `resolve_provider(...)` 経由で provider を取得。既存 litellm 直接呼び出しを置換。backward compat は `params["provider"]` default = `"litellm"` で維持。全既存テスト通過 + structured_llm の dynamic schema_yaml も維持 | pending |
+| 28 | 既存 `create_llm_handler` / `create_structured_llm_handler` / `create_streaming_llm_handler` を `LLMProviderPort` 経由に段階移行 | リファクタ | Should | #23 | 3 ハンドラが `resolve_provider(...)` 経由で provider を取得。既存 litellm 直接呼び出しを置換。backward compat は `params["provider"]` default = `"litellm"` で維持。全既存テスト通過 + structured_llm の dynamic schema_yaml も維持 | **done (PR #52)** |
 
 ---
 

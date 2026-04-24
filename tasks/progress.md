@@ -1,52 +1,49 @@
 # 実行進捗
 
-**最終更新**: 2026-04-24 21:24 JST（#28 PM Step 0-2 完了 / ベースライン測定: 996 passed + 33 playwright error + 3 flaky = 予定通り）
-**現在の Phase**: 2c（PM 代行実装中）
+**最終更新**: 2026-04-24 21:20 UTC（#28 Phase 2f 完了 / PR #52 merged at 61c8a49 / 次タスク選定へ）
+**現在の Phase**: 2a（次タスク選定中）
 
 ## バックログ概要
-完了: 7/28 タスク（#1 方針確定、#2 llm-basic 修復、#3 validate-example.yml 実在化、#4 apply_update golden gate、#23 create_judge_handler [PR #50 merged 780e246]、#24 self-improve walking example [PR #51 merged 8a5df2a]、#28 着手中）
+完了: 8/28 タスク（#1 方針確定、#2 llm-basic 修復、#3 validate-example.yml 実在化、#4 apply_update golden gate、#23 create_judge_handler [PR #50 merged 780e246]、#24 self-improve walking example [PR #51 merged 8a5df2a]、#28 handlers Port 移行 [PR #52 merged 61c8a49]）
 
 ## 現在のタスク
-- タスク: #28 既存 `create_llm_handler` / `create_structured_llm_handler` / `create_streaming_llm_handler` を `LLMProviderPort` 経由に段階移行
-- ステージ: **Phase 2b 完了 → Phase 2c PM Agent 起動前**
-
-### PO層（#28 向け）
-- 選択根拠（ユーザー指示）: Hexagonal 純度を先に上げて #5 E2E 補強の土台を整える
-- 採用方針（確定）: **方針 A**（`LLMProviderPort` に `complete` / `complete_streaming` を追加、`LiteLLMProvider` 全面対応、`ClaudeAgentSDKProvider` は subset）+ PM Alignment 反映による追加仕様
-  - Port 層に `LLMCompletion` / `LLMStreamChunk` / `LLMTokenUsage` dataclass を pure Python で追加（architecture.md 準拠）
-  - `handlers/errors.py` 新設で循環 import 解消（`_llm_common.py` → `llm_handler.py` の矢印を断つ）
-  - streaming の公開 API は `Generator[str, None, None]` 維持、内部 contract のみ `Iterator[LLMStreamChunk]` 化
-- backward compat 設計: workflow YAML の `params.provider`（default `"litellm"`）で adapter 名を選択。既存 `params.model.provider` は litellm 内部 provider 名として維持、YAML 側は変更不要で既存テスト全通過
-- Feature Branch: `feature/handlers-port-migration`
-- PO-PMアライメント: **完了**
-  - v1 ドラフト: `tasks/20260424200943_contract-po-pm-handlers-port-migration.md`
-  - PM Alignment Agent 回答: E1-1/E1-2/E1-3 + Q1-Q7 + C1-C7 + SC-10〜SC-16 + 8 phase workflow を獲得
-  - PO 判断: E1 系すべて Accept、E2-1（L 再見積もり 3-5h）は PO 裁量内で Accept（ユーザーエスカレーション不要）
-- 契約（v2 正本）: `tasks/20260424201756_contract-po-pm-handlers-port-migration.md`
-- PO検証: 未着手（Phase 2d 以降）
-
-### PM層（#28）
-- Developer 数: **L** サイズ、PM 環境制約で PM が 1 Developer + PMO を sequentially 代行（5 回目）
-- 8 phase workflow（A-H、推定 ~305 分）で Intent / Plan / Mission Brief / 実装 / PR / PMO を担当
-- Step 0 完了: 環境確認（feature/handlers-port-migration 存在、working tree に contract v1/v2 + progress/backlog 更新のみ）
-- Step 1 完了: Intent `tasks/20260424112349_intent-handlers-port-migration.md`（SC-1〜SC-16 転記）
-- Step 3 完了: Plan `tasks/20260424112349_plan-handlers-port-migration.md`（Phase A-H 変更ファイル詳述）
-- Step 4 完了: Mission Brief `tasks/20260424112349_mission-handlers-port-migration.md`（SC 対応チェックリスト、実装スケッチ）
-- Step 5 着手: Developer 1（PM 代行）実装開始
-- Step 2 完了: コードベース調査
-  - 既存 `LLMProviderPort`: `complete_structured` のみ、Protocol + runtime_checkable
-  - 既存 `LiteLLMProvider` / `ClaudeAgentSDKProvider`: `complete_structured` のみ実装
-  - 既存 `resolve_provider`: `litellm` / `claude_agent_sdk` 2 種対応、unknown は `ValueError` + hint
-  - 3 handler すべて `import litellm` + `litellm.completion(...)` 直呼び（Hexagonal 境界破れ）
-  - 循環 import 実体: `_llm_common.py:13` / `structured_llm_handler.py:13` → `from yagra.handlers.llm_handler import ...`
-  - litellm mock 箇所: 5 ファイル / 計 87 occurrences（test_llm_handler 29 / test_structured_llm_handler 27 / test_streaming_llm_handler 25 / 2 integration 各 3）
-  - ベースライン pytest: **996 passed + 1 skipped + 33 playwright errors（pre-existing）+ 3 flaky（pre-existing）**
-- PR: 未作成
-- PMO レビュー: 未着手
+- 次タスク選定中（Phase 2a）
+- vision-alignment-log の示唆: **#5 最適化サイクル E2E 実 LLM 補強** を第一候補（#4/#23/#24/#28 で土台が揃った）。#6 軽タスク / #25 MCP evaluate_traces は次点
+- 累積ドリフト: 5 タスク連続ポジティブ（#3→#4→#23→#24→#28）。Hexagonal 純度 3→4、差別化軸 5/5、UX 5/5、境界 5/5、API 一貫性 5/5 を維持
 
 ---
 
-## Phase 2 内の完了済みタスク詳細（履歴保存・#24 追加）
+## Phase 2 内の完了済みタスク詳細（履歴保存・#28 追加）
+
+<details><summary>Task #28: handlers Port 移行（2026-04-24 完了、PR #52 merged at 61c8a49）</summary>
+
+### PO層（#28）
+- 選択根拠（ユーザー指示）: Hexagonal 純度を先に上げて #5 E2E 補強の土台を整える
+- PO-PMアライメント: **完了**（PM Alignment Agent が E1-1/E1-2/E1-3 + Q1-Q7 + C1-C7 + SC-10〜SC-16 + 8 phase workflow を指摘、Contract v2 に反映）
+- 契約: `tasks/20260424201756_contract-po-pm-handlers-port-migration.md`（v2 正本）、v1 ドラフトは `tasks/20260424200943_*.md`
+- 採用方針: **方針 A** — `LLMProviderPort` に `complete` / `complete_streaming` を追加、`LiteLLMProvider` 全面対応、`ClaudeAgentSDKProvider` は subset（streaming 非対応）
+  - Port 層に `LLMCompletion` / `LLMStreamChunk` / `LLMTokenUsage` dataclass を pure Python で追加（architecture.md 準拠）
+  - `handlers/errors.py` 新設で循環 import 解消（`_llm_common.py` → `llm_handler.py` の矢印を断つ、`__all__` で再 export）
+  - streaming の公開 API は `Generator[str, None, None]` 維持、内部 contract のみ `Iterator[LLMStreamChunk]` 化、generator priming で retry 契約に同期化
+- backward compat: workflow YAML の `params.provider`（default `"litellm"`）で adapter 名を選択、既存 `params.model.provider` は litellm 内部 provider 名として維持、3 既存 examples（llm-basic / llm-structured / llm-streaming）無改修で通過
+- 主要 SC: **16 項目**（SC-1〜16。Port 拡張、handler Port 経由化、backward compat、DI、既存テスト全通過、Hexagonal 機械的検証、docs 同期、pre-commit、schema 一貫性、Port dataclass、handlers/errors.py、token usage Port 経由化、mock 再編、mypy strict、streaming 公開 API 不変、provider 未知エラー 4-field）
+- PO検証（2026-04-24 Phase 2d）: **Accept** — Hexagonal 純度 3→4（+1）、他観点 5/5 維持、5 タスク連続ポジティブドリフト（#3→#4→#23→#24→#28）
+- 体現度記録: `tasks/vision-alignment-log.md` に Task #28 エントリ追記済み
+- 知見蓄積: `tasks/learnings.md` に 10 件（Port dataclass 設計 / 循環 import 解消 / generator priming / retry 3 階層 / TraceContext 非通知 by design / mock 再編 81 箇所 / schema enum 非対応明示 / Contract v1→v2 複雑度補正 / PMO 0 件 4 連続 / 対称性と非対称性の設計哲学）
+
+### PM層（#28 Phase 2c 完了 / Step 8 完了）
+- Developer 数: **L** サイズ、PM 環境制約で PM が 1 Developer + PMO を sequentially 代行（5 回目）
+- Feature Branch: `feature/handlers-port-migration`
+- PR: https://github.com/shogo-hs/Yagra/pull/52（REVIEW_REQUIRED、CI quality 2m12s / build 19s / validate-examples 18s / deploy skip-expected、マージ済み 2026-04-24T12:17:20Z at 61c8a49）
+- PMO レビュー: **Accept**（SC-1〜16 すべて Pass / Critical:0 / Major:0 / Minor:0）`tasks/20260424112349_review-handlers-port-migration.md`
+- 影響ファイル: 33 files changed, +3418/-376
+  - 新規: `handlers/errors.py` / `tests/unit/ports/outbound/test_llm_provider_dataclasses.py` / `tests/unit/handlers/test_llm_handler_port_di.py` / `tests/unit/adapters/outbound/llm_providers/test_{litellm,claude_agent_sdk}_provider.py` / tasks 7 件
+  - 更新: `ports/outbound/llm_provider.py`（+137 行、dataclass + complete/streaming Protocol） / `adapters/outbound/llm_providers/{litellm,claude_agent_sdk}_provider.py`（+279 行、3 method 実装） / `handlers/{llm,streaming_llm,structured_llm}_handler.py`（Port 経由化） / `handlers/_llm_common.py`（report_completion_usage / report_streaming_usage 新設、循環 import 解消） / `handlers/judge.py`（_FakeProvider Protocol 整合） / 81 箇所のテスト mock 対象を adapter 層へ移設
+- Step 0-8 完了: Step 0 環境確認 / Step 1 Intent / Step 2 コードベース調査 / Step 3 Plan / Step 4 Mission Brief / Step 5 Developer1（実装・テスト・pre-commit） / Step 6 PR 作成 + PMO レビュー Accept / Step 7 差し戻しなし / Step 8 完了レポート
+- 生成成果物: Intent `tasks/20260424112349_intent-*.md` / Plan `tasks/20260424112349_plan-*.md` / Mission Brief `tasks/20260424112349_mission-*.md` / Developer1 `tasks/20260424112349_developer1-*.md` / Review `tasks/20260424112349_review-*.md`
+- 特筆点: **Hexagonal 境界 handlers 層破れの完全解消**（`handlers/` から `import litellm` / `litellm.` 呼出ゼロ）、backward compat 完全維持（3 既存 examples 無改修）、Tests 1021 → 1030 PASSED（+9 DI テスト）、pre-commit All Passed
+
+</details>
 
 <details><summary>Task #24: self-improve walking example（2026-04-24 完了、PR #51 merged at 8a5df2a）</summary>
 
